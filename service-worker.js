@@ -1,8 +1,8 @@
 // ============================================
-// ⚙️ SERVICE WORKER
+// ⚡ SERVICE WORKER
 // ============================================
 
-const CACHE_NAME = 'gold-options-pro-v4';
+const CACHE_NAME = 'gold-options-pro-v5';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -11,33 +11,32 @@ const urlsToCache = [
     '/css/components/cards.css',
     '/css/components/table.css',
     '/css/pages/terminal.css',
-    '/js/utils/helpers.js',
-    '/js/utils/constants.js',
-    '/js/services/api.js',
-    '/js/services/cache.js',
-    '/js/modules/firebase.js',
-    '/js/modules/auth.js',
-    '/js/modules/charts.js',
-    '/js/modules/mt5.js',
+    '/js/constants.js',
+    '/js/cache.js',
+    '/js/helpers.js',
+    '/js/firebase.js',
+    '/js/auth.js',
+    '/js/api.js',
+    '/js/charts.js',
+    '/js/mt5.js',
     '/js/app.js'
 ];
 
 self.addEventListener('install', event => {
     console.log('✅ Service Worker установлен');
-    
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => {
-                console.log('📦 Кэширование файлов...');
-                return cache.addAll(urlsToCache);
-            })
-            .then(() => self.skipWaiting())
+        caches.open(CACHE_NAME).then(cache => {
+            console.log('📦 Кэширование файлов...');
+            // Кэшируем файлы, игнорируя ошибки
+            return Promise.allSettled(
+                urlsToCache.map(url => cache.add(url))
+            );
+        }).then(() => self.skipWaiting())
     );
 });
 
 self.addEventListener('activate', event => {
     console.log('✅ Service Worker активирован');
-    
     event.waitUntil(
         caches.keys().then(cacheNames => {
             return Promise.all(
@@ -53,53 +52,36 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-    // Пропускаем запросы к Firebase и другим внешним ресурсам
+    // Пропускаем запросы к Firebase и CDN
     if (event.request.url.includes('firebase') ||
         event.request.url.includes('googleapis') ||
         event.request.url.includes('gstatic') ||
-        event.request.url.includes('cdn.jsdelivr.net')) {
+        event.request.url.includes('cdn.')) {
         return;
     }
     
     event.respondWith(
-        caches.match(event.request)
-            .then(response => {
-                // Возвращаем из кэша, если есть
-                if (response) {
+        caches.match(event.request).then(response => {
+            if (response) {
+                return response;
+            }
+            
+            return fetch(event.request).then(response => {
+                if (!response || response.status !== 200) {
                     return response;
                 }
                 
-                // Иначе загружаем из сети
-                return fetch(event.request)
-                    .then(response => {
-                        // Проверяем, валидный ли ответ
-                        if (!response || response.status !== 200 || response.type !== 'basic') {
-                            return response;
-                        }
-                        
-                        // Клонируем ответ
-                        const responseToCache = response.clone();
-                        
-                        // Добавляем в кэш
-                        caches.open(CACHE_NAME)
-                            .then(cache => {
-                                cache.put(event.request, responseToCache);
-                            });
-                        
-                        return response;
-                    })
-                    .catch(() => {
-                        // В случае ошибки сети, можно показать fallback
-                        if (event.request.url.includes('.html')) {
-                            return caches.match('/index.html');
-                        }
-                    });
-            })
+                const responseToCache = response.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(event.request, responseToCache);
+                });
+                
+                return response;
+            }).catch(() => {
+                if (event.request.url.includes('.html')) {
+                    return caches.match('/index.html');
+                }
+            });
+        })
     );
-});
-
-self.addEventListener('message', event => {
-    if (event.data === 'skipWaiting') {
-        self.skipWaiting();
-    }
 });
