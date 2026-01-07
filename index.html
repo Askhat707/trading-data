@@ -2,173 +2,149 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gold Options Pro v2 - Ultimate Terminal</title>
     
     <!-- FAVICON -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='85' font-size='90' font-weight='bold' fill='%23FFD700'>📊</text></svg>">
     
-    <!-- CSS -->
+    <!-- CSS СТИЛИ -->
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/components/modal.css">
     <link rel="stylesheet" href="css/components/cards.css">
     <link rel="stylesheet" href="css/components/table.css">
     <link rel="stylesheet" href="css/pages/terminal.css">
     
-    <!-- FIREBASE LIBRARIES (ПЕРВЫМИ!) -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-    
-    <!-- ДРУГИЕ ВНЕШНИЕ БИБЛИОТЕКИ -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-    
-    <!-- FIREBASE КОНФИГ (генерируется автоматически) -->
-    <script src="firebase-config.js"></script>
-    
-    <!-- КОНСТАНТЫ И УТИЛИТЫ (ПЕРЕД ОСНОВНЫМИ МОДУЛЯМИ!) -->
-    <script src="js/constants.js"></script>
-    <script src="js/cache.js"></script>
-    <script src="js/helpers.js"></script>
-    
-    <!-- МОДУЛИ (в порядке зависимостей) -->
-    <script src="js/firebase.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/charts.js"></script>
-    <script src="js/mt5.js"></script>
-    
-    <!-- ОСНОВНОЕ ПРИЛОЖЕНИЕ (ПОСЛЕДНИМ!) -->
-    <script src="js/app.js"></script>
-    
-    <!-- SERVICE WORKER -->
-    <script>
+    <style>
+        /* Временный стиль до загрузки CSS */
+        body { 
+            background: #050505; 
+            color: #fff; 
+            font-family: 'Segoe UI', Roboto, sans-serif;
+        }
+        #loading { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+
+<!-- LOADING INDICATOR -->
+<div id="loading" style="flex-direction: column; gap: 20px;">
+    <div style="font-size: 3rem;">⚙️</div>
+    <div>Загрузка приложения...</div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display: none;"></div>
+
+<!-- ============================================ -->
+<!-- FIREBASE & EXTERNAL LIBRARIES (FIRST!) -->
+<!-- ============================================ -->
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+
+<!-- External Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+
+<!-- Firebase Config (GENERATED) -->
+<script src="firebase-config.js"></script>
+
+<!-- ============================================ -->
+<!-- OUR MODULES (AFTER EXTERNAL) -->
+<!-- ============================================ -->
+
+<!-- Core modules -->
+<script src="js/constants.js"></script>
+<script src="js/cache.js"></script>
+<script src="js/helpers.js"></script>
+
+<!-- Firebase modules -->
+<script src="js/firebase.js"></script>
+<script src="js/auth.js"></script>
+
+<!-- Business logic modules -->
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/mt5.js"></script>
+
+<!-- Main app (LAST!) -->
+<script src="js/app.js"></script>
+
+<!-- SERVICE WORKER -->
+<script>
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('service-worker.js')
-            .then(reg => console.log('✅ Service Worker зарегистрирован:', reg.scope))
-            .catch(err => console.warn('⚠️ Service Worker ошибка:', err));
+            .then(reg => console.log('✅ Service Worker registered'))
+            .catch(err => console.warn('⚠️ Service Worker error:', err));
     }
-    </script>
-    
-    <!-- ИНИЦИАЛИЗАЦИЯ (ОЧЕНЬ ПОСЛЕДНИМ!) -->
-    <script>
-    // Функции глобального доступа
-    window.showAboutModal = function() {
-        alert('💰 Gold Options Pro v2\n\nПрофессиональный терминал для анализа опционов');
-    };
-    
-    window.showTermsModal = function() {
-        alert('📄 УСЛОВИЯ ИСПОЛЬЗОВАНИЯ\n\nПрограмма предоставляется "как есть"');
-    };
-    
-    window.showPrivacyModal = function() {
-        alert('🔒 ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ\n\nВаши данные защищены');
-    };
-    
-    window.openTelegram = function() {
-        window.open('https://t.me/ASKHAT_1985', '_blank');
-    };
-    
-    // Проверка загрузки Firebase конфига
-    let firebaseCheckInterval = setInterval(() => {
-        if (typeof firebase !== 'undefined' && 
-            firebase.apps && 
-            firebase.apps.length > 0) {
-            clearInterval(firebaseCheckInterval);
-            console.log('✅ Firebase успешно загружен');
+</script>
+
+<!-- INIT SCRIPT -->
+<script>
+    console.log('🚀 Инициализация приложения...');
+
+    // Функции для глобального использования
+    window.showAboutModal = () => alert('💰 Gold Options Pro v2\n\nПрофессиональный терминал для анализа опционов');
+    window.showTermsModal = () => alert('📄 Условия использования');
+    window.showPrivacyModal = () => alert('🔒 Политика конфиденциальности');
+    window.openTelegram = () => window.open('https://t.me/ASKHAT_1985', '_blank');
+
+    // Ждем загрузки Firebase
+    let firebaseReady = false;
+    let checkCount = 0;
+    const maxChecks = 100; // 10 секунд при интервале 100ms
+
+    const checkFirebase = setInterval(() => {
+        checkCount++;
+        
+        console.log(`⏳ Проверка Firebase (${checkCount}/${maxChecks})...`);
+        
+        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+            clearInterval(checkFirebase);
+            firebaseReady = true;
+            console.log('✅ Firebase готов!');
             
-            // Инициализируем модули в правильном порядке
-            if (window.FirebaseModule) {
-                FirebaseModule.init();
-            }
+            // Скрываем загрузку
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
             
-            if (window.AuthModule) {
-                AuthModule.init().then(() => {
-                    if (window.app) {
-                        setTimeout(() => app.init(), 500);
-                    }
-                });
+            // Инициализируем приложение
+            if (window.app && typeof app.init === 'function') {
+                setTimeout(() => {
+                    console.log('🚀 Инициализация app...');
+                    app.init();
+                }, 100);
             }
-        }
-    }, 100);
-    
-    // Таймаут на случай если Firebase не загрузился
-    setTimeout(() => {
-        if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0) {
+        } else if (checkCount >= maxChecks) {
+            clearInterval(checkFirebase);
             console.error('❌ Firebase не загружен!');
-            document.body.innerHTML = `
-                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #050505; color: #fff; flex-direction: column; gap: 20px;">
-                    <div style="font-size: 3rem;">❌</div>
-                    <h1>Ошибка загрузки Firebase</h1>
-                    <p>Проверьте переменные окружения и firebase-config.js</p>
-                    <button onclick="location.reload()" style="background: #FFD700; color: #000; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-                        🔄 Перезагрузить страницу
+            document.getElementById('loading').innerHTML = `
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; color: #ff4444;">❌</div>
+                    <h2 style="color: #ff4444; margin: 20px 0;">Ошибка загрузки</h2>
+                    <p>Firebase не инициализирован</p>
+                    <p style="font-size: 0.9rem; color: #888;">Проверьте:</p>
+                    <ul style="text-align: left; display: inline-block; color: #888;">
+                        <li>Интернет соединение</li>
+                        <li>firebase-config.js загружен</li>
+                        <li>GitHub Secrets настроены</li>
+                    </ul>
+                    <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #FFD700; color: #000; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                        🔄 Перезагрузить
                     </button>
                 </div>
             `;
         }
-    }, 10000);
-    </script>
-</head>
-<body>
-
-<!-- 🔐 МОДАЛЬНОЕ ОКНО АУТЕНТИФИКАЦИИ -->
-<div id="auth-modal">
-    <div class="auth-container">
-        <div class="auth-header">
-            <div class="auth-logo">GOLD OPTIONS PRO</div>
-            <div class="auth-subtitle">Professional Trading Terminal</div>
-        </div>
-        
-        <div id="auth-error" class="auth-error" style="display: none;">
-            Ошибка авторизации. Проверьте введенные данные.
-        </div>
-        
-        <div id="auth-step-1" class="auth-form">
-            <div class="form-group">
-                <label class="form-label">Email адрес</label>
-                <input type="email" id="user-email" class="form-input" placeholder="your@email.com" required>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Пароль</label>
-                <input type="password" id="user-password" class="form-input" placeholder="Введите пароль из Telegram" required>
-            </div>
-            
-            <div class="form-group" style="margin-top: 20px;">
-                <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; color: #ccc; font-size: 0.9rem; line-height: 1.5;">
-                    <input type="checkbox" id="terms-checkbox" style="margin-top: 3px; cursor: pointer; width: 18px; height: 18px; accent-color: var(--gold);">
-                    <span>
-                        Я согласен с <a href="#" onclick="showTermsModal(); return false;" style="color: var(--gold); text-decoration: underline;">условиями использования</a> и <a href="#" onclick="showPrivacyModal(); return false;" style="color: var(--gold); text-decoration: underline;">политикой конфиденциальности</a>
-                    </span>
-                </label>
-            </div>
-            
-            <button id="login-btn" class="auth-button secondary" onclick="handleLogin()">Войти</button>
-            <button id="register-btn" class="auth-button" onclick="handleRegister()">Начать 3-дневный триал</button>
-            <button id="about-btn" class="auth-button secondary" onclick="showAboutModal()">О программе</button>
-            
-            <div class="auth-footer">
-                Нажимая кнопку, вы соглашаетесь с <a href="#" onclick="showTermsModal(); return false;" style="color: var(--gold);">условиями использования</a><br>
-                После регистрации доступ откроется автоматически
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- 📊 ОСНОВНОЙ КОНТЕНТ ТЕРМИНАЛА -->
-<div id="main-content">
-    <!-- Контент будет загружен через JS -->
-    <div style="text-align: center; padding: 100px 20px;">
-        <div style="font-size: 3rem; color: var(--gold); margin-bottom: 20px;">⚙️</div>
-        <h1 style="color: var(--text-main); margin-bottom: 20px;">Загрузка терминала...</h1>
-        <p style="color: var(--text-muted); max-width: 500px; margin: 0 auto;">
-            Инициализация системы. Если загрузка занимает более 10 секунд,<br>
-            обновите страницу или свяжитесь с поддержкой.
-        </p>
-    </div>
-</div>
+    }, 100);
+</script>
 
 </body>
 </html>
