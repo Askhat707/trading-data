@@ -1,12 +1,26 @@
 # Firebase конфиг (генерируется автоматически)
 firebase-config.js
 
-# Локальные файлы
+# Локальные переменные
 .env
 .env.local
+.env.*.local
+
+# Логи
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Зависимости
 node_modules/
 
-# Системные файлы
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
 Thumbs.db
