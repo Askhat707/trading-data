@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Gold Options Pro v2 - Ultimate Terminal</title>
+    
+    <!-- FAVICON -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='85' font-size='90' font-weight='bold' fill='%23FFD700'>📊</text></svg>">
+    
+    <!-- ============================================ -->
+    <!-- 🔐 FIREBASE LIBRARIES (БЕЗ КОНФИГА!) -->
+    <!-- ============================================ -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+    
+    <!-- OTHER LIBRARIES -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <!-- ============================================ -->
+    <!-- 🔐 FIREBASE КОНФИГ ИЗ GITHUB SECRETS -->
+    <!-- ============================================ -->
+    <script src="firebase-config.js"></script>
+
+    <!-- ============================================ -->
+    <!-- 🔐 SERVICE WORKER РЕГИСТРАЦИЯ -->
+    <!-- ============================================ -->
+    <script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service-worker.js')
+            .then(reg => {
+                console.log('✅ Service Worker зарегистрирован:', reg.scope);
+            })
+            .catch(err => {
+                console.warn('⚠️ Service Worker ошибка:', err);
+            });
+    }
+    </script>
+
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components/modal.css">
+    <link rel="stylesheet" href="css/components/cards.css">
+    <link rel="stylesheet" href="css/components/table.css">
+    <link rel="stylesheet" href="css/pages/terminal.css">
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- 🔐 МОДАЛЬНОЕ ОКНО РЕГИСТРАЦИИ/ВХОДА -->
+<!-- ============================================ -->
+<div id="auth-modal">
+    <!-- Content moved to separate files -->
+</div>
+
+<!-- ============================================ -->
+<!-- 📧 МОДАЛЬНОЕ ОКНО ДЛЯ ТРИАЛА -->
+<!-- ============================================ -->
+<div id="trial-modal" class="trial-modal-overlay">
+    <!-- Content moved to separate files -->
+</div>
+    
+<!-- ============================================ -->
+<!-- 📊 ОСНОВНОЙ КОНТЕНТ ТЕРМИНАЛА -->
+<!-- ============================================ -->
+<div id="main-content">
+    <!-- Content moved to separate files -->
+</div>
+
+<!-- JavaScript Files -->
+<script src="js/utils/helpers.js"></script>
+<script src="js/utils/constants.js"></script>
+<script src="js/services/api.js"></script>
+<script src="js/services/cache.js"></script>
+<script src="js/modules/firebase.js"></script>
+<script src="js/modules/auth.js"></script>
+<script src="js/modules/charts.js"></script>
+<script src="js/modules/mt5.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+// Initialize application
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 ========== СТРАНИЦА ЗАГРУЖЕНА ==========');
+    
+    // Global error handling
+    window.addEventListener('error', function(e) {
+        console.error('🚨 КРИТИЧЕСКАЯ ОШИБКА:', e.error);
+    });
+    
+    // Connection status
+    window.addEventListener('online', function() {
+        console.log('🌐 ✅ Соединение восстановлено');
+    });
+    
+    window.addEventListener('offline', function() {
+        console.log('🌐 ❌ Потеряно соединение');
+    });
+    
+    console.log('✅ ========== ИНИЦИАЛИЗАЦИЯ ЗАВЕРШЕНА ==========');
+});
+</script>
+</body>
+</html>
