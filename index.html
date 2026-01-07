@@ -1,150 +1,79 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gold Options Pro v2 - Ultimate Terminal</title>
-    
-    <!-- FAVICON -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='85' font-size='90' font-weight='bold' fill='%23FFD700'>📊</text></svg>">
-    
-    <!-- CSS СТИЛИ -->
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/components/modal.css">
-    <link rel="stylesheet" href="css/components/cards.css">
-    <link rel="stylesheet" href="css/components/table.css">
-    <link rel="stylesheet" href="css/pages/terminal.css">
-    
-    <style>
-        /* Временный стиль до загрузки CSS */
-        body { 
-            background: #050505; 
-            color: #fff; 
-            font-family: 'Segoe UI', Roboto, sans-serif;
-        }
-        #loading { 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh;
-        }
-    </style>
-</head>
-<body>
-
-<!-- LOADING INDICATOR -->
-<div id="loading" style="flex-direction: column; gap: 20px;">
-    <div style="font-size: 3rem;">⚙️</div>
-    <div>Загрузка приложения...</div>
-</div>
-
-<!-- MAIN APP -->
-<div id="app" style="display: none;"></div>
-
-<!-- ============================================ -->
-<!-- FIREBASE & EXTERNAL LIBRARIES (FIRST!) -->
-<!-- ============================================ -->
-
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-
-<!-- External Libraries -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-
-<!-- Firebase Config (GENERATED) -->
+<!-- В секции скриптов, после Firebase SDK: -->
 <script src="firebase-config.js"></script>
 
-<!-- ============================================ -->
-<!-- OUR MODULES (AFTER EXTERNAL) -->
-<!-- ============================================ -->
-
-<!-- Core modules -->
-<script src="js/constants.js"></script>
-<script src="js/cache.js"></script>
-<script src="js/helpers.js"></script>
-
-<!-- Firebase modules -->
-<script src="js/firebase.js"></script>
-<script src="js/auth.js"></script>
-
-<!-- Business logic modules -->
-<script src="js/api.js"></script>
-<script src="js/charts.js"></script>
-<script src="js/mt5.js"></script>
-
-<!-- Main app (LAST!) -->
-<script src="js/app.js"></script>
-
-<!-- SERVICE WORKER -->
 <script>
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('service-worker.js')
-            .then(reg => console.log('✅ Service Worker registered'))
-            .catch(err => console.warn('⚠️ Service Worker error:', err));
-    }
-</script>
-
-<!-- INIT SCRIPT -->
-<script>
-    console.log('🚀 Инициализация приложения...');
-
-    // Функции для глобального использования
-    window.showAboutModal = () => alert('💰 Gold Options Pro v2\n\nПрофессиональный терминал для анализа опционов');
-    window.showTermsModal = () => alert('📄 Условия использования');
-    window.showPrivacyModal = () => alert('🔒 Политика конфиденциальности');
-    window.openTelegram = () => window.open('https://t.me/ASKHAT_1985', '_blank');
-
-    // Ждем загрузки Firebase
-    let firebaseReady = false;
-    let checkCount = 0;
-    const maxChecks = 100; // 10 секунд при интервале 100ms
-
-    const checkFirebase = setInterval(() => {
-        checkCount++;
+// ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ПРОВЕРКИ ЗАГРУЗКИ
+window.checkFirebaseStatus = function() {
+    const checkInterval = setInterval(() => {
+        console.log('⏳ Проверка статуса Firebase...');
         
-        console.log(`⏳ Проверка Firebase (${checkCount}/${maxChecks})...`);
+        // Проверяем все условия
+        const isFirebaseSDKLoaded = typeof firebase !== 'undefined';
+        const isConfigLoaded = window.firebaseConfig && window.firebaseConfig.apiKey;
+        const isFirebaseInitialized = firebase.apps && firebase.apps.length > 0;
         
-        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
-            clearInterval(checkFirebase);
-            firebaseReady = true;
-            console.log('✅ Firebase готов!');
+        console.log('Firebase SDK загружен:', isFirebaseSDKLoaded);
+        console.log('Конфиг загружен:', isConfigLoaded);
+        console.log('Firebase инициализирован:', isFirebaseInitialized);
+        
+        if (isFirebaseSDKLoaded && isConfigLoaded && isFirebaseInitialized) {
+            clearInterval(checkInterval);
+            console.log('✅ Все проверки пройдены, Firebase готов!');
             
-            // Скрываем загрузку
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('app').style.display = 'block';
-            
-            // Инициализируем приложение
-            if (window.app && typeof app.init === 'function') {
-                setTimeout(() => {
-                    console.log('🚀 Инициализация app...');
-                    app.init();
-                }, 100);
+            // Скрываем лоадер
+            const loadingEl = document.getElementById('loading');
+            if (loadingEl) {
+                loadingEl.style.display = 'none';
             }
-        } else if (checkCount >= maxChecks) {
-            clearInterval(checkFirebase);
-            console.error('❌ Firebase не загружен!');
-            document.getElementById('loading').innerHTML = `
-                <div style="text-align: center;">
-                    <div style="font-size: 3rem; color: #ff4444;">❌</div>
-                    <h2 style="color: #ff4444; margin: 20px 0;">Ошибка загрузки</h2>
-                    <p>Firebase не инициализирован</p>
-                    <p style="font-size: 0.9rem; color: #888;">Проверьте:</p>
-                    <ul style="text-align: left; display: inline-block; color: #888;">
-                        <li>Интернет соединение</li>
-                        <li>firebase-config.js загружен</li>
-                        <li>GitHub Secrets настроены</li>
-                    </ul>
-                    <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #FFD700; color: #000; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-                        🔄 Перезагрузить
-                    </button>
-                </div>
-            `;
+            
+            // Показываем основное приложение
+            const appEl = document.getElementById('app');
+            if (appEl) {
+                appEl.style.display = 'block';
+            }
+            
+            return true;
         }
-    }, 100);
-</script>
+        
+        // Проверяем таймаут
+        if (window.firebaseCheckCount && window.firebaseCheckCount > 50) {
+            clearInterval(checkInterval);
+            console.error('❌ Таймаут загрузки Firebase');
+            
+            const loadingEl = document.getElementById('loading');
+            if (loadingEl) {
+                loadingEl.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 3rem; color: #ff4444;">❌</div>
+                        <h2 style="color: #ff4444; margin: 20px 0;">Ошибка загрузки</h2>
+                        <p>Не удалось загрузить Firebase</p>
+                        <div style="background: rgba(255,68,68,0.1); padding: 15px; border-radius: 8px; margin: 20px auto; max-width: 500px; text-align: left;">
+                            <p><strong>Возможные причины:</strong></p>
+                            <ul>
+                                <li>Проблемы с интернет соединением</li>
+                                <li>Firebase конфигурация не загружена</li>
+                                <li>GitHub Secrets не настроены</li>
+                            </ul>
+                        </div>
+                        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #FFD700; color: #000; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                            🔄 Перезагрузить
+                        </button>
+                    </div>
+                `;
+            }
+            return false;
+        }
+        
+        window.firebaseCheckCount = (window.firebaseCheckCount || 0) + 1;
+        
+    }, 100); // Проверяем каждые 100ms
+};
 
-</body>
-</html>
+// ЗАПУСК ПРОВЕРКИ
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Запуск проверки Firebase...');
+    setTimeout(() => {
+        window.checkFirebaseStatus();
+    }, 1000);
+});
+</script>
