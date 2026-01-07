@@ -23,30 +23,58 @@ jobs:
         with:
           node-version: '18'
       
-      - name: Create scripts directory
-        run: mkdir -p scripts
-      
-      - name: Generate Firebase Config
-        run: node scripts/generate-config.js
-        env:
-          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
-          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
-          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
-          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
-      
-      - name: Verify files exist
+      - name: Generate Firebase Config from Secrets
         run: |
-          echo "=== Checking generated config ==="
-          ls -la firebase-config.js || echo "firebase-config.js NOT FOUND!"
-          echo ""
-          echo "=== Checking js files ==="
-          ls -la js/ || echo "js/ directory NOT FOUND!"
-          echo ""
-          echo "=== Checking css files ==="
-          ls -la css/ || echo "css/ directory NOT FOUND!"
+          # Создаем скрипт для генерации конфига
+          cat > generate-config.js << 'EOF'
+          const fs = require('fs');
+          
+          // Получаем ключи из GitHub Secrets
+          const firebaseConfig = {
+            apiKey: "${{ secrets.FIREBASE_API_KEY }}",
+            authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
+            databaseURL: "${{ secrets.FIREBASE_DATABASE_URL }}",
+            projectId: "${{ secrets.FIREBASE_PROJECT_ID }}",
+            storageBucket: "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
+            messagingSenderId: "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
+            appId: "${{ secrets.FIREBASE_APP_ID }}",
+            measurementId: "${{ secrets.FIREBASE_MEASUREMENT_ID }}"
+          };
+          
+          const configContent = `// 🔥 FIREBASE CONFIG - AUTO GENERATED FROM GITHUB SECRETS
+          const firebaseConfig = ${JSON.stringify(firebaseConfig, null, 2)};
+          
+          // Экспорт для глобального использования
+          window.firebaseConfig = firebaseConfig;
+          
+          // Автоматическая инициализация при загрузке
+          if (typeof firebase !== 'undefined') {
+            try {
+              if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log('✅ Firebase инициализирован из конфига');
+              }
+            } catch (error) {
+              console.error('❌ Ошибка инициализации Firebase:', error);
+            }
+          }`;
+          
+          fs.writeFileSync('firebase-config.js', configContent);
+          console.log('✅ Firebase config generated from GitHub Secrets');
+          EOF
+          
+          node generate-config.js
+      
+      - name: Verify Generated Config
+        run: |
+          echo "=== Проверка сгенерированного конфига ==="
+          if [ -f "firebase-config.js" ]; then
+            echo "✅ firebase-config.js создан"
+            head -20 firebase-config.js
+          else
+            echo "❌ firebase-config.js не создан!"
+            exit 1
+          fi
       
       - name: Setup Pages
         uses: actions/configure-pages@v3
@@ -56,14 +84,13 @@ jobs:
           mkdir -p _site
           # Копируем ВСЕ файлы
           cp -r index.html _site/
-          cp -r firebase-config.js _site/ 2>/dev/null || echo "⚠️ firebase-config.js skipped"
-          cp -r service-worker.js _site/ 2>/dev/null || echo "⚠️ service-worker.js skipped"
-          cp -r css/ _site/ 2>/dev/null || echo "⚠️ css/ skipped"
-          cp -r js/ _site/ 2>/dev/null || echo "⚠️ js/ skipped"
+          cp -r firebase-config.js _site/
+          cp -r service-worker.js _site/
+          cp -r css/ _site/
+          cp -r js/ _site/
           
-          echo "=== Build completed ==="
-          echo "Files in _site:"
-          find _site -type f | head -30
+          echo "=== Файлы в _site ==="
+          ls -la _site/
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
@@ -76,5 +103,6 @@ jobs:
 
       - name: Deployment Status
         run: |
-          echo "✅ Deployment successful!"
-          echo "Site will be available at: https://askhat707.github.io/trading-data/"
+          echo "✅ Деployment успешен!"
+          echo "🌐 Сайт доступен по адресу:"
+          echo "   https://askhat707.github.io/trading-data/"
