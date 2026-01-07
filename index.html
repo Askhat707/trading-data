@@ -21,6 +21,7 @@
 
     <!-- ============================================ -->
     <!-- 🔐 FIREBASE КОНФИГ ИЗ GITHUB SECRETS -->
+    <!-- Генерируется автоматически GitHub Actions -->
     <!-- ============================================ -->
     <script src="firebase-config.js"></script>
 
@@ -39,7 +40,7 @@
     }
     </script>
 
-    <!-- CSS Files -->
+    <!-- CSS -->
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/components/modal.css">
     <link rel="stylesheet" href="css/components/cards.css">
@@ -48,58 +49,61 @@
 </head>
 <body>
 
-<!-- ============================================ -->
-<!-- 🔐 МОДАЛЬНОЕ ОКНО РЕГИСТРАЦИИ/ВХОДА -->
-<!-- ============================================ -->
+<!-- АУТЕНТИФИКАЦИЯ -->
 <div id="auth-modal">
-    <!-- Content moved to separate files -->
+    <div class="auth-container">
+        <div class="auth-header">
+            <div class="auth-logo">GOLD OPTIONS PRO</div>
+            <div class="auth-subtitle">Professional Trading Terminal</div>
+        </div>
+        
+        <div id="auth-error" class="auth-error">
+            Ошибка авторизации. Проверьте введенные данные.
+        </div>
+        
+        <div id="auth-step-1" class="auth-form">
+            <div class="form-group">
+                <label class="form-label">Email адрес</label>
+                <input type="email" id="user-email" class="form-input" placeholder="your@email.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Пароль</label>
+                <input type="password" id="user-password" class="form-input" placeholder="Введите пароль из Telegram" required>
+            </div>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; color: #ccc; font-size: 0.9rem; line-height: 1.5;">
+                    <input type="checkbox" id="terms-checkbox" style="margin-top: 3px; cursor: pointer; width: 18px; height: 18px; accent-color: var(--gold);">
+                    <span>
+                        Я согласен с <a href="#" onclick="showTermsModal(); return false;" style="color: var(--gold); text-decoration: underline;">условиями использования</a> и <a href="#" onclick="showPrivacyModal(); return false;" style="color: var(--gold); text-decoration: underline;">политикой конфиденциальности</a>
+                    </span>
+                </label>
+            </div>
+            
+            <button id="login-btn" class="auth-button secondary">Войти</button>
+            <button id="register-btn" class="auth-button">Начать 3-дневный триал</button>
+            <button id="about-btn" class="auth-button secondary" onclick="showAboutModal()">О программе</button>
+            
+            <div class="auth-footer">
+                Нажимая кнопку, вы соглашаетесь с <a href="#" onclick="showTermsModal(); return false;" style="color: var(--gold);">условиями использования</a><br>
+                После регистрации доступ откроется автоматически
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- ============================================ -->
-<!-- 📧 МОДАЛЬНОЕ ОКНО ДЛЯ ТРИАЛА -->
-<!-- ============================================ -->
-<div id="trial-modal" class="trial-modal-overlay">
-    <!-- Content moved to separate files -->
-</div>
-    
-<!-- ============================================ -->
-<!-- 📊 ОСНОВНОЙ КОНТЕНТ ТЕРМИНАЛА -->
-<!-- ============================================ -->
+<!-- ОСНОВНОЙ КОНТЕНТ -->
 <div id="main-content">
-    <!-- Content moved to separate files -->
+    <!-- Контент терминала -->
 </div>
 
-<!-- JavaScript Files -->
-<script src="js/utils/helpers.js"></script>
-<script src="js/utils/constants.js"></script>
-<script src="js/services/api.js"></script>
-<script src="js/services/cache.js"></script>
-<script src="js/modules/firebase.js"></script>
-<script src="js/modules/auth.js"></script>
-<script src="js/modules/charts.js"></script>
-<script src="js/modules/mt5.js"></script>
+<!-- JavaScript -->
 <script src="js/app.js"></script>
-
 <script>
-// Initialize application
+// Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 ========== СТРАНИЦА ЗАГРУЖЕНА ==========');
-    
-    // Global error handling
-    window.addEventListener('error', function(e) {
-        console.error('🚨 КРИТИЧЕСКАЯ ОШИБКА:', e.error);
-    });
-    
-    // Connection status
-    window.addEventListener('online', function() {
-        console.log('🌐 ✅ Соединение восстановлено');
-    });
-    
-    window.addEventListener('offline', function() {
-        console.log('🌐 ❌ Потеряно соединение');
-    });
-    
-    console.log('✅ ========== ИНИЦИАЛИЗАЦИЯ ЗАВЕРШЕНА ==========');
+    console.log('🚀 Gold Options Pro v2 загружен');
 });
 </script>
 </body>
