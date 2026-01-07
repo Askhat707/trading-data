@@ -1,62 +1,65 @@
 // ============================================
-// 🎯 КОНСТАНТЫ ПРИЛОЖЕНИЯ
+// 📊 КОНСТАНТЫ ПРИЛОЖЕНИЯ
 // ============================================
 
-const AppConstants = {
+const Constants = {
     // Версия кэша
     CACHE_VERSION: 'v4_firebase.pro_secure',
     
-    // Интервалы обновления (в миллисекундах)
-    UPDATE_INTERVALS: {
-        PRICE: 3000,           // 3 секунды
-        ANALYTICS: 180000,     // 3 минуты
-        DATA: 180000,          // 3 минуты
-        MT5: 60000             // 1 минута
+    // Конфигурация AuthSystem
+    AUTH_CONFIG: {
+        adminEmail: "omaralinovaskar95@gmail.com",
+        adminTelegram: "@ASKHAT_1985",
+        trialDays: 3,
+        localStorageKey: "gold_options_auth_v6",
+        userCheckInterval: 5 * 60 * 1000, // 5 минут
+        activityCheckInterval: 30 * 1000, // 30 секунд
+        maxInactiveDays: 365,
+        realtimeSync: true
     },
     
-    // Цвета для типов уведомлений
-    NOTIFICATION_COLORS: {
-        SUCCESS: '#00E676',
-        ERROR: '#FF1744',
-        WARNING: '#FFD700',
-        INFO: '#2196F3'
+    // Цвета
+    COLORS: {
+        gold: '#FFD700',
+        goldDark: '#D4AF37',
+        goldLight: '#FFF8DC',
+        call: '#00E676',
+        put: '#FF1744',
+        bgMain: '#050505',
+        bgPanel: '#111111',
+        textMain: '#ffffff',
+        textMuted: '#888888'
     },
     
-    // Максимальное количество элементов
-    MAX_ITEMS: {
-        STRIKES_TRIAL: 15,
-        STRIKES_PREMIUM: 175,
-        TOP_STATS: 5,
-        TOP_BREAKEVENS: 10,
-        SIGNALS_HISTORY: 20
+    // Настройки приложения
+    APP_SETTINGS: {
+        priceUpdateInterval: 3000, // 3 секунды
+        dataUpdateInterval: 3 * 60 * 1000, // 3 минуты
+        analyticsUpdateInterval: 3 * 60 * 1000, // 3 минуты
+        defaultStrikeCount: 15,
+        maxStrikeCount: 175
     },
     
-    // Настройки Firebase
+    // MT5 конфигурация
+    MT5_CONFIG: {
+        endpoint: 'http://localhost:8080/api/mt5',
+        defaultRisk: 2, // %
+        defaultSize: 0.1, // lots
+        defaultTP: 20, // pips
+        defaultSL: 10 // pips
+    },
+    
+    // Firebase пути
     FIREBASE_PATHS: {
-        PRICE: ['current_price', 'gc/current_price', 'gc/live_data/current'],
-        ANALYTICS: 'gc/analytics',
-        BREAKEVENS: 'gc/breakevens',
-        USER_DATA: 'users'
-    },
-    
-    // Настройки MT5
-    MT5_DEFAULTS: {
-        ENDPOINT: 'http://localhost:8080/api/mt5',
-        MODE: 'manual',
-        RISK: 2,
-        SIZE: 0.1,
-        TAKE_PROFIT: 20,
-        STOP_LOSS: 10
-    },
-    
-    // Текст по умолчанию
-    DEFAULT_TEXTS: {
-        LOADING: 'Загрузка...',
-        NO_DATA: 'Нет данных',
-        CONNECTING: 'Подключение...',
-        DISCONNECTED: 'Отключено'
+        price: ['current_price', 'gc/current_price', 'gc/live_data/current'],
+        analytics: (dte) => [`gc/analytics/dte_${dte}`, `analytics/dte_${dte}`, `dte_${dte}/analytics`],
+        breakevens: (dte) => [`gc/breakevens/dte_${dte}`, `gc/mt5/breakevens/dte_${dte}`, `mt5/breakevens/dte_${dte}`, `breakevens/dte_${dte}`]
     }
 };
 
-// Экспорт в глобальную область видимости
-window.AppConstants = AppConstants;
+// Экспорт для использования в других модулях
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Constants;
+} else {
+    window.Constants = Constants;
+}
