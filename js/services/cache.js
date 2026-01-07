@@ -1,107 +1,85 @@
 // ============================================
-// 💾 СЕРВИС КЭШИРОВАНИЯ ДАННЫХ
+// 💾 КЭШИРОВАНИЕ ДАННЫХ
 // ============================================
 
 const CacheService = {
-    // Хранилище кэша
-    storage: {},
-    
-    /**
-     * Генерация ключа кэша
-     * @param {string} prefix - Префикс ключа
-     * @param {string} key - Ключ
-     * @returns {string} - Сгенерированный ключ
-     */
-    generateKey(prefix, key) {
-        return `${prefix}:${key}`;
-    },
+    cache: new Map(),
     
     /**
      * Сохранение данных в кэш
-     * @param {string} key - Ключ
+     * @param {string} key - Ключ кэша
      * @param {any} data - Данные для кэширования
      * @param {number} ttl - Время жизни в миллисекундах
      */
     set(key, data, ttl = 5 * 60 * 1000) { // 5 минут по умолчанию
         const item = {
             data: data,
-            expiry: Date.now() + ttl
+            expires: Date.now() + ttl
         };
+        this.cache.set(key, item);
         
-        this.storage[key] = item;
-        console.log(`💾 Данные сохранены в кэш (${key})`);
+        // Автоматическое удаление после истечения времени
+        setTimeout(() => {
+            if (this.cache.has(key)) {
+                const cached = this.cache.get(key);
+                if (cached.expires <= Date.now()) {
+                    this.cache.delete(key);
+                }
+            }
+        }, ttl);
     },
     
     /**
      * Получение данных из кэша
-     * @param {string} key - Ключ
-     * @returns {any|null} - Данные или null, если истекли
+     * @param {string} key - Ключ кэша
+     * @returns {any|null} Данные или null
      */
     get(key) {
-        const item = this.storage[key];
+        if (!this.cache.has(key)) return null;
         
-        if (!item) {
+        const item = this.cache.get(key);
+        if (item.expires <= Date.now()) {
+            this.cache.delete(key);
             return null;
         }
         
-        // Проверяем, не истекло ли время
-        if (Date.now() > item.expiry) {
-            delete this.storage[key];
-            console.log(`⏰ Кэш истек (${key})`);
-            return null;
-        }
-        
-        console.log(`💾 Данные загружены из кэша (${key})`);
         return item.data;
     },
     
     /**
      * Удаление данных из кэша
-     * @param {string} key - Ключ
+     * @param {string} key - Ключ кэша
      */
-    remove(key) {
-        if (this.storage[key]) {
-            delete this.storage[key];
-            console.log(`🧹 Данные удалены из кэша (${key})`);
-        }
+    delete(key) {
+        this.cache.delete(key);
     },
     
     /**
      * Очистка всего кэша
      */
     clear() {
-        this.storage = {};
-        console.log('🧹 Весь кэш очищен');
+        this.cache.clear();
     },
     
     /**
      * Получение размера кэша
-     * @returns {number} - Количество элементов в кэше
+     * @returns {number} Количество элементов
      */
     size() {
-        return Object.keys(this.storage).length;
+        return this.cache.size;
     },
     
     /**
-     * Получение всех ключей кэша
-     * @returns {string[]} - Массив ключей
-     */
-    keys() {
-        return Object.keys(this.storage);
-    },
-    
-    /**
-     * Проверка существования ключа в кэше
-     * @param {string} key - Ключ
-     * @returns {boolean} - Существует ли ключ
+     * Проверка наличия ключа в кэше
+     * @param {string} key - Ключ кэша
+     * @returns {boolean} true если существует и не истек
      */
     has(key) {
-        const item = this.storage[key];
-        if (!item) return false;
+        if (!this.cache.has(key)) return false;
         
-        // Проверяем, не истекло ли время
-        if (Date.now() > item.expiry) {
-            delete this.storage[key];
+        const item = this.cache.get(key);
+        if (item.expires <= Date.now()) {
+            this.cache.delete(key);
             return false;
         }
         
@@ -109,34 +87,29 @@ const CacheService = {
     },
     
     /**
-     * Кэширование данных DTE
-     * @param {string} dteKey - Ключ DTE
-     * @param {any} data - Данные DTE
+     * Получение всех ключей кэша
+     * @returns {Array<string>} Массив ключей
      */
-    cacheDTEData(dteKey, data) {
-        const cacheKey = this.generateKey(AppConstants.CACHE_VERSION, dteKey);
-        this.set(cacheKey, data, 3 * 60 * 1000); // 3 минуты для DTE данных
+    keys() {
+        return Array.from(this.cache.keys());
     },
     
     /**
-     * Получение кэшированных данных DTE
-     * @param {string} dteKey - Ключ DTE
-     * @returns {any|null} - Кэшированные данные или null
+     * Очистка устаревших записей
      */
-    getCachedDTEData(dteKey) {
-        const cacheKey = this.generateKey(AppConstants.CACHE_VERSION, dteKey);
-        return this.get(cacheKey);
-    },
-    
-    /**
-     * Удаление кэшированных данных DTE
-     * @param {string} dteKey - Ключ DTE
-     */
-    removeCachedDTEData(dteKey) {
-        const cacheKey = this.generateKey(AppConstants.CACHE_VERSION, dteKey);
-        this.remove(cacheKey);
+    cleanup() {
+        const now = Date.now();
+        for (const [key, item] of this.cache.entries()) {
+            if (item.expires <= now) {
+                this.cache.delete(key);
+            }
+        }
     }
 };
 
-// Экспорт в глобальную область видимости
-window.CacheService = CacheService;
+// Экспорт
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = CacheService;
+} else {
+    window.CacheService = CacheService;
+}
