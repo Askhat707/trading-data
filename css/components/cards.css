@@ -1,0 +1,205 @@
+/* ========================================================================== */
+/* 📊 КАРТОЧКИ АНАЛИТИКИ */
+/* ========================================================================== */
+.grid-8 { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); 
+    gap: 25px; 
+    margin: 40px 0;
+}
+
+.card {
+    background: var(--bg-card);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 25px;
+    position: relative;
+    overflow: visible !important;
+    transition: var(--transition);
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    backdrop-filter: blur(10px);
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, 
+        rgba(255, 215, 0, 0.05) 0%, 
+        rgba(255, 215, 0, 0.02) 50%, 
+        transparent 100%);
+    z-index: -1;
+}
+
+.card:hover { 
+    border-color: var(--gold); 
+    box-shadow: var(--shadow-card), var(--shadow-glow);
+    transform: translateY(-8px) scale(1.02);
+}
+
+.card-header {
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    gap: 12px;
+    color: var(--gold); 
+    font-weight: 700; 
+    font-size: 1.1rem; 
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 25px;
+}
+
+.card-main-value {
+    font-size: 2.8rem; 
+    font-weight: 900; 
+    text-align: center;
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin: 15px 0;
+    text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+}
+
+.card-sub { 
+    text-align: center; 
+    color: var(--text-muted); 
+    font-size: 0.9rem; 
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* ========================================================================== */
+/* 🔒 БЛОКИРОВКИ ДЛЯ TRIAL ПОЛЬЗОВАТЕЛЕЙ */
+/* ========================================================================== */
+.premium-block {
+    position: relative;
+    filter: blur(3px);
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.7;
+}
+
+.premium-lock {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid var(--gold);
+    border-radius: 15px;
+    padding: 30px;
+    z-index: 100;
+    text-align: center;
+    min-width: 300px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+}
+
+.lock-icon {
+    font-size: 3rem;
+    color: var(--gold);
+    margin-bottom: 15px;
+}
+
+.lock-title {
+    color: var(--gold);
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.lock-text {
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.upgrade-button {
+    background: var(--gradient-gold);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 30px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.upgrade-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px var(--gold-glow);
+}
+
+.info-icon {
+    cursor: help; 
+    width: 24px; 
+    height: 24px; 
+    border-radius: 50%;
+    background: rgba(255, 215, 0, 0.15); 
+    color: var(--gold);
+    display: flex; 
+    justify-content: center; 
+    align-items: center;
+    font-size: 0.9rem; 
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    transition: var(--transition);
+    font-weight: 900;
+}
+
+.info-icon:hover {
+    background: var(--gold);
+    color: #000;
+    transform: scale(1.1);
+    box-shadow: 0 0 20px var(--gold-glow);
+}
+
+.tooltip {
+    visibility: hidden; 
+    opacity: 0; 
+    position: absolute; 
+    bottom: 150%; 
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: rgba(5, 5, 5, 0.98); 
+    border: 2px solid var(--gold);
+    color: #fff; 
+    padding: 20px 25px; 
+    border-radius: 12px; 
+    width: 320px;
+    z-index: 9999; 
+    font-size: 0.9rem; 
+    line-height: 1.6;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none; 
+    box-shadow: 0 20px 60px rgba(0,0,0,0.95);
+    backdrop-filter: blur(20px);
+    text-align: left;
+}
+
+.tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -12px;
+    border: 12px solid transparent;
+    border-top-color: var(--gold);
+}
+
+.info-icon:hover .tooltip { 
+    visibility: visible; 
+    opacity: 1; 
+    transform: translateX(-50%) translateY(0);
+    bottom: 160%;
+}
