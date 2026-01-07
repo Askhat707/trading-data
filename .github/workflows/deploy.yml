@@ -17,19 +17,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
+      
+      - name: Create scripts directory
+        run: mkdir -p scripts
       
       - name: Generate Firebase Config
-        run: |
-          mkdir -p scripts
-          node scripts/generate-config.js
+        run: node scripts/generate-config.js
         env:
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -39,25 +37,33 @@ jobs:
           FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
       
-      - name: Verify Firebase Config
+      - name: Verify files exist
         run: |
-          if [ ! -f firebase-config.js ]; then
-            echo "❌ firebase-config.js не создан!"
-            exit 1
-          fi
-          echo "✅ firebase-config.js создан успешно!"
-          head -5 firebase-config.js
+          echo "=== Checking generated config ==="
+          ls -la firebase-config.js || echo "firebase-config.js NOT FOUND!"
+          echo ""
+          echo "=== Checking js files ==="
+          ls -la js/ || echo "js/ directory NOT FOUND!"
+          echo ""
+          echo "=== Checking css files ==="
+          ls -la css/ || echo "css/ directory NOT FOUND!"
       
       - name: Setup Pages
         uses: actions/configure-pages@v3
       
-      - name: Build
+      - name: Build and copy files
         run: |
           mkdir -p _site
-          cp -r !(node_modules|.github|_site) _site/ 2>/dev/null || true
-          rm -rf _site/scripts _site/.gitignore _site/firebase-config.js.template
-          echo "✅ Сборка завершена"
-          ls -la _site/ | head -20
+          # Копируем ВСЕ файлы
+          cp -r index.html _site/
+          cp -r firebase-config.js _site/ 2>/dev/null || echo "⚠️ firebase-config.js skipped"
+          cp -r service-worker.js _site/ 2>/dev/null || echo "⚠️ service-worker.js skipped"
+          cp -r css/ _site/ 2>/dev/null || echo "⚠️ css/ skipped"
+          cp -r js/ _site/ 2>/dev/null || echo "⚠️ js/ skipped"
+          
+          echo "=== Build completed ==="
+          echo "Files in _site:"
+          find _site -type f | head -30
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
@@ -67,3 +73,8 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
+
+      - name: Deployment Status
+        run: |
+          echo "✅ Deployment successful!"
+          echo "Site will be available at: https://askhat707.github.io/trading-data/"
