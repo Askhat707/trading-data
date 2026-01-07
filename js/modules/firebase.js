@@ -1,5 +1,5 @@
 // ============================================
-// 🔥 FIREBASE МОДУЛЬ
+// 🔥 FIREBASE МОДУЛЬ - ДЛЯ ВАШЕЙ СИСТЕМЫ
 // ============================================
 
 const FirebaseModule = {
@@ -13,54 +13,57 @@ const FirebaseModule = {
         try {
             // Проверяем, есть ли конфиг Firebase
             if (!firebaseConfig || !firebaseConfig.apiKey) {
-                throw new Error('Firebase конфигурация не загружена');
+                console.error('❌ Firebase конфигурация не загружена');
+                this.showConfigError();
+                return false;
             }
             
             // Инициализируем Firebase
-            firebase.initializeApp(firebaseConfig);
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
             
             // Получаем ссылки на сервисы
             this.db = firebase.database();
             this.auth = firebase.auth();
             
             console.log('✅ Firebase инициализирован');
+            
+            // Настраиваем слушатель состояния аутентификации
+            this.auth.onAuthStateChanged((user) => {
+                if (user) {
+                    console.log('👤 Пользователь аутентифицирован:', user.uid);
+                    // Триггер для AuthModule
+                    if (window.AuthModule && typeof AuthModule.onAuthStateChange === 'function') {
+                        AuthModule.onAuthStateChange(user);
+                    }
+                } else {
+                    console.log('👤 Пользователь не аутентифицирован');
+                    // Показываем модальное окно входа
+                    if (window.AuthModule && typeof AuthModule.showAuthModal === 'function') {
+                        AuthModule.showAuthModal();
+                    }
+                }
+            });
+            
             return true;
         } catch (error) {
             console.error('❌ Ошибка инициализации Firebase:', error);
+            this.showConfigError();
             return false;
         }
     },
     
     /**
-     * Проверка статуса аутентификации
-     * @returns {Promise<Object|null>} Пользователь или null
-     */
-    async getAuthState() {
-        return new Promise((resolve) => {
-            if (!this.auth) {
-                resolve(null);
-                return;
-            }
-            
-            this.auth.onAuthStateChanged((user) => {
-                resolve(user);
-            });
-        });
-    },
-    
-    /**
      * Вход по email и паролю
-     * @param {string} email - Email пользователя
-     * @param {string} password - Пароль пользователя
-     * @returns {Promise<Object>} Результат входа
      */
     async signInWithEmailAndPassword(email, password) {
         try {
-            if (!this.auth) {
-                throw new Error('Firebase Auth не инициализирован');
-            }
+            console.log('🔐 Попытка входа для:', email);
             
             const userCredential = await this.auth.signInWithEmailAndPassword(email, password);
+            
+            console.log('✅ Вход успешен:', userCredential.user.uid);
             return {
                 success: true,
                 user: userCredential.user
@@ -76,46 +79,17 @@ const FirebaseModule = {
     },
     
     /**
-     * Выход из системы
-     * @returns {Promise<Object>} Результат выхода
-     */
-    async signOut() {
-        try {
-            if (!this.auth) {
-                throw new Error('Firebase Auth не инициализирован');
-            }
-            
-            await this.auth.signOut();
-            return { success: true };
-        } catch (error) {
-            console.error('❌ Ошибка выхода:', error);
-            return {
-                success: false,
-                error: error.message
-            };
-        }
-    },
-    
-    /**
      * Получение данных пользователя из базы данных
-     * @param {string} userId - ID пользователя
-     * @returns {Promise<Object|null>} Данные пользователя
      */
     async getUserData(userId) {
         try {
-            if (!this.db) {
-                throw new Error('Firebase Database не инициализирован');
-            }
-            
             const snapshot = await this.db.ref(`users/${userId}`).once('value');
             if (!snapshot.exists()) {
+                console.warn('⚠️  Пользователь не найден в базе данных:', userId);
                 return null;
             }
             
-            return {
-                id: userId,
-                ...snapshot.val()
-            };
+            return snapshot.val();
         } catch (error) {
             console.error('❌ Ошибка получения данных пользователя:', error);
             return null;
@@ -123,16 +97,10 @@ const FirebaseModule = {
     },
     
     /**
-     * Поиск пользователя по email
-     * @param {string} email - Email для поиска
-     * @returns {Promise<Object|null>} Найденный пользователь
+     * Поиск пользователя по email в базе данных
      */
     async findUserByEmail(email) {
         try {
-            if (!this.db) {
-                throw new Error('Firebase Database не инициализирован');
-            }
-            
             const snapshot = await this.db.ref('users')
                 .orderByChild('email')
                 .equalTo(email.toLowerCase())
@@ -156,32 +124,49 @@ const FirebaseModule = {
     },
     
     /**
-     * Обновление данных пользователя
-     * @param {string} userId - ID пользователя
-     * @param {Object} updates - Обновляемые поля
-     * @returns {Promise<Object>} Результат обновления
+     * Выход из системы
      */
-    async updateUserData(userId, updates) {
+    async signOut() {
         try {
-            if (!this.db) {
-                throw new Error('Firebase Database не инициализирован');
-            }
-            
-            await this.db.ref(`users/${userId}`).update(updates);
+            await this.auth.signOut();
             return { success: true };
         } catch (error) {
-            console.error('❌ Ошибка обновления данных пользователя:', error);
-            return {
-                success: false,
-                error: error.message
-            };
+            console.error('❌ Ошибка выхода:', error);
+            return { success: false, error: error.message };
+        }
+    },
+    
+    /**
+     * Проверка, загружен ли Firebase
+     */
+    isReady() {
+        return this.db !== null && this.auth !== null;
+    },
+    
+    /**
+     * Показать ошибку конфигурации
+     */
+    showConfigError() {
+        const loadingEl = document.getElementById('loading');
+        if (loadingEl) {
+            loadingEl.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 3rem; color: #ff4444;">❌</div>
+                    <h2 style="color: #ff4444; margin: 20px 0;">Firebase Configuration Error</h2>
+                    <p>Failed to load Firebase configuration</p>
+                    <div style="margin: 20px 0; padding: 15px; background: rgba(255,68,68,0.1); border-radius: 8px; text-align: left; max-width: 500px; margin: 20px auto;">
+                        <p><strong>Check:</strong></p>
+                        <ul>
+                            <li>firebase-config.js exists and has correct keys</li>
+                            <li>GitHub Secrets are configured properly</li>
+                            <li>Firebase project exists and has Anonymous auth enabled</li>
+                        </ul>
+                    </div>
+                    <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #FFD700; color: #000; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                        🔄 Reload Page
+                    </button>
+                </div>
+            `;
         }
     }
 };
-
-// Экспорт
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = FirebaseModule;
-} else {
-    window.FirebaseModule = FirebaseModule;
-}
