@@ -8,20 +8,39 @@
     <!-- FAVICON -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='85' font-size='90' font-weight='bold' fill='%23FFD700'>📊</text></svg>">
     
-    <!-- FIREBASE LIBRARIES -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-    
-    <!-- ДРУГИЕ БИБЛИОТЕКИ -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
     <!-- CSS -->
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/components/modal.css">
     <link rel="stylesheet" href="css/components/cards.css">
     <link rel="stylesheet" href="css/components/table.css">
     <link rel="stylesheet" href="css/pages/terminal.css">
+    
+    <!-- FIREBASE LIBRARIES (ПЕРВЫМИ!) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+    
+    <!-- ДРУГИЕ ВНЕШНИЕ БИБЛИОТЕКИ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    
+    <!-- FIREBASE КОНФИГ (генерируется автоматически) -->
+    <script src="firebase-config.js"></script>
+    
+    <!-- КОНСТАНТЫ И УТИЛИТЫ (ПЕРЕД ОСНОВНЫМИ МОДУЛЯМИ!) -->
+    <script src="js/constants.js"></script>
+    <script src="js/cache.js"></script>
+    <script src="js/helpers.js"></script>
+    
+    <!-- МОДУЛИ (в порядке зависимостей) -->
+    <script src="js/firebase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/mt5.js"></script>
+    
+    <!-- ОСНОВНОЕ ПРИЛОЖЕНИЕ (ПОСЛЕДНИМ!) -->
+    <script src="js/app.js"></script>
     
     <!-- SERVICE WORKER -->
     <script>
@@ -30,6 +49,66 @@
             .then(reg => console.log('✅ Service Worker зарегистрирован:', reg.scope))
             .catch(err => console.warn('⚠️ Service Worker ошибка:', err));
     }
+    </script>
+    
+    <!-- ИНИЦИАЛИЗАЦИЯ (ОЧЕНЬ ПОСЛЕДНИМ!) -->
+    <script>
+    // Функции глобального доступа
+    window.showAboutModal = function() {
+        alert('💰 Gold Options Pro v2\n\nПрофессиональный терминал для анализа опционов');
+    };
+    
+    window.showTermsModal = function() {
+        alert('📄 УСЛОВИЯ ИСПОЛЬЗОВАНИЯ\n\nПрограмма предоставляется "как есть"');
+    };
+    
+    window.showPrivacyModal = function() {
+        alert('🔒 ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ\n\nВаши данные защищены');
+    };
+    
+    window.openTelegram = function() {
+        window.open('https://t.me/ASKHAT_1985', '_blank');
+    };
+    
+    // Проверка загрузки Firebase конфига
+    let firebaseCheckInterval = setInterval(() => {
+        if (typeof firebase !== 'undefined' && 
+            firebase.apps && 
+            firebase.apps.length > 0) {
+            clearInterval(firebaseCheckInterval);
+            console.log('✅ Firebase успешно загружен');
+            
+            // Инициализируем модули в правильном порядке
+            if (window.FirebaseModule) {
+                FirebaseModule.init();
+            }
+            
+            if (window.AuthModule) {
+                AuthModule.init().then(() => {
+                    if (window.app) {
+                        setTimeout(() => app.init(), 500);
+                    }
+                });
+            }
+        }
+    }, 100);
+    
+    // Таймаут на случай если Firebase не загрузился
+    setTimeout(() => {
+        if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0) {
+            console.error('❌ Firebase не загружен!');
+            document.body.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #050505; color: #fff; flex-direction: column; gap: 20px;">
+                    <div style="font-size: 3rem;">❌</div>
+                    <h1>Ошибка загрузки Firebase</h1>
+                    <p>Проверьте переменные окружения и firebase-config.js</p>
+                    <button onclick="location.reload()" style="background: #FFD700; color: #000; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                        🔄 Перезагрузить страницу
+                    </button>
+                </div>
+            `;
+        }
+    }, 10000);
     </script>
 </head>
 <body>
@@ -42,7 +121,7 @@
             <div class="auth-subtitle">Professional Trading Terminal</div>
         </div>
         
-        <div id="auth-error" class="auth-error">
+        <div id="auth-error" class="auth-error" style="display: none;">
             Ошибка авторизации. Проверьте введенные данные.
         </div>
         
@@ -66,8 +145,8 @@
                 </label>
             </div>
             
-            <button id="login-btn" class="auth-button secondary">Войти</button>
-            <button id="register-btn" class="auth-button">Начать 3-дневный триал</button>
+            <button id="login-btn" class="auth-button secondary" onclick="handleLogin()">Войти</button>
+            <button id="register-btn" class="auth-button" onclick="handleRegister()">Начать 3-дневный триал</button>
             <button id="about-btn" class="auth-button secondary" onclick="showAboutModal()">О программе</button>
             
             <div class="auth-footer">
@@ -91,82 +170,5 @@
     </div>
 </div>
 
-<!-- ⚡ ГЕНЕРИРУЕМЫЙ КОНФИГ FIREBASE (создается GitHub Actions) -->
-<script src="firebase-config.js"></script>
-
-<!-- 📦 ВАШИ СКРИПТЫ -->
-<script src="js/constants.js"></script>
-<script src="js/api.js"></script>
-<script src="js/cache.js"></script>
-<script src="js/charts.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/app.js"></script>
-
-<!-- 🛡️ ОБРАБОТЧИКИ ОШИБОК И МОДАЛЬНЫЕ ОКНА -->
-<script>
-// Проверка загрузки Firebase
-let firebaseCheckInterval = setInterval(() => {
-    if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
-        clearInterval(firebaseCheckInterval);
-        console.log('✅ Firebase успешно загружен');
-        
-        // Инициализация приложения
-        if (window.app) {
-            setTimeout(() => app.init(), 100);
-        }
-    }
-}, 1000);
-
-// Если Firebase не загрузился за 10 секунд
-setTimeout(() => {
-    if (typeof firebase === 'undefined') {
-        document.getElementById('auth-modal').innerHTML = `
-            <div class="auth-container">
-                <div style="text-align: center; padding: 40px;">
-                    <div style="font-size: 4rem; color: #ff4444; margin-bottom: 20px;">❌</div>
-                    <h2 style="color: #ff4444; margin-bottom: 15px;">Ошибка загрузки Firebase</h2>
-                    <p style="color: var(--text-muted); margin-bottom: 25px;">
-                        Не удалось загрузить базу данных. Возможные причины:<br>
-                        1. Проблемы с подключением к интернету<br>
-                        2. Блокировка со стороны браузера<br>
-                        3. Ошибка конфигурации
-                    </p>
-                    <button onclick="location.reload()" class="auth-button" style="margin: 10px;">
-                        🔄 Обновить страницу
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-}, 10000);
-
-// Простые функции модальных окон
-function showAboutModal() {
-    alert('💰 Gold Options Pro v2\n\nПрофессиональный терминал для анализа опционов\n\n• Анализ опционных цепей\n• Графики в реальном времени\n• Расчет греков\n• Максимальная боль и GEX\n\n📧 Контакты: omaralinovaskar95@gmail.com\n📱 Telegram: @ASKHAT_1985');
-}
-
-function showTermsModal() {
-    alert('📄 УСЛОВИЯ ИСПОЛЬЗОВАНИЯ\n\n1. Программное обеспечение предоставляется "как есть"\n2. Не используйте для автоматической торговли\n3. Проверяйте данные перед принятием решений\n4. Мы не несем ответственности за убытки\n\n⚠️ Только для образовательных целей');
-}
-
-function showPrivacyModal() {
-    alert('🔒 ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ\n\n1. Email используется только для аутентификации\n2. Пароли хранятся в зашифрованном виде\n3. Данные кэшируются только локально\n4. Мы не передаем данные третьим лицам');
-}
-
-// Глобальная обработка ошибок
-window.addEventListener('error', function(e) {
-    console.error('🛑 Глобальная ошибка:', e.error);
-    
-    // Не показываем ошибки Firebase, если они связаны с конфигом
-    if (e.message.includes('firebase') || e.message.includes('Firebase')) {
-        console.warn('⚠️ Игнорируем ошибку Firebase (конфиг может быть в процессе загрузки)');
-    }
-});
-
-// Проверка поддержки Firebase
-if (typeof firebase === 'undefined') {
-    console.warn('⚠️ Firebase не загружен - проверьте подключение к интернету');
-}
-</script>
 </body>
 </html>
