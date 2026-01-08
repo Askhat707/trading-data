@@ -188,86 +188,131 @@ const App = {
     },
     
     /**
-     * Запуск обновления цены
-     */
-    startPriceUpdates() {
-        console.log('💰 Запуск обновления цены...');
-        
+ * Запуск обновления цены (каждые 3 секунды)
+ */
+startPriceUpdates() {
+    console.log('💰 Запуск обновления цены каждые 3 секунды...');
+    
+    // Первое обновление сразу
+    this.updatePrice();
+    
+    // Запускаем интервал каждые 3 секунды
+    this.priceInterval = setInterval(() => {
         this.updatePrice();
-        
-        setInterval(() => {
-            this.updatePrice();
-        }, Constants.APP_SETTINGS.priceUpdateInterval);
-    },
+    }, 3000);
+},
+
+/**
+ * Запуск обновления аналитики (каждые 3 минуты)
+ */
+startAnalyticsUpdates() {
+    console.log('📈 Запуск обновления аналитики каждые 3 минуты...');
     
-    /**
-     * Запуск обновления данных
-     */
-    startDataUpdates() {
-        console.log('📊 Запуск обновления данных...');
-        
-        this.updateData();
-        
-        setInterval(() => {
-            this.updateData();
-        }, Constants.APP_SETTINGS.dataUpdateInterval);
-    },
+    // Первое обновление сразу
+    this.updateAnalytics();
     
-    /**
-     * Запуск обновления аналитики
-     */
-    startAnalyticsUpdates() {
-        console.log('📈 Запуск обновления аналитики...');
-        
+    // Запускаем интервал каждые 3 минуты
+    this.analyticsInterval = setInterval(() => {
         this.updateAnalytics();
-        
-        setInterval(() => {
-            this.updateAnalytics();
-        }, Constants.APP_SETTINGS.analyticsUpdateInterval);
-    },
+    }, 3 * 60 * 1000);
+},
+
+/**
+ * Запуск обновления данных опционов (каждые 3 минуты)
+ */
+startDataUpdates() {
+    console.log('📊 Запуск обновления данных опционов каждые 3 минуты...');
+    
+    // Первое обновление сразу
+    this.updateData();
+    
+    // Запускаем интервал каждые 3 минуты
+    this.dataInterval = setInterval(() => {
+        this.updateData();
+    }, 3 * 60 * 1000);
+},
     
     /**
-     * Обновление цены
-     */
-    async updatePrice() {
-        try {
-            const price = await ApiService.getPrice();
+ * Обновление цены
+ */
+async updatePrice() {
+    try {
+        console.log('🔄 Обновление цены...');
+        
+        const price = await ApiService.getPrice();
+        
+        if (price && !isNaN(price)) {
+            this.currentPrice = price;
+            this.priceSet = true;
+            this.updatePriceUI(price);
             
-            if (price && !isNaN(price)) {
-                this.currentPrice = price;
-                this.priceSet = true;
-                this.updatePriceUI(price);
-                
-                const connStatus = document.getElementById('connStatus');
-                if (connStatus) {
-                    connStatus.innerHTML = '<span style="color:#00E676">🟢 LIVE CONNECTION</span>';
-                }
-            }
-        } catch (error) {
-            console.error('❌ Ошибка обновления цены:', error);
+            // Обновляем время последнего обновления
+            this.updateTime();
             
+            // Обновляем статус соединения
             const connStatus = document.getElementById('connStatus');
             if (connStatus) {
-                connStatus.innerHTML = '<span style="color:#ff4444">🔴 OFFLINE - Error</span>';
+                connStatus.innerHTML = '<span style="color:#00E676">🟢 LIVE CONNECTION</span>';
+                connStatus.style.animation = 'pulse 2s infinite';
+            }
+            
+            // Обновляем таблицу, если есть изменения в цене
+            if (Math.abs(this.lastPrice - price) > 0.1) {
+                this.reloadCurrentDTE();
+                this.lastPrice = price;
             }
         }
-    },
+    } catch (error) {
+        console.error('❌ Ошибка обновления цены:', error);
+        
+        const connStatus = document.getElementById('connStatus');
+        if (connStatus) {
+            connStatus.innerHTML = '<span style="color:#ff4444">🔴 OFFLINE - Price Error</span>';
+        }
+    }
+},
+
+/**
+ * Обновление данных опционной цепи
+ */
+async updateData() {
+    if (this.dteList.length === 0) {
+        console.log('⚠️ Список DTE пуст, пропускаем обновление данных');
+        return;
+    }
     
-    /**
-     * Обновление данных
-     */
-    async updateData() {
-        if (this.dteList.length === 0) return;
+    const currentDTE = this.dteList[this.currentDTEIndex];
+    console.log(`🔄 Обновление данных для ${currentDTE.key}...`);
+    
+    try {
+        // Принудительно очищаем кэш
+        const cacheKey = Constants.CACHE_VERSION + ':' + currentDTE.key;
+        CacheService.delete(cacheKey);
         
-        const currentDTE = this.dteList[this.currentDTEIndex];
-        console.log(`🔄 Обновление данных для ${currentDTE.key}...`);
+        // Загружаем свежие данные
+        const records = await ApiService.getDTEData(currentDTE.key);
         
-        // Очищаем кэш
-        CacheService.delete(Constants.CACHE_VERSION + ':' + currentDTE.key);
-        
-        // Загружаем данные заново
-        await this.loadData(this.currentDTEIndex);
-    },
+        if (records.length > 0) {
+            // Сохраняем в кэш
+            CacheService.set(cacheKey, records, 2 * 60 * 1000); // 2 минуты
+            
+            // Обновляем таблицу
+            this.renderTable(records);
+            
+            // Обновляем графики
+            if (window.ChartsModule) {
+                ChartsModule.createAllCharts(records);
+            }
+            
+            // Обновляем статистику
+            this.updateTopStats(records);
+            
+            console.log(`✅ Данные для ${currentDTE.key} обновлены`);
+        }
+    } catch (error) {
+        console.error(`❌ Ошибка обновления данных для ${currentDTE.key}:`, error);
+    }
+},
     
     /**
      * Обновление аналитики
@@ -893,24 +938,30 @@ const App = {
         }
     },
     
-    /**
-     * Очистка приложения
-     */
-    cleanup() {
-        console.log('🧹 Очистка приложения...');
-        
-        // Очищаем графики
-        if (window.ChartsModule) {
-            ChartsModule.destroyAllCharts();
-        }
-        
-        // Очищаем кэш
-        if (window.CacheService) {
-            CacheService.clear();
-        }
-        
-        this.initialized = false;
+   /**
+ * Очистка приложения
+ */
+cleanup() {
+    console.log('🧹 Очистка приложения...');
+    
+    // Останавливаем все интервалы
+    if (this.priceInterval) clearInterval(this.priceInterval);
+    if (this.analyticsInterval) clearInterval(this.analyticsInterval);
+    if (this.dataInterval) clearInterval(this.dataInterval);
+    
+    // Очищаем графики
+    if (window.ChartsModule) {
+        ChartsModule.destroyAllCharts();
     }
+    
+    // Очищаем кэш
+    if (window.CacheService) {
+        CacheService.clear();
+    }
+    
+    this.initialized = false;
+    console.log('✅ Приложение очищено');
+
 };
 
 // Экспорт
