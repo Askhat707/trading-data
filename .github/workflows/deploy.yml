@@ -1,3 +1,6 @@
+================================================
+FILE: .github/workflows/deploy.yml
+================================================
 name: 🚀 Deploy Trading Data Terminal
 
 on:
@@ -157,6 +160,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 🔍 Проверка что модальное окно не скрыто
+        run: |
+          echo "🔍 Проверка что auth-modal не имеет класс hidden..."
+          if grep -q 'auth-modal hidden' index.html; then
+            echo "❌ НАЙДЕНА ОШИБКА: auth-modal имеет класс hidden!"
+            echo "Исправляем..."
+            sed -i 's/auth-modal hidden/auth-modal/g' index.html
+            echo "✅ Исправлено"
+          else
+            echo "✅ Все правильно: auth-modal без класса hidden"
+          fi
           
       - name: 🔧 Восстановление сгенерированного конфига
         env:
