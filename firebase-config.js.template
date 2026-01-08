@@ -1,22 +1,26 @@
 // 🔥 FIREBASE CONFIG TEMPLATE
 // ⚠️ РЕАЛЬНЫЕ КЛЮЧИ НАХОДЯТСЯ ТОЛЬКО В GITHUB SECRETS!
-// Этот файл используется только как шаблон для разработки
+// Этот файл генерируется автоматически GitHub Actions
 
 /**
- * ВАЖНО: Реальная конфигурация генерируется автоматически
- * GitHub Actions при каждом деплое из GITHUB SECRETS
- * и сохраняется в firebase-config.js на GitHub Pages
+ * ВАЖНО: РЕАЛЬНАЯ КОНФИГУРАЦИЯ:
+ * 
+ * 1. СОЗДАЁТСЯ в .github/workflows/deploy.yml
+ * 2. ИСПОЛЬЗУЕТ GitHub Secrets (Settings → Secrets)
+ * 3. НИКОГДА НЕ КОММИТИТСЯ В РЕПОЗИТОРИЙ
+ * 4. СОЗДАЁТСЯ ТОЛЬКО НА GitHub Pages
+ * 5. ЗАЩИЩЕНА .gitignore
  */
 
 const firebaseConfig = {
-  apiKey: "FIREBASE_API_KEY",              // ← Заменяется из GitHub Secrets
-  authDomain: "FIREBASE_AUTH_DOMAIN",      // ← Заменяется из GitHub Secrets
-  databaseURL: "FIREBASE_DATABASE_URL",    // ← Заменяется из GitHub Secrets
-  projectId: "FIREBASE_PROJECT_ID",        // ← Заменяется из GitHub Secrets
-  storageBucket: "FIREBASE_STORAGE_BUCKET",// ← Заменяется из GitHub Secrets
-  messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID", // ← Заменяется из GitHub Secrets
-  appId: "FIREBASE_APP_ID",                // ← Заменяется из GitHub Secrets
-  measurementId: "FIREBASE_MEASUREMENT_ID" // ← Заменяется из GitHub Secrets
+  apiKey: "FIREBASE_API_KEY",                    // ← Из GitHub Secrets
+  authDomain: "FIREBASE_AUTH_DOMAIN",            // ← Из GitHub Secrets
+  databaseURL: "FIREBASE_DATABASE_URL",          // ← Из GitHub Secrets
+  projectId: "FIREBASE_PROJECT_ID",              // ← Из GitHub Secrets
+  storageBucket: "FIREBASE_STORAGE_BUCKET",      // ← Из GitHub Secrets
+  messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID", // ← Из GitHub Secrets
+  appId: "FIREBASE_APP_ID",                      // ← Из GitHub Secrets
+  measurementId: "FIREBASE_MEASUREMENT_ID"       // ← Из GitHub Secrets
 };
 
 // Экспорт для глобального использования
@@ -24,4 +28,4 @@ if (typeof window !== 'undefined') {
     window.firebaseConfig = firebaseConfig;
 }
 
-console.log('✅ Firebase конфигурация загружена');
+console.log('✅ Firebase конфигурация загружена из GitHub Secrets');
