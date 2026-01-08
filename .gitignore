@@ -1,20 +1,25 @@
-# Firebase конфиг (генерируется)
+# ⚠️ НИКОГДА НЕ КОММИТИТЬ КОНФИГУРАЦИЮ С КЛЮЧАМИ!
+
+# Firebase конфигурфайл (генерируется при деплое из Secrets)
 firebase-config.js
-
-# Environment
-.env
-.env.local
-
-# Logs
-*.log
-
-# Dependencies
+Node modules
 node_modules/
-
-# IDE
+package-lock.json
+yarn.lock
+IDE
 .vscode/
 .idea/
-
-# OS
+*.swp
+*.swo
+OS
 .DS_Store
 Thumbs.db
+Логи
+.log
+npm-debug.log
+yarn-debug.log*
+Временные файлы
+.temp/
+.cache/
+dist/
+build/
