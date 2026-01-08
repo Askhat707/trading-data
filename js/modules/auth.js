@@ -61,9 +61,13 @@ const AuthModule = {
     /**
      * АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
      */
-    async autoInit() {
-        console.log('🚀 AuthModule.autoInit() запущен');
-        
+    /**
+ * АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
+ */
+async autoInit() {
+    console.log('🚀 AuthModule.autoInit() запущен');
+    
+    try {
         // Сначала скрываем loading
         const loadingEl = document.getElementById('loading');
         if (loadingEl) {
@@ -73,44 +77,103 @@ const AuthModule = {
         // Ждем 2 секунды чтобы дать время загрузиться firebase-config.js
         await new Promise(resolve => setTimeout(resolve, 2000));
         
-        // Проверяем конфигурацию
-        const configLoaded = this.checkFirebaseConfig();
+        console.log('🔍 Проверяем загрузку конфига...');
         
-        if (!configLoaded) {
-            console.warn('⚠️ Firebase конфиг не загружен, но показываем форму входа');
+        // Проверяем загрузился ли конфиг
+        if (!window.firebaseConfig || typeof window.firebaseConfig !== 'object') {
+            console.warn('⚠️ window.firebaseConfig не загружен или пуст');
+            console.log('ℹ️ Попробуем загрузить конфиг вручную...');
+            
+            // Пытаемся загрузить конфиг
+            await this.loadFirebaseConfig();
+            
+            if (!window.firebaseConfig) {
+                console.error('❌ Не удалось загрузить конфиг');
+                this.showAuthModal(); // Все равно показываем форму входа
+                return;
+            }
+        }
+        
+        console.log('✅ Конфиг загружен:', window.firebaseConfig.projectId);
+        
+        // Проверяем Firebase SDK
+        if (typeof firebase === 'undefined') {
+            console.error('❌ Firebase SDK не загружен');
+            this.showError('Firebase SDK не загружен. Проверьте интернет соединение.');
             this.showAuthModal();
             return;
         }
         
+        // Инициализируем Firebase
         try {
-            // Инициализируем Firebase
             if (!firebase.apps.length) {
                 firebase.initializeApp(window.firebaseConfig);
                 console.log('✅ Firebase инициализирован');
             }
-            
-            // Пытаемся восстановить сессию
-            const savedUser = localStorage.getItem(this.config.localStorageKey);
-            if (savedUser) {
-                try {
-                    const userData = JSON.parse(savedUser);
-                    console.log('📱 Восстановление сессии из localStorage:', userData.email);
-                    await this.login(userData.email, userData.password, true);
-                    return;
-                } catch (e) {
-                    console.warn('⚠️ Не удалось восстановить сессию:', e);
-                    localStorage.removeItem(this.config.localStorageKey);
-                }
-            }
-            
-            // Если нет сохраненной сессии, показываем форму входа
-            this.showAuthModal();
-            
         } catch (error) {
-            console.error('❌ Ошибка инициализации:', error);
-            this.showAuthModal(); // Все равно показываем форму входа
+            console.error('❌ Ошибка инициализации Firebase:', error);
+            this.showError(`Ошибка Firebase: ${error.message}`);
+            this.showAuthModal();
+            return;
         }
-    },
+        
+        // Пытаемся восстановить сессию
+        const savedUser = localStorage.getItem(this.config.localStorageKey);
+        if (savedUser) {
+            try {
+                const userData = JSON.parse(savedUser);
+                console.log('📱 Восстановление сессии из localStorage:', userData.email);
+                await this.login(userData.email, userData.password, true);
+                return;
+            } catch (e) {
+                console.warn('⚠️ Не удалось восстановить сессию:', e);
+                localStorage.removeItem(this.config.localStorageKey);
+            }
+        }
+        
+        // Если нет сохраненной сессии, показываем форму входа
+        this.showAuthModal();
+        
+    } catch (error) {
+        console.error('❌ Критическая ошибка в autoInit:', error);
+        this.showAuthModal(); // Все равно показываем форму входа
+    }
+},
+
+/**
+ * ЗАГРУЗКА КОНФИГА FIREBASE
+ */
+async loadFirebaseConfig() {
+    return new Promise((resolve) => {
+        console.log('🔄 Загрузка firebase-config.js...');
+        
+        const timestamp = Date.now();
+        const script = document.createElement('script');
+        script.src = `/trading-data/firebase-config.js?nocache=${timestamp}`;
+        script.async = false;
+        
+        script.onload = function() {
+            console.log('✅ firebase-config.js загружен');
+            resolve(true);
+        };
+        
+        script.onerror = function() {
+            console.error('❌ Ошибка загрузки firebase-config.js');
+            resolve(false);
+        };
+        
+        document.head.appendChild(script);
+        
+        // Таймаут
+        setTimeout(() => {
+            if (script.parentNode) {
+                script.remove();
+                console.warn('⚠️ Таймаут загрузки конфига');
+                resolve(false);
+            }
+        }, 5000);
+    });
+},
     
     /**
      * ИНИЦИАЛИЗАЦИЯ АУТЕНТИФИКАЦИИ
