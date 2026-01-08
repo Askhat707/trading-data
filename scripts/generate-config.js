@@ -1,72 +1,140 @@
-// scripts/generate-config.js
+#!/usr/bin/env node
+
+/**
+ * Скрипт для генерации firebase-config.js из шаблона и секретов
+ * Запуск: node scripts/generate-config.js
+ */
+
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config(); // Для загрузки .env файла
 
-console.log('📝 Генерирую firebase-config.js...');
+console.log('🔧 Генерация firebase-config.js из секретов...\n');
 
-// Получаем переменные из окружения
-const config = {
-  apiKey: process.env.FIREBASE_API_KEY || '',
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN || '',
-  databaseURL: process.env.FIREBASE_DATABASE_URL || '',
-  projectId: process.env.FIREBASE_PROJECT_ID || '',
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: process.env.FIREBASE_APP_ID || ''
-};
+// Пути к файлам
+const templatePath = path.join(__dirname, '../firebase-config.js.template');
+const outputPath = path.join(__dirname, '../firebase-config.js');
 
-// Проверяем, что все значения заполнены
-const missingVars = Object.entries(config)
-  .filter(([key, value]) => !value)
-  .map(([key]) => key);
-
-if (missingVars.length > 0) {
-  console.error('❌ Отсутствуют переменные окружения:');
-  missingVars.forEach(v => console.error(`   - ${v}`));
+// Проверяем существование шаблона
+if (!fs.existsSync(templatePath)) {
+  console.error('❌ Шаблон firebase-config.js.template не найден!');
   process.exit(1);
 }
 
-console.log('✅ Все переменные найдены');
+// Читаем шаблон
+let template = fs.readFileSync(templatePath, 'utf8');
 
-// Создаем контент файла
-const configContent = `// ⚠️ ВНИМАНИЕ: Этот файл генерируется автоматически!
-// Не коммитьте firebase-config.js в репозиторий!
+// Список необходимых переменных
+const requiredVars = [
+  'FIREBASE_API_KEY',
+  'FIREBASE_AUTH_DOMAIN',
+  'FIREBASE_DATABASE_URL',
+  'FIREBASE_PROJECT_ID',
+  'FIREBASE_STORAGE_BUCKET',
+  'FIREBASE_MESSAGING_SENDER_ID',
+  'FIREBASE_APP_ID',
+  'FIREBASE_MEASUREMENT_ID'
+];
 
-const firebaseConfig = {
-  apiKey: "${config.apiKey}",
-  authDomain: "${config.authDomain}",
-  databaseURL: "${config.databaseURL}",
-  projectId: "${config.projectId}",
-  storageBucket: "${config.storageBucket}",
-  messagingSenderId: "${config.messagingSenderId}",
-  appId: "${config.appId}"
-};
+// Проверяем наличие переменных окружения
+console.log('📋 Проверка переменных окружения:');
+let allVarsExist = true;
 
-// Инициализируем Firebase (если еще не инициализирован)
-if (typeof firebase !== 'undefined' && !firebase.apps.length) {
-  try {
-    firebase.initializeApp(firebaseConfig);
-    console.log('✅ Firebase инициализирован успешно');
-  } catch (error) {
-    console.error('❌ Ошибка инициализации Firebase:', error);
+const replacements = {};
+
+requiredVars.forEach(varName => {
+  // Пробуем получить из окружения (GitHub Actions или .env)
+  const value = process.env[varName];
+  
+  if (!value) {
+    console.error(`❌ Отсутствует переменная: ${varName}`);
+    allVarsExist = false;
+  } else {
+    // Скрываем часть значения для безопасности в логах
+    const maskedValue = varName.includes('KEY') || varName.includes('ID') 
+      ? value.substring(0, 10) + '...' + value.substring(value.length - 5)
+      : value;
+    
+    console.log(`✅ ${varName}: ${maskedValue}`);
+    
+    // Добавляем замену
+    replacements[`{{${varName}}}`] = value;
   }
+});
+
+if (!allVarsExist) {
+  console.error('\n❌ Не все переменные окружения заданы!');
+  console.error('Проверьте:');
+  console.error('1. Для локальной разработки: создайте .env файл с переменными');
+  console.error('2. Для GitHub Actions: добавьте Secrets в настройках репозитория');
+  console.error('\nПример .env файла:');
+  console.log(`
+FIREBASE_API_KEY=your_api_key
+FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+FIREBASE_DATABASE_URL=https://your-project.firebaseio.com
+FIREBASE_PROJECT_ID=your-project
+FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+FIREBASE_MESSAGING_SENDER_ID=1234567890
+FIREBASE_APP_ID=1:1234567890:web:abcdef123456
+FIREBASE_MEASUREMENT_ID=G-ABCDEF
+  `);
+  process.exit(1);
 }
 
-// Экспортируем конфиг для использования в других файлах
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = firebaseConfig;
-}
+// Заменяем переменные в шаблоне
+let generatedConfig = template;
+Object.entries(replacements).forEach(([placeholder, value]) => {
+  generatedConfig = generatedConfig.replace(new RegExp(placeholder, 'g'), value);
+});
 
-window.FIREBASE_CONFIG = firebaseConfig;
+// Добавляем лог проверки
+const checkLog = `
+// ====================================================
+// ✅ СГЕНЕРИРОВАНО АВТОМАТИЧЕСКИ
+// 📅 ${new Date().toISOString()}
+// ====================================================
+
+console.log('🚀 Firebase конфигурация загружена из GitHub Secrets');
+console.log('   Проект: ${replacements['{{FIREBASE_PROJECT_ID}}']}');
+console.log('   Database: ${replacements['{{FIREBASE_DATABASE_URL}}']}');
+console.log('   Auth Domain: ${replacements['{{FIREBASE_AUTH_DOMAIN}}']}');
+
+// Проверка что все переменные заменены
+const configCheck = window.firebaseConfig || {};
+const missingVars = Object.values(configCheck).filter(v => v.includes('{{'));
+if (missingVars.length > 0) {
+  console.error('❌ ОШИБКА: Не все переменные заменены!');
+  console.error('   Проверьте GitHub Secrets');
+} else {
+  console.log('✅ Все переменные успешно заменены');
+}
 `;
 
-// Записываем в корень проекта
-const outputPath = path.join(process.cwd(), 'firebase-config.js');
-try {
-  fs.writeFileSync(outputPath, configContent, 'utf8');
-  console.log(`✅ firebase-config.js создан: ${outputPath}`);
-  console.log(`📊 Размер файла: ${Buffer.byteLength(configContent)} байт`);
-} catch (error) {
-  console.error(`❌ Ошибка при записи firebase-config.js:`, error);
-  process.exit(1);
+// Вставляем лог проверки после window.firebaseConfig
+if (generatedConfig.includes('window.firebaseConfig = firebaseConfig;')) {
+  generatedConfig = generatedConfig.replace(
+    'window.firebaseConfig = firebaseConfig;',
+    `window.firebaseConfig = firebaseConfig;${checkLog}`
+  );
+}
+
+// Сохраняем сгенерированный файл
+fs.writeFileSync(outputPath, generatedConfig, 'utf8');
+
+console.log('\n✅ firebase-config.js успешно создан!');
+console.log(`📁 Файл: ${outputPath}`);
+console.log('\n📋 Содержимое (первые 10 строк):');
+console.log(generatedConfig.split('\n').slice(0, 10).join('\n'));
+console.log('...');
+
+// Проверяем созданный файл
+const generated = fs.readFileSync(outputPath, 'utf8');
+const hasRemainingPlaceholders = generated.includes('{{');
+
+if (hasRemainingPlaceholders) {
+  console.error('\n⚠️  ВНИМАНИЕ: В сгенерированном файле остались переменные!');
+  const matches = generated.match(/\{\{.*?\}\}/g);
+  console.error('   Не замененные переменные:', matches);
+} else {
+  console.log('\n✅ Все переменные успешно заменены в сгенерированном файле');
 }
