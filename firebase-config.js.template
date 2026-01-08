@@ -1,26 +1,15 @@
-// 🔥 FIREBASE CONFIG TEMPLATE
-// ⚠️ РЕАЛЬНЫЕ КЛЮЧИ НАХОДЯТСЯ ТОЛЬКО В GITHUB SECRETS!
-// Этот файл генерируется автоматически GitHub Actions
-
-/**
- * ВАЖНО: РЕАЛЬНАЯ КОНФИГУРАЦИЯ:
- * 
- * 1. СОЗДАЁТСЯ в .github/workflows/deploy.yml
- * 2. ИСПОЛЬЗУЕТ GitHub Secrets (Settings → Secrets)
- * 3. НИКОГДА НЕ КОММИТИТСЯ В РЕПОЗИТОРИЙ
- * 4. СОЗДАЁТСЯ ТОЛЬКО НА GitHub Pages
- * 5. ЗАЩИЩЕНА .gitignore
- */
+// 🔥 FIREBASE CONFIG - AUTO GENERATED FROM GITHUB SECRETS
+// ⚠️ НЕ КОММИТЬ В РЕПОЗИТОРИЙ - СОЗДАЕТСЯ АВТОМАТИЧЕСКИ ПРИ ДЕПЛОЕ
 
 const firebaseConfig = {
-  apiKey: "FIREBASE_API_KEY",                    // ← Из GitHub Secrets
-  authDomain: "FIREBASE_AUTH_DOMAIN",            // ← Из GitHub Secrets
-  databaseURL: "FIREBASE_DATABASE_URL",          // ← Из GitHub Secrets
-  projectId: "FIREBASE_PROJECT_ID",              // ← Из GitHub Secrets
-  storageBucket: "FIREBASE_STORAGE_BUCKET",      // ← Из GitHub Secrets
-  messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID", // ← Из GitHub Secrets
-  appId: "FIREBASE_APP_ID",                      // ← Из GitHub Secrets
-  measurementId: "FIREBASE_MEASUREMENT_ID"       // ← Из GitHub Secrets
+  apiKey: "FIREBASE_API_KEY",
+  authDomain: "FIREBASE_AUTH_DOMAIN",
+  databaseURL: "FIREBASE_DATABASE_URL",
+  projectId: "FIREBASE_PROJECT_ID",
+  storageBucket: "FIREBASE_STORAGE_BUCKET",
+  messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID",
+  appId: "FIREBASE_APP_ID",
+  measurementId: "FIREBASE_MEASUREMENT_ID"
 };
 
 // Экспорт для глобального использования
@@ -29,3 +18,4 @@ if (typeof window !== 'undefined') {
 }
 
 console.log('✅ Firebase конфигурация загружена из GitHub Secrets');
+console.log('   Проект:', firebaseConfig.projectId);
