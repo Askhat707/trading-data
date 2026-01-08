@@ -1,22 +1,42 @@
-// 🔥 ЛОКАЛЬНАЯ КОНФИГУРАЦИЯ FIREBASE (ТОЛЬКО ДЛЯ ТЕСТИРОВАНИЯ)
-// ⚠️ ЭТОТ ФАЙЛ ДЛЯ ТЕСТИРОВАНИЯ ЛОКАЛЬНО!
-// ⚠️ НА ПРОДАКШЕНЕ СОЗДАЕТСЯ АВТОМАТИЧЕСКИ GITHUB ACTIONS
+// 🔥 FIREBASE CONFIG - AUTO GENERATED FROM GITHUB SECRETS
+// ⚠️ СОЗДАНО АВТОМАТИЧЕСКИ ПРИ ДЕПЛОЕ - НЕ РЕДАКТИРОВАТЬ!
+
+console.log('🚀 Загрузка Firebase конфигурации из GitHub Secrets...');
 
 const firebaseConfig = {
-  apiKey: "TEST_API_KEY",
-  authDomain: "TEST_PROJECT.firebaseapp.com",
-  databaseURL: "https://TEST_PROJECT.firebasedatabase.app",
-  projectId: "TEST_PROJECT",
-  storageBucket: "TEST_PROJECT.firebasestorage.app",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdef123456",
-  measurementId: "G-ABCDEF"
+  apiKey: "{{FIREBASE_API_KEY}}",
+  authDomain: "{{FIREBASE_AUTH_DOMAIN}}",
+  databaseURL: "{{FIREBASE_DATABASE_URL}}",
+  projectId: "{{FIREBASE_PROJECT_ID}}",
+  storageBucket: "{{FIREBASE_STORAGE_BUCKET}}",
+  messagingSenderId: "{{FIREBASE_MESSAGING_SENDER_ID}}",
+  appId: "{{FIREBASE_APP_ID}}",
+  measurementId: "{{FIREBASE_MEASUREMENT_ID}}"
 };
+
+console.log('📋 Проверка конфигурации Firebase:');
+console.log('  - Проект:', firebaseConfig.projectId);
+console.log('  - Database URL:', firebaseConfig.databaseURL);
+console.log('  - Auth Domain:', firebaseConfig.authDomain);
+
+// Проверка, что все ключи заменены (не содержат {{ }})
+const hasPlaceholders = Object.values(firebaseConfig).some(value => 
+  typeof value === 'string' && value.includes('{{')
+);
+
+if (hasPlaceholders) {
+  console.error('❌ ОШИБКА: В конфигурации есть не подставленные переменные!');
+  console.error('   Проверьте GitHub Secrets в репозитории:');
+  console.error('   Settings → Secrets and variables → Actions');
+  console.error('   Нужно добавить все FIREBASE_* секреты');
+} else {
+  console.log('✅ Все переменные конфигурации заменены реальными значениями');
+}
 
 // Экспорт для глобального использования
 if (typeof window !== 'undefined') {
     window.firebaseConfig = firebaseConfig;
+    console.log('✅ Firebase конфигурация сохранена в window.firebaseConfig');
 }
 
-console.log('⚠️  Локальная конфигурация Firebase загружена (ТОЛЬКО ДЛЯ ТЕСТИРОВАНИЯ)');
-console.log('   Для продакшена настройте GitHub Secrets и Workflow');
+console.log('🎯 Конфигурация Firebase готова к использованию');
