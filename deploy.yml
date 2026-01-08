@@ -1,0 +1,235 @@
+name: 🚀 Deploy Trading Data Terminal
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      force_regenerate:
+        description: 'Перегенерировать конфиг'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+env:
+  NODE_VERSION: '18'
+  NODE_OPTIONS: '--max-old-space-size=4096'
+
+jobs:
+  validate-secrets:
+    name: 🔐 Валидация Secrets
+    runs-on: ubuntu-latest
+    outputs:
+      secrets_valid: ${{ steps.validate.outputs.valid }}
+    
+    steps:
+      - name: 📥 Загрузка репозитория
+        uses: actions/checkout@v4
+        
+      - name: 🔍 Проверка GitHub Secrets
+        id: validate
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
+        run: |
+          echo "🔐 Проверка наличия GitHub Secrets..."
+          
+          SECRETS_VALID=true
+          MISSING_SECRETS=""
+          
+          for secret in FIREBASE_API_KEY FIREBASE_AUTH_DOMAIN FIREBASE_DATABASE_URL FIREBASE_PROJECT_ID FIREBASE_STORAGE_BUCKET FIREBASE_MESSAGING_SENDER_ID FIREBASE_APP_ID FIREBASE_MEASUREMENT_ID; do
+            if [ -z "${!secret}" ]; then
+              echo "❌ Отсутствует: $secret"
+              SECRETS_VALID=false
+              MISSING_SECRETS="$MISSING_SECRETS $secret"
+            else
+              echo "✅ $secret: присутствует"
+            fi
+          done
+          
+          if [ "$SECRETS_VALID" = false ]; then
+            echo "::error::Отсутствуют Secrets:$MISSING_SECRETS"
+            echo "valid=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          echo "🎉 Все Secrets присутствуют"
+          echo "valid=true" >> $GITHUB_OUTPUT
+
+  generate-config:
+    name: ⚙️ Генерация конфига
+    runs-on: ubuntu-latest
+    needs: validate-secrets
+    if: needs.validate-secrets.outputs.secrets_valid == 'true'
+    
+    steps:
+      - name: 📥 Загрузка репозитория
+        uses: actions/checkout@v4
+        
+      - name: 🛠️ Настройка Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 🔧 Генерация firebase-config.js
+        id: generate
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
+        run: |
+          echo "🚀 Генерация firebase-config.js из шаблона..."
+          
+          # Проверяем шаблон
+          if [ ! -f "firebase-config.js.template" ]; then
+            echo "::error::Шаблон firebase-config.js.template не найден"
+            exit 1
+          fi
+          
+          # Читаем шаблон
+          TEMPLATE=$(cat firebase-config.js.template)
+          
+          # Заменяем переменные
+          CONFIG="${TEMPLATE//\{\{FIREBASE_API_KEY\}\}/$FIREBASE_API_KEY}"
+          CONFIG="${CONFIG//\{\{FIREBASE_AUTH_DOMAIN\}\}/$FIREBASE_AUTH_DOMAIN}"
+          CONFIG="${CONFIG//\{\{FIREBASE_DATABASE_URL\}\}/$FIREBASE_DATABASE_URL}"
+          CONFIG="${CONFIG//\{\{FIREBASE_PROJECT_ID\}\}/$FIREBASE_PROJECT_ID}"
+          CONFIG="${CONFIG//\{\{FIREBASE_STORAGE_BUCKET\}\}/$FIREBASE_STORAGE_BUCKET}"
+          CONFIG="${CONFIG//\{\{FIREBASE_MESSAGING_SENDER_ID\}\}/$FIREBASE_MESSAGING_SENDER_ID}"
+          CONFIG="${CONFIG//\{\{FIREBASE_APP_ID\}\}/$FIREBASE_APP_ID}"
+          CONFIG="${CONFIG//\{\{FIREBASE_MEASUREMENT_ID\}\}/$FIREBASE_MEASUREMENT_ID}"
+          
+          # Проверяем что все замены прошли
+          if echo "$CONFIG" | grep -q "{{"; then
+            echo "::error::В конфиге остались плейсхолдеры:"
+            echo "$CONFIG" | grep -n "{{"
+            exit 1
+          fi
+          
+          # Сохраняем файл
+          echo "$CONFIG" > firebase-config.js
+          
+          # Проверяем файл
+          if [ ! -f "firebase-config.js" ]; then
+            echo "::error::Не удалось создать firebase-config.js"
+            exit 1
+          fi
+          
+          # Проверяем размер
+          FILE_SIZE=$(wc -c < firebase-config.js)
+          echo "📄 Размер файла: $FILE_SIZE байт"
+          
+          # Показываем первые 5 строк для проверки
+          echo "📋 Первые 5 строк конфига:"
+          head -5 firebase-config.js
+          
+          echo "✅ Файл успешно создан"
+          
+          # Сохраняем хэш файла для сравнения
+          MD5_HASH=$(md5sum firebase-config.js | cut -d' ' -f1)
+          echo "md5_hash=$MD5_HASH" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: 🚀 Деплой на GitHub Pages
+    runs-on: ubuntu-latest
+    needs: generate-config
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: 📥 Загрузка репозитория
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 🔧 Восстановление сгенерированного конфига
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
+        run: |
+          echo "🔄 Восстановление firebase-config.js..."
+          
+          # Генерируем конфиг заново (как в предыдущем шаге)
+          TEMPLATE=$(cat firebase-config.js.template)
+          
+          CONFIG="${TEMPLATE//\{\{FIREBASE_API_KEY\}\}/$FIREBASE_API_KEY}"
+          CONFIG="${CONFIG//\{\{FIREBASE_AUTH_DOMAIN\}\}/$FIREBASE_AUTH_DOMAIN}"
+          CONFIG="${CONFIG//\{\{FIREBASE_DATABASE_URL\}\}/$FIREBASE_DATABASE_URL}"
+          CONFIG="${CONFIG//\{\{FIREBASE_PROJECT_ID\}\}/$FIREBASE_PROJECT_ID}"
+          CONFIG="${CONFIG//\{\{FIREBASE_STORAGE_BUCKET\}\}/$FIREBASE_STORAGE_BUCKET}"
+          CONFIG="${CONFIG//\{\{FIREBASE_MESSAGING_SENDER_ID\}\}/$FIREBASE_MESSAGING_SENDER_ID}"
+          CONFIG="${CONFIG//\{\{FIREBASE_APP_ID\}\}/$FIREBASE_APP_ID}"
+          CONFIG="${CONFIG//\{\{FIREBASE_MEASUREMENT_ID\}\}/$FIREBASE_MEASUREMENT_ID}"
+          
+          echo "$CONFIG" > firebase-config.js
+          
+          # Проверяем
+          if [ ! -f "firebase-config.js" ]; then
+            echo "::error::Не удалось создать firebase-config.js"
+            exit 1
+          fi
+          
+          echo "✅ Конфиг восстановлен"
+          
+      - name: 📄 Создание .nojekyll
+        run: |
+          echo "📄 Создаю .nojekyll для GitHub Pages..."
+          touch .nojekyll
+          
+      - name: 🏗️ Настройка GitHub Pages
+        uses: actions/configure-pages@v5
+        
+      - name: 📦 Создание артефакта
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+          
+      - name: 🚀 Деплой на GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        
+      - name: ✅ Проверка деплоя
+        run: |
+          echo "🎉 ДЕПЛОЙ ЗАВЕРШЕН УСПЕШНО!"
+          echo ""
+          echo "🌐 Сайт доступен по адресу:"
+          echo "   https://askhat707.github.io/trading-data/"
+          echo ""
+          echo "🔍 Проверка файлов:"
+          echo "   • firebase-config.js: $([ -f "firebase-config.js" ] && echo "✅" || echo "❌")"
+          echo "   • .nojekyll: $([ -f ".nojekyll" ] && echo "✅" || echo "❌")"
+          echo "   • index.html: $([ -f "index.html" ] && echo "✅" || echo "❌")"
+          echo ""
+          echo "📊 Проверка конфига:"
+          if [ -f "firebase-config.js" ]; then
+            echo "   Размер: $(wc -c < firebase-config.js) байт"
+            echo "   Строк: $(wc -l < firebase-config.js)"
+            echo "   Содержит ключи: $([ $(grep -c "apiKey:" firebase-config.js) -gt 0 ] && echo "✅" || echo "❌")"
+          fi
+          echo ""
+          echo "🚀 Следующие шаги:"
+          echo "   1. Откройте сайт в браузере"
+          echo "   2. Нажмите F12 для проверки консоли"
+          echo "   3. Убедитесь что firebase-config.js загружен"
