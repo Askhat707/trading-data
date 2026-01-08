@@ -1,5 +1,6 @@
 // ============================================
-// 🔐 МОДУЛЬ АУТЕНТИФИКАЦИИ - ПОЛНЫЙ АВТОЗАПУСК
+// 🔐 МОДУЛЬ АУТЕНТИФИКАЦИИ v7 - ПОЛНЫЙ АВТОЗАПУСК
+// С ПРОВЕРКОЙ ПОДПИСКИ КАЖДЫЕ 15 МИНУТ
 // ============================================
 
 const AuthModule = {
@@ -7,14 +8,16 @@ const AuthModule = {
     currentUser: null,
     currentSession: null,
     isInitialized: false,
+    subscriptionCheckInterval: null,
     
     // Конфигурация
     config: {
-        localStorageKey: "gold_options_auth_v9",
+        localStorageKey: "gold_options_auth_v10",
         sessionDuration: 7 * 24 * 60 * 60 * 1000, // 7 дней
         adminEmail: "omaralinovaskar95@gmail.com",
         adminTelegram: "@ASKHAT_1985",
-        trialDays: 3
+        trialDays: 3,
+        subscriptionCheckInterval: 15 * 60 * 1000 // 15 минут
     },
     
     /**
@@ -172,14 +175,85 @@ const AuthModule = {
             // 6. Обновляем UI
             this.updateUI();
             
+            // 7. ЗАПУСКАЕМ ПРОВЕРКУ ПОДПИСКИ КАЖДЫЕ 15 МИНУТ
+            this.startSubscriptionChecker();
+            
             console.log('✅ Пользователь успешно аутентифицирован и проверен');
             
-            // 7. Запускаем основное приложение
+            // 8. Запускаем основное приложение
             this.startMainApp();
             
         } catch (error) {
             console.error('❌ Ошибка обработки пользователя:', error);
             this.showAuthModal();
+        }
+    },
+    
+    /**
+     * ЗАПУСК ПРОВЕРКИ ПОДПИСКИ КАЖДЫЕ 15 МИНУТ
+     */
+    startSubscriptionChecker() {
+        console.log('⏱️ Запуск проверки подписки каждые 15 минут...');
+        
+        // Очищаем старый интервал если есть
+        if (this.subscriptionCheckInterval) {
+            clearInterval(this.subscriptionCheckInterval);
+        }
+        
+        // Проверяем сразу
+        this.checkSubscriptionStatus();
+        
+        // Затем проверяем каждые 15 минут
+        this.subscriptionCheckInterval = setInterval(() => {
+            this.checkSubscriptionStatus();
+        }, this.config.subscriptionCheckInterval);
+    },
+    
+    /**
+     * ПРОВЕРКА СТАТУСА ПОДПИСКИ
+     */
+    async checkSubscriptionStatus() {
+        if (!this.currentUser) return;
+        
+        try {
+            console.log('🔍 Проверка статуса подписки...');
+            
+            // Получаем свежие данные из базы
+            const freshUserData = await this.getUserDataFromDB(this.currentUser.uid);
+            
+            if (!freshUserData) {
+                console.error('❌ Пользователь удален из базы данных');
+                await this.logout();
+                return;
+            }
+            
+            // Обновляем текущие данные
+            this.currentUser = this.mergeUserData(
+                firebase.auth().currentUser,
+                freshUserData
+            );
+            
+            // Проверяем подписку
+            if (this.isSubscriptionExpired(this.currentUser)) {
+                console.warn('⏰ Подписка истекла во время сессии!');
+                await this.handleSubscriptionExpired();
+                return;
+            }
+            
+            // Обновляем UI хедера
+            this.updateHeaderUI();
+            
+            // Обновляем ограничения в приложении
+            if (window.app) {
+                window.app.isTrial = this.currentUser.plan !== "PREMIUM" || 
+                                    this.isSubscriptionExpired(this.currentUser);
+                window.app.updateUIForUserType();
+            }
+            
+            console.log('✅ Подписка активна');
+            
+        } catch (error) {
+            console.error('❌ Ошибка проверки подписки:', error);
         }
     },
     
@@ -193,11 +267,51 @@ const AuthModule = {
         // Очищаем локальные данные
         this.clearLocalData();
         
-        // Показываем сообщение
-        alert('⏰ Ваша подписка истекла!\n\nДля продолжения использования обновите подписку до PREMIUM.\n\nСвяжитесь с администратором: @ASKHAT_1985');
+        // Показываем модальное окно
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.98); backdrop-filter: blur(20px);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 10001;
+        `;
+        
+        modal.innerHTML = `
+            <div class="auth-container" style="text-align: center;">
+                <div style="font-size: 3rem; color: #FFD700; margin-bottom: 20px;">⏰</div>
+                <h1 style="color: #FFD700; margin-bottom: 15px; font-size: 2rem;">
+                    ПОДПИСКА ИСТЕКЛА
+                </h1>
+                <p style="color: #ccc; font-size: 1.1rem; margin-bottom: 30px; line-height: 1.6;">
+                    Ваша подписка на Gold Options Pro завершена.<br>
+                    Для продолжения работы требуется активировать PREMIUM.
+                </p>
+                
+                <div style="background: rgba(255,215,0,0.1); border: 2px solid var(--gold); 
+                    border-radius: 10px; padding: 20px; margin: 20px 0;">
+                    <div style="color: var(--gold); font-weight: 700; margin-bottom: 10px;">
+                        📞 КОНТАКТ АДМИНИСТРАТОРА:
+                    </div>
+                    <div style="font-size: 1.5rem; color: #fff; font-weight: 800;">
+                        @ASKHAT_1985
+                    </div>
+                </div>
+                
+                <button onclick="window.open('https://t.me/ASKHAT_1985', '_blank')" 
+                    class="auth-button" style="background: var(--gradient-gold); color: #000; 
+                    font-weight: 800; margin-top: 30px; width: 100%; font-size: 1.1rem;">
+                    📲 Написать в Telegram
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
         
         // Показываем форму входа
-        this.showAuthModal();
+        setTimeout(() => {
+            document.body.removeChild(modal);
+            this.showAuthModal();
+        }, 3000);
     },
     
     /**
@@ -234,9 +348,8 @@ const AuthModule = {
             email: firebaseUser.email || dbData.email,
             emailVerified: firebaseUser.emailVerified || false,
             
-            // Из базы данных (ваши поля)
+            // Из базы данных
             id: dbData.id || firebaseUser.uid,
-            email: dbData.email || firebaseUser.email,
             plan: dbData.plan || 'TRIAL',
             premiumEnd: dbData.premiumEnd || 0,
             trialEnd: dbData.trialEnd || (now + (this.config.trialDays * 24 * 60 * 60 * 1000)),
@@ -356,6 +469,9 @@ const AuthModule = {
             // Обновляем UI
             this.updateUI();
             
+            // Запускаем проверку подписки
+            this.startSubscriptionChecker();
+            
             console.log('✅ Сессия восстановлена из localStorage');
             
             // Запускаем приложение
@@ -404,6 +520,12 @@ const AuthModule = {
         try {
             console.log('👋 Выход из системы...');
             
+            // Останавливаем проверку подписки
+            if (this.subscriptionCheckInterval) {
+                clearInterval(this.subscriptionCheckInterval);
+                this.subscriptionCheckInterval = null;
+            }
+            
             // Выход из Firebase
             if (firebase.auth().currentUser) {
                 await firebase.auth().signOut();
@@ -430,6 +552,12 @@ const AuthModule = {
     handleUserSignedOut() {
         console.log('👋 Пользователь вышел из системы');
         
+        // Останавливаем проверку подписки
+        if (this.subscriptionCheckInterval) {
+            clearInterval(this.subscriptionCheckInterval);
+            this.subscriptionCheckInterval = null;
+        }
+        
         this.currentUser = null;
         this.currentSession = null;
         
@@ -444,7 +572,7 @@ const AuthModule = {
      * ГЕНЕРАЦИЯ ПОДПИСИ СЕССИИ
      */
     generateSessionSignature(userId, timestamp) {
-        const data = `${userId}_${timestamp}_gold_options_pro_v2_secure`;
+        const data = `${userId}_${timestamp}_gold_options_pro_v7_secure`;
         let hash = 0;
         for (let i = 0; i < data.length; i++) {
             const char = data.charCodeAt(i);
@@ -525,7 +653,7 @@ const AuthModule = {
             user: this.currentUser,
             session: this.currentSession,
             savedAt: Date.now(),
-            version: "v9.0"
+            version: "v10.0"
         };
         
         try {
@@ -588,6 +716,12 @@ const AuthModule = {
             mainContent.classList.add('visible');
         }
         
+        // Скрываем лоадер
+        const loadingEl = document.getElementById('loading');
+        if (loadingEl) {
+            loadingEl.style.display = 'none';
+        }
+        
         // Обновляем информацию в хедере
         this.updateHeaderUI();
     },
@@ -613,10 +747,10 @@ const AuthModule = {
                                 !this.isSubscriptionExpired(this.currentUser);
                 
                 if (isPremium) {
-                    planEl.textContent = `PREMIUM (${daysLeft}д)`;
+                    planEl.textContent = `⭐ PREMIUM (${daysLeft}д)`;
                     planEl.className = 'user-plan plan-premium';
                 } else {
-                    planEl.textContent = `TRIAL (${daysLeft}д осталось)`;
+                    planEl.textContent = `🔒 TRIAL (${daysLeft}д)`;
                     planEl.className = 'user-plan plan-trial';
                 }
             }
@@ -649,6 +783,11 @@ const AuthModule = {
         if (mainContent) {
             mainContent.classList.remove('visible');
         }
+        
+        const loadingEl = document.getElementById('loading');
+        if (loadingEl) {
+            loadingEl.style.display = 'none';
+        }
     },
     
     /**
@@ -672,7 +811,7 @@ const AuthModule = {
                 authButton.innerHTML = '<span>⏳ Загрузка...</span>';
             } else {
                 authButton.disabled = false;
-                authButton.innerHTML = '<span>ВОЙТИ</span>';
+                authButton.innerHTML = '<span>🔓 ВОЙТИ</span>';
             }
         }
     },
@@ -703,8 +842,8 @@ const AuthModule = {
                 <div style="text-align: center; padding: 40px;">
                     <div style="font-size: 3rem; color: #ff4444;">❌</div>
                     <h2 style="color: #ff4444; margin: 20px 0;">Firebase Error</h2>
-                    <p>Не удалось загрузить Firebase SDK</p>
-                    <p style="color: #888;">Проверьте интернет соединение</p>
+                    <p style="color: #ccc;">Не удалось загрузить Firebase SDK</p>
+                    <p style="color: #666;">Проверьте интернет соединение</p>
                     <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #FFD700; color: #000; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
                         🔄 Перезагрузить
                     </button>
@@ -723,13 +862,13 @@ const AuthModule = {
                 <div style="text-align: center; padding: 40px;">
                     <div style="font-size: 3rem; color: #ff4444;">❌</div>
                     <h2 style="color: #ff4444; margin: 20px 0;">Configuration Error</h2>
-                    <p>Не удалось загрузить конфигурацию Firebase</p>
-                    <div style="background: rgba(255,68,68,0.1); padding: 15px; border-radius: 8px; margin: 20px auto; max-width: 500px; text-align: left;">
+                    <p style="color: #ccc;">Не удалось загрузить конфигурацию Firebase</p>
+                    <div style="background: rgba(255,68,68,0.1); padding: 15px; border-radius: 8px; margin: 20px auto; max-width: 500px; text-align: left; color: #888;">
                         <p><strong>Проверьте:</strong></p>
-                        <ul>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
                             <li>GitHub Secrets настроены правильно</li>
-                            <li>Скрипт generate-config.js работает</li>
                             <li>Файл firebase-config.js создается</li>
+                            <li>Все FIREBASE_* ключи добавлены в Secrets</li>
                         </ul>
                     </div>
                     <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #FFD700; color: #000; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
@@ -761,39 +900,22 @@ document.addEventListener('DOMContentLoaded', function() {
 // ОБРАБОТЧИКИ СОБЫТИЙ ДЛЯ HTML ФОРМЫ
 window.handleLogin = function(event) {
     event.preventDefault();
-    
     const email = document.getElementById('user-email')?.value?.trim();
     const password = document.getElementById('user-password')?.value?.trim();
-    
+
     if (!email || !password) {
         AuthModule.showError('❌ Заполните все поля');
         return;
     }
-    
+
     if (!email.includes('@')) {
         AuthModule.showError('❌ Введите правильный email');
         return;
     }
-    
+
     AuthModule.login(email, password);
 };
 
 window.handleLogout = function() {
     AuthModule.logout();
-};
-
-window.showTermsModal = function() {
-    alert('📄 Условия использования\n\n1. Использование только для личного трейдинга\n2. Запрещено копирование данных\n3. Ответственность за решения лежит на пользователе');
-};
-
-window.showPrivacyModal = function() {
-    alert('🔒 Политика конфиденциальности\n\n1. Мы не передаем ваши данные третьим лицам\n2. Данные хранятся в зашифрованном виде\n3. Вы можете запросить удаление данных');
-};
-
-window.showAboutModal = function() {
-    alert('💰 Gold Options Pro v2\n\nПрофессиональный терминал для анализа опционов\nВерсия: 2.0\nРазработчик: ASKHAT_1985\nTelegram: @ASKHAT_1985');
-};
-
-window.openTelegram = function() {
-    window.open('https://t.me/ASKHAT_1985', '_blank');
 };
