@@ -1,19 +1,27 @@
 // 🔥 FIREBASE CONFIG TEMPLATE
-// ⚠️ Этот файл генерируется автоматически из GitHub Secrets
-// Не коммитьте этот файл в репозиторий!
+// ⚠️ РЕАЛЬНЫЕ КЛЮЧИ НАХОДЯТСЯ ТОЛЬКО В GITHUB SECRETS!
+// Этот файл используется только как шаблон для разработки
+
+/**
+ * ВАЖНО: Реальная конфигурация генерируется автоматически
+ * GitHub Actions при каждом деплое из GITHUB SECRETS
+ * и сохраняется в firebase-config.js на GitHub Pages
+ */
 
 const firebaseConfig = {
-  apiKey: "FIREBASE_API_KEY",
-  authDomain: "FIREBASE_AUTH_DOMAIN",
-  databaseURL: "FIREBASE_DATABASE_URL",
-  projectId: "FIREBASE_PROJECT_ID",
-  storageBucket: "FIREBASE_STORAGE_BUCKET",
-  messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID",
-  appId: "FIREBASE_APP_ID",
-  measurementId: "FIREBASE_MEASUREMENT_ID"
+  apiKey: "FIREBASE_API_KEY",              // ← Заменяется из GitHub Secrets
+  authDomain: "FIREBASE_AUTH_DOMAIN",      // ← Заменяется из GitHub Secrets
+  databaseURL: "FIREBASE_DATABASE_URL",    // ← Заменяется из GitHub Secrets
+  projectId: "FIREBASE_PROJECT_ID",        // ← Заменяется из GitHub Secrets
+  storageBucket: "FIREBASE_STORAGE_BUCKET",// ← Заменяется из GitHub Secrets
+  messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID", // ← Заменяется из GitHub Secrets
+  appId: "FIREBASE_APP_ID",                // ← Заменяется из GitHub Secrets
+  measurementId: "FIREBASE_MEASUREMENT_ID" // ← Заменяется из GitHub Secrets
 };
 
 // Экспорт для глобального использования
-window.firebaseConfig = firebaseConfig;
+if (typeof window !== 'undefined') {
+    window.firebaseConfig = firebaseConfig;
+}
 
 console.log('✅ Firebase конфигурация загружена');
