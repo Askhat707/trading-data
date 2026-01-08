@@ -1,80 +1,463 @@
-<!-- В секции скриптов, после Firebase SDK: -->
-<script src="firebase-config.js"></script>
-
-
-<script>
-// ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ПРОВЕРКИ ЗАГРУЗКИ
-window.checkFirebaseStatus = function() {
-    const checkInterval = setInterval(() => {
-        console.log('⏳ Проверка статуса Firebase...');
-        
-        // Проверяем все условия
-        const isFirebaseSDKLoaded = typeof firebase !== 'undefined';
-        const isConfigLoaded = window.firebaseConfig && window.firebaseConfig.apiKey;
-        const isFirebaseInitialized = firebase.apps && firebase.apps.length > 0;
-        
-        console.log('Firebase SDK загружен:', isFirebaseSDKLoaded);
-        console.log('Конфиг загружен:', isConfigLoaded);
-        console.log('Firebase инициализирован:', isFirebaseInitialized);
-        
-        if (isFirebaseSDKLoaded && isConfigLoaded && isFirebaseInitialized) {
-            clearInterval(checkInterval);
-            console.log('✅ Все проверки пройдены, Firebase готов!');
-            
-            // Скрываем лоадер
-            const loadingEl = document.getElementById('loading');
-            if (loadingEl) {
-                loadingEl.style.display = 'none';
-            }
-            
-            // Показываем основное приложение
-            const appEl = document.getElementById('app');
-            if (appEl) {
-                appEl.style.display = 'block';
-            }
-            
-            return true;
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏆 Gold Options Pro v2 - Terminal</title>
+    
+    <!-- СТИЛИ -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components/cards.css">
+    <link rel="stylesheet" href="css/components/modal.css">
+    <link rel="stylesheet" href="css/components/table.css">
+    <link rel="stylesheet" href="css/pages/terminal.css">
+    
+    <!-- SERVICE WORKER -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('✅ Service Worker зарегистрирован'))
+                    .catch(err => console.warn('⚠️ Service Worker ошибка:', err));
+            });
         }
-        
-        // Проверяем таймаут
-        if (window.firebaseCheckCount && window.firebaseCheckCount > 50) {
-            clearInterval(checkInterval);
-            console.error('❌ Таймаут загрузки Firebase');
+    </script>
+</head>
+<body>
+    <!-- ЛОАДЕР ПРИ ЗАГРУЗКЕ -->
+    <div id="loading" style="
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: #050505; display: flex; justify-content: center; 
+        align-items: center; z-index: 9999; flex-direction: column;
+    ">
+        <div style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 20px;">⚡</div>
+            <div style="color: #FFD700; font-size: 1.5rem; font-weight: 800; margin-bottom: 20px;">
+                GOLD OPTIONS PRO v2
+            </div>
+            <div style="color: #888; font-size: 1rem; margin-bottom: 30px;">
+                Инициализация системы...
+            </div>
+            <div style="width: 300px; height: 4px; background: rgba(255,215,0,0.2); border-radius: 2px; overflow: hidden;">
+                <div style="height: 100%; background: linear-gradient(90deg, #FFD700, #FFD700); 
+                    animation: slideIn 2s infinite; width: 50%;"></div>
+            </div>
+            <div style="color: #666; font-size: 0.85rem; margin-top: 30px;">
+                🔄 Загружаем Firebase SDK...
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО АУТЕНТИФИКАЦИИ -->
+    <div id="auth-modal" class="auth-modal">
+        <div class="auth-container">
+            <div class="auth-header">
+                <div class="auth-logo">⚡ Gold Options Pro</div>
+                <div class="auth-subtitle">Профессиональный терминал анализа опционов</div>
+            </div>
+
+            <!-- ФОРМА ВХОДА -->
+            <form class="auth-form" onsubmit="window.handleLogin(event)">
+                <!-- ОШИБКА -->
+                <div id="auth-error" class="auth-error"></div>
+
+                <!-- EMAIL -->
+                <div class="form-group">
+                    <label class="form-label" for="user-email">📧 Email</label>
+                    <input 
+                        type="email" 
+                        id="user-email" 
+                        class="form-input"
+                        placeholder="ваш@email.com"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+
+                <!-- ПАРОЛЬ -->
+                <div class="form-group">
+                    <label class="form-label" for="user-password">🔑 Пароль</label>
+                    <input 
+                        type="password" 
+                        id="user-password" 
+                        class="form-input"
+                        placeholder="••••••••"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+
+                <!-- КНОПКА ВХОДА -->
+                <button type="submit" id="auth-button" class="auth-button">
+                    🔓 ВОЙТИ
+                </button>
+            </form>
+
+            <!-- ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ (ПОСЛЕ ВХОДА) -->
+            <div id="user-info" class="user-info" style="display: none;">
+                <div class="user-email" id="user-email-display"></div>
+                <div class="user-plan" id="user-plan-display"></div>
+            </div>
+
+            <!-- НИЖНИЙ ТЕКСТ -->
+            <div class="auth-footer">
+                <p>🔒 Данные защищены Firebase Security Rules</p>
+                <p style="font-size: 0.75rem; color: #666; margin-top: 10px;">
+                    Контакт: <strong>@ASKHAT_1985</strong> (Telegram)
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ -->
+    <div id="main-content">
+        <!-- ШАПКА -->
+        <header>
+            <div class="logo">⚡ GOLD OPTIONS PRO</div>
             
-            const loadingEl = document.getElementById('loading');
-            if (loadingEl) {
-                loadingEl.innerHTML = `
-                    <div style="text-align: center; padding: 40px;">
-                        <div style="font-size: 3rem; color: #ff4444;">❌</div>
-                        <h2 style="color: #ff4444; margin: 20px 0;">Ошибка загрузки</h2>
-                        <p>Не удалось загрузить Firebase</p>
-                        <div style="background: rgba(255,68,68,0.1); padding: 15px; border-radius: 8px; margin: 20px auto; max-width: 500px; text-align: left;">
-                            <p><strong>Возможные причины:</strong></p>
-                            <ul>
-                                <li>Проблемы с интернет соединением</li>
-                                <li>Firebase конфигурация не загружена</li>
-                                <li>GitHub Secrets не настроены</li>
-                            </ul>
-                        </div>
-                        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #FFD700; color: #000; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-                            🔄 Перезагрузить
-                        </button>
+            <nav>
+                <a href="#terminal" class="nav-link active">Терминал</a>
+                <a href="#analytics" class="nav-link">Аналитика</a>
+                <a href="#settings" class="nav-link">Настройки</a>
+            </nav>
+
+            <div class="user-menu">
+                <div class="user-badge" id="header-user-badge">
+                    <span id="header-user-email">user@example.com</span>
+                    <span id="header-user-plan" class="user-plan"></span>
+                </div>
+                <button class="logout-btn" onclick="window.handleLogout()">👋 Выход</button>
+            </div>
+        </header>
+
+        <!-- КОНТЕЙНЕР -->
+        <div class="container">
+            <!-- СТАТУС СОЕДИНЕНИЯ -->
+            <div class="status-bar">
+                <div class="connection-status" id="connStatus">
+                    🟡 Инициализация...
+                </div>
+                <div class="data-grid">
+                    <div class="data-box">
+                        <div class="data-label">💰 Текущая цена</div>
+                        <div class="data-value price" id="price">-</div>
                     </div>
-                `;
-            }
-            return false;
-        }
-        
-        window.firebaseCheckCount = (window.firebaseCheckCount || 0) + 1;
-        
-    }, 100); // Проверяем каждые 100ms
-};
+                    <div class="data-box">
+                        <div class="data-label">⏰ Обновлено</div>
+                        <div class="data-value" id="updated">--:--:--</div>
+                    </div>
+                    <div class="data-box">
+                        <div class="data-label">📅 DTE</div>
+                        <div class="data-value" id="current-dte-display">-</div>
+                    </div>
+                </div>
+            </div>
 
-// ЗАПУСК ПРОВЕРКИ
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Запуск проверки Firebase...');
-    setTimeout(() => {
-        window.checkFirebaseStatus();
-    }, 1000);
-});
-</script>
+            <!-- КНОПКИ DTE -->
+            <div style="margin: 30px 0; text-align: center;">
+                <h2 style="color: #FFD700; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px;">
+                    📅 Выберите экспирацию
+                </h2>
+                <div id="dte-buttons" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+                    <span style="color: #666;">Загрузка...</span>
+                </div>
+            </div>
+
+            <!-- АНАЛИТИКА КАРТОЧКИ -->
+            <div class="section-header">📊 Аналитика Опционов</div>
+            <div class="grid-8">
+                <!-- Max Pain -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>🎯</span>
+                        <span>Max Pain</span>
+                    </div>
+                    <div class="card-main-value" id="mp">-</div>
+                    <div class="card-sub">Точка максимальной боли</div>
+                </div>
+
+                <!-- Ожидаемое движение -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>📈</span>
+                        <span>Expected Move</span>
+                    </div>
+                    <div class="card-main-value" id="em">-</div>
+                    <div class="card-sub" id="em-range">Range: - to -</div>
+                </div>
+
+                <!-- Нулевая гамма -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>0️⃣</span>
+                        <span>Zero Gamma</span>
+                        <div class="info-icon">
+                            ?
+                            <div class="tooltip">
+                                Цена при которой сумма гамма всех опционов равна нулю. 
+                                Это точка наименьшей неустойчивости цены.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-main-value" id="zg">-</div>
+                    <div class="card-sub" id="zg-pos">Позиция: -</div>
+                </div>
+
+                <!-- Вероятность ITM Call -->
+                <div class="card">
+                    <div class="card-header">
+                        <span style="color: #00E676;">📞</span>
+                        <span>Prob ITM Call</span>
+                    </div>
+                    <div class="card-main-value" id="prob-c" style="color: #00E676;">-</div>
+                    <div class="card-sub">Вероятность завершения в деньгах</div>
+                </div>
+
+                <!-- Вероятность ITM Put -->
+                <div class="card">
+                    <div class="card-header">
+                        <span style="color: #FF1744;">📲</span>
+                        <span>Prob ITM Put</span>
+                    </div>
+                    <div class="card-main-value" id="prob-p" style="color: #FF1744;">-</div>
+                    <div class="card-sub">Вероятность завершения в деньгах</div>
+                </div>
+
+                <!-- Call/Put Ratio -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>⚖️</span>
+                        <span>Call/Put Ratio</span>
+                    </div>
+                    <div class="card-main-value" id="cp-ratio">-</div>
+                    <div class="card-sub" id="sentiment">Настроение: -</div>
+                </div>
+
+                <!-- Vanna -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>🌊</span>
+                        <span>Vanna</span>
+                    </div>
+                    <div class="card-main-value" id="vanna">-</div>
+                    <div class="card-sub">Греческая чувствительность</div>
+                </div>
+
+                <!-- Charm -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>✨</span>
+                        <span>Charm</span>
+                    </div>
+                    <div class="card-main-value" id="charm">-</div>
+                    <div class="card-sub">Временное затухание гаммы</div>
+                </div>
+            </div>
+
+            <!-- ТАБЛИЦА И СТАТИСТИКА -->
+            <div class="section-header">📊 Цепь Опционов & TOP Страйки</div>
+            <div class="main-table-container">
+                <!-- ТАБЛИЦА -->
+                <div class="table-wrapper">
+                    <div class="table-controls">
+                        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                            <!-- DTE Label -->
+                            <div style="color: var(--gold); font-weight: 700; font-size: 0.9rem;">
+                                📅 <span id="table-dte-label">EXPIRATION: -</span>
+                            </div>
+
+                            <!-- Кнопки количества страйков -->
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn active" data-cnt="15" onclick="window.app?.setStrikeCount(15)">15</button>
+                                <button class="btn" data-cnt="25" onclick="window.app?.setStrikeCount(25)">25</button>
+                                <button class="btn" data-cnt="35" onclick="window.app?.setStrikeCount(35)">35</button>
+                            </div>
+
+                            <!-- Premium Toggle -->
+                            <button class="btn" id="btn-prem" onclick="window.app?.togglePremium()">
+                                PREMIUM: OFF
+                            </button>
+                        </div>
+
+                        <!-- Forward Adjustment -->
+                        <div class="control-group">
+                            <label class="control-label">Forward Adj:</label>
+                            <input 
+                                type="number" 
+                                id="forward-adj" 
+                                class="inp"
+                                value="0"
+                                step="0.1"
+                                placeholder="0"
+                            >
+                            <button class="btn" onclick="window.app?.applyForwardAdjustment()">Применить</button>
+                        </div>
+                    </div>
+
+                    <!-- СКРОЛ ТАБЛИЦА -->
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>CALL OI</th>
+                                    <th>C VOL</th>
+                                    <th>C PR</th>
+                                    <th>C Δ</th>
+                                    <th>C Γ</th>
+                                    <th>C IV</th>
+                                    <th>STRIKE</th>
+                                    <th>P IV</th>
+                                    <th>P Γ</th>
+                                    <th>P Δ</th>
+                                    <th>P PR</th>
+                                    <th>P VOL</th>
+                                    <th>PUT OI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body">
+                                <tr style="text-align: center; color: #666;">
+                                    <td colspan="13">Загрузка данных...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- САЙДБАР СТАТИСТИКИ -->
+                <div class="top-stats-sidebar">
+                    <div class="top-stats-title">📊 TOP Страйки</div>
+                    
+                    <div class="top-stats-grid">
+                        <!-- TOP Call OI -->
+                        <div class="top-stat-box">
+                            <div class="top-stat-header">
+                                <div class="top-stat-name" style="color: #00E676;">📞 Call OI</div>
+                            </div>
+                            <div id="top-call-oi" class="top-stat-list"></div>
+                        </div>
+
+                        <!-- TOP Put OI -->
+                        <div class="top-stat-box">
+                            <div class="top-stat-header">
+                                <div class="top-stat-name" style="color: #FF1744;">📲 Put OI</div>
+                            </div>
+                            <div id="top-put-oi" class="top-stat-list"></div>
+                        </div>
+
+                        <!-- TOP Call Vol -->
+                        <div class="top-stat-box">
+                            <div class="top-stat-header">
+                                <div class="top-stat-name" style="color: #00E676;">📈 Call Vol</div>
+                            </div>
+                            <div id="top-call-vol" class="top-stat-list"></div>
+                        </div>
+
+                        <!-- TOP Put Vol -->
+                        <div class="top-stat-box">
+                            <div class="top-stat-header">
+                                <div class="top-stat-name" style="color: #FF1744;">📉 Put Vol</div>
+                            </div>
+                            <div id="top-put-vol" class="top-stat-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOP BREAKEVENS -->
+            <div class="section-header">💎 TOP 10 Breakevens</div>
+            <div class="grid-8" id="top-breakevens">
+                <div style="text-align: center; color: #888; padding: 30px; grid-column: 1/-1;">
+                    Загрузка данных...
+                </div>
+            </div>
+
+            <!-- ГРАФИКИ -->
+            <div class="section-header">📈 Графики анализа</div>
+            <div class="chart-grid-8">
+                <div class="chart-container">
+                    <div class="chart-title">Open Interest Distribution</div>
+                    <canvas id="chart-oi"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Volume Heatmap</div>
+                    <canvas id="chart-vol"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">IV Smile Curve</div>
+                    <canvas id="chart-iv"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Max Pain Curve</div>
+                    <canvas id="chart-mp"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Gamma Exposure</div>
+                    <canvas id="chart-gamma"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">GEX Profile</div>
+                    <canvas id="chart-gex"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Delta Profile</div>
+                    <canvas id="chart-delta"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Theta Decay</div>
+                    <canvas id="chart-theta"></canvas>
+                </div>
+            </div>
+
+            <!-- КОНТРОЛЬНАЯ ПАНЕЛЬ -->
+            <div class="bottom-control-panel">
+                <div class="bottom-control-title">⚙️ Контрольная панель</div>
+                <div class="bottom-control-grid">
+                    <div class="bottom-control-section">
+                        <div class="bottom-control-title">📊 Экспорт</div>
+                        <div class="control-row">
+                            <button class="btn" onclick="window.app?.showNotification('Функция будет добавлена', 'info')">
+                                📥 Экспорт CSV
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE SDK (из CDN) -->
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-database.js"></script>
+
+    <!-- FIREBASE CONFIG (ГЕНЕРИРУЕТСЯ ИЗ GITHUB SECRETS) -->
+    <script src="firebase-config.js"></script>
+
+    <!-- БИБЛИОТЕКИ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+    <!-- МОДУЛИ ПРИЛОЖЕНИЯ -->
+    <script src="js/constants.js"></script>
+    <script src="js/services/cache.js"></script>
+    <script src="js/modules/firebase.js"></script>
+    <script src="js/modules/auth.js"></script>
+    <script src="js/services/api.js"></script>
+    <script src="js/modules/charts.js"></script>
+    <script src="js/modules/mt5.js"></script>
+    <script src="js/utils/helpers.js"></script>
+    <script src="js/app.js"></script>
+
+    <!-- ИНИЦИАЛИЗАЦИЯ -->
+    <script>
+        // Стили анимации
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(-100%); }
+                to { transform: translateX(0); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
