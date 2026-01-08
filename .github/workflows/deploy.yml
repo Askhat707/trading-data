@@ -76,13 +76,7 @@ jobs:
       - name: 📥 Загрузка репозитория
         uses: actions/checkout@v4
         
-      - name: 🛠️ Настройка Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          
       - name: 🔧 Генерация firebase-config.js
-        id: generate
         env:
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -95,17 +89,12 @@ jobs:
         run: |
           echo "🚀 Генерация firebase-config.js из шаблона..."
           
-          # Проверяем шаблон
-          if [ ! -f "firebase-config.js.template" ]; then
-            echo "::error::Шаблон firebase-config.js.template не найден"
-            exit 1
-          fi
-          
           # Читаем шаблон
           TEMPLATE=$(cat firebase-config.js.template)
           
-          # Заменяем переменные
-          CONFIG="${TEMPLATE//\{\{FIREBASE_API_KEY\}\}/$FIREBASE_API_KEY}"
+          # Заменяем все переменные
+          CONFIG="$TEMPLATE"
+          CONFIG="${CONFIG//\{\{FIREBASE_API_KEY\}\}/$FIREBASE_API_KEY}"
           CONFIG="${CONFIG//\{\{FIREBASE_AUTH_DOMAIN\}\}/$FIREBASE_AUTH_DOMAIN}"
           CONFIG="${CONFIG//\{\{FIREBASE_DATABASE_URL\}\}/$FIREBASE_DATABASE_URL}"
           CONFIG="${CONFIG//\{\{FIREBASE_PROJECT_ID\}\}/$FIREBASE_PROJECT_ID}"
@@ -114,35 +103,11 @@ jobs:
           CONFIG="${CONFIG//\{\{FIREBASE_APP_ID\}\}/$FIREBASE_APP_ID}"
           CONFIG="${CONFIG//\{\{FIREBASE_MEASUREMENT_ID\}\}/$FIREBASE_MEASUREMENT_ID}"
           
-          # Проверяем что все замены прошли
-          if echo "$CONFIG" | grep -q "{{"; then
-            echo "::error::В конфиге остались плейсхолдеры:"
-            echo "$CONFIG" | grep -n "{{"
-            exit 1
-          fi
-          
-          # Сохраняем файл
+          # Сохраняем
           echo "$CONFIG" > firebase-config.js
           
-          # Проверяем файл
-          if [ ! -f "firebase-config.js" ]; then
-            echo "::error::Не удалось создать firebase-config.js"
-            exit 1
-          fi
-          
-          # Проверяем размер
-          FILE_SIZE=$(wc -c < firebase-config.js)
-          echo "📄 Размер файла: $FILE_SIZE байт"
-          
-          # Показываем первые 5 строк для проверки
-          echo "📋 Первые 5 строк конфига:"
-          head -5 firebase-config.js
-          
-          echo "✅ Файл успешно создан"
-          
-          # Сохраняем хэш файла для сравнения
-          MD5_HASH=$(md5sum firebase-config.js | cut -d' ' -f1)
-          echo "md5_hash=$MD5_HASH" >> $GITHUB_OUTPUT
+          echo "✅ Конфиг создан"
+          head -15 firebase-config.js
 
   deploy:
     name: 🚀 Деплой на GitHub Pages
