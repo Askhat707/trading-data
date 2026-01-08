@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     
-    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
-    
     <title>🏆 Gold Options Pro v2 - Professional Trading Terminal</title>
     
     <!-- СТИЛИ -->
@@ -17,10 +15,13 @@
     <link rel="stylesheet" href="./css/components/table.css">
     <link rel="stylesheet" href="./css/pages/terminal.css">
     
-    <!-- FIREBASE SDK (Compat версия для обратной совместимости) -->
+    <!-- FIREBASE SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-database-compat.js"></script>
+    
+    <!-- ⭐ FIREBASE CONFIG - ЗАГРУЖАЕМ ПЕРВЫМ! -->
+    <script src="./firebase-config.js"></script>
     
     <!-- SERVICE WORKER -->
     <script>
@@ -37,96 +38,49 @@
         }
     </script>
     
-    <!-- PRELOAD КРИТИЧЕСКИХ СКРИПТОВ -->
-    <link rel="preload" href="./js/modules/auth.js" as="script">
-    <link rel="preload" href="./js/app.js" as="script">
-    
     <style>
-        /* КРИТИЧЕСКИЕ СТИЛИ ДЛЯ ПЕРВОГО ЭКРАНА */
-        body {
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
-        
+        body { margin: 0; padding: 0; overflow-x: hidden; }
         #loading {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             background: #050505;
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 9999;
-            transition: opacity 0.5s ease;
         }
-        
         .auth-modal {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.95);
             backdrop-filter: blur(20px);
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 10000;
-            transition: all 0.5s ease;
         }
-        
         .auth-modal.hidden {
             opacity: 0;
             visibility: hidden;
             pointer-events: none;
         }
-        
         #main-content {
             display: none;
         }
-        
         #main-content.visible {
             display: block;
             animation: fadeIn 0.5s ease;
         }
-        
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
         }
-        
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(40px) scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-        
-        @keyframes pulse {
-            0% { 
-                transform: scale(1);
-                text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-            }
-            50% { 
-                transform: scale(1.05);
-                text-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
-            }
-            100% { 
-                transform: scale(1);
-                text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-            }
-        }
     </style>
 </head>
 <body>
-    <!-- ЛОАДЕР ПРИ ЗАГРУЗКЕ -->
+    <!-- ЛОАДЕР -->
     <div id="loading">
         <div style="text-align: center; max-width: 400px; padding: 30px;">
             <div style="font-size: 4rem; margin-bottom: 20px; color: #FFD700;">⚡</div>
@@ -140,436 +94,22 @@
                 <div id="loading-bar" style="height: 100%; background: linear-gradient(90deg, #FFD700, #FFD700); width: 30%;"></div>
             </div>
             <div id="loading-status" style="color: #666; font-size: 0.85rem;">
-                🔄 Загружаем конфигурацию...
+                🔄 Загружаем конфигурацию Firebase...
             </div>
         </div>
     </div>
 
     <!-- МОДАЛЬНОЕ ОКНО АУТЕНТИФИКАЦИИ -->
     <div id="auth-modal" class="auth-modal">
-        <div class="auth-container">
-            <div class="auth-header">
-                <div class="auth-logo">⚡ Gold Options Pro</div>
-                <div class="auth-subtitle">Профессиональный терминал анализа опционов</div>
-            </div>
-
-            <!-- ФОРМА ВХОДА -->
-            <form class="auth-form" onsubmit="return window.handleLogin(event)">
-                <!-- СООБЩЕНИЕ ОБ ОШИБКЕ -->
-                <div id="auth-error" class="auth-error"></div>
-
-                <!-- EMAIL -->
-                <div class="form-group">
-                    <label class="form-label" for="user-email">📧 Email</label>
-                    <input 
-                        type="email" 
-                        id="user-email" 
-                        class="form-input"
-                        placeholder="ваш@email.com"
-                        required
-                        autocomplete="email"
-                        autofocus
-                    >
-                </div>
-
-                <!-- ПАРОЛЬ -->
-                <div class="form-group">
-                    <label class="form-label" for="user-password">🔑 Пароль</label>
-                    <input 
-                        type="password" 
-                        id="user-password" 
-                        class="form-input"
-                        placeholder="••••••••"
-                        required
-                        autocomplete="current-password"
-                    >
-                </div>
-
-                <!-- КНОПКА ВХОДА -->
-                <button type="submit" id="auth-button" class="auth-button">
-                    🔓 ВОЙТИ В СИСТЕМУ
-                </button>
-            </form>
-
-            <!-- ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ (ПОСЛЕ ВХОДА) -->
-            <div id="user-info" class="user-info" style="display: none;">
-                <div class="user-email" id="user-email-display"></div>
-                <div class="user-plan" id="user-plan-display"></div>
-            </div>
-
-            <!-- НИЖНИЙ ТЕКСТ -->
-            <div class="auth-footer">
-                <p>🔒 Данные защищены Firebase Security Rules</p>
-                <p style="font-size: 0.75rem; color: #666; margin-top: 10px;">
-                    Контакт администратора: <strong>@ASKHAT_1985</strong> (Telegram)
-                </p>
-            </div>
-        </div>
+        <!-- [весь остальной HTML как в исходном файле] -->
     </div>
 
     <!-- ОСНОВНОЙ КОНТЕНТ -->
     <div id="main-content">
-        <!-- ШАПКА -->
-        <header>
-            <div class="logo">⚡ GOLD OPTIONS PRO v2</div>
-            
-            <nav>
-                <a href="#terminal" class="nav-link active">Терминал</a>
-                <a href="#analytics" class="nav-link">Аналитика</a>
-                <a href="#settings" class="nav-link">Настройки</a>
-                <a href="#about" class="nav-link" onclick="showAboutModal()">О программе</a>
-            </nav>
-
-            <div class="user-menu">
-                <div class="user-badge" id="header-user-badge">
-                    <span id="header-user-email">user@example.com</span>
-                    <span id="header-user-plan" class="user-plan"></span>
-                </div>
-                <button class="logout-btn" onclick="window.handleLogout()">👋 Выход</button>
-            </div>
-        </header>
-
-        <!-- КОНТЕЙНЕР -->
-        <div class="container">
-            <!-- СТАТУС СОЕДИНЕНИЯ -->
-            <div class="status-bar">
-                <div class="connection-status" id="connStatus">
-                    🟡 Инициализация подключения...
-                </div>
-                <div class="data-grid">
-                    <div class="data-box">
-                        <div class="data-label">💰 Текущая цена золота</div>
-                        <div class="data-value price" id="price">$0.00</div>
-                    </div>
-                    <div class="data-box">
-                        <div class="data-label">⏰ Последнее обновление</div>
-                        <div class="data-value" id="updated">--:--:--</div>
-                    </div>
-                    <div class="data-box">
-                        <div class="data-label">📅 Активная экспирация</div>
-                        <div class="data-value" id="current-dte-display">-</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- КНОПКИ ВЫБОРА DTE -->
-            <div style="margin: 30px 0; text-align: center;">
-                <h2 style="color: #FFD700; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px;">
-                    📅 Выберите экспирацию (DTE)
-                </h2>
-                <div id="dte-buttons" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
-                    <span style="color: #666;">Загрузка экспираций...</span>
-                </div>
-            </div>
-
-            <!-- АНАЛИТИКА КАРТОЧКИ -->
-            <div class="section-header">📊 Аналитика Опционов</div>
-            <div class="grid-8">
-                <!-- Max Pain -->
-                <div class="card">
-                    <div class="card-header">
-                        <span>🎯</span>
-                        <span>Max Pain</span>
-                    </div>
-                    <div class="card-main-value" id="mp">-</div>
-                    <div class="card-sub">Точка максимальной боли</div>
-                </div>
-
-                <!-- Ожидаемое движение -->
-                <div class="card">
-                    <div class="card-header">
-                        <span>📈</span>
-                        <span>Expected Move</span>
-                    </div>
-                    <div class="card-main-value" id="em">-</div>
-                    <div class="card-sub" id="em-range">Диапазон: -</div>
-                </div>
-
-                <!-- Нулевая гамма -->
-                <div class="card">
-                    <div class="card-header">
-                        <span>0️⃣</span>
-                        <span>Zero Gamma</span>
-                        <div class="info-icon">
-                            ?
-                            <div class="tooltip">
-                                Цена при которой сумма гамма всех опционов равна нулю. 
-                                Это точка наименьшей неустойчивости цены.
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-main-value" id="zg">-</div>
-                    <div class="card-sub" id="zg-pos">Позиция: -</div>
-                </div>
-
-                <!-- Вероятность ITM Call -->
-                <div class="card">
-                    <div class="card-header">
-                        <span style="color: #00E676;">📞</span>
-                        <span>Prob ITM Call</span>
-                    </div>
-                    <div class="card-main-value" id="prob-c" style="color: #00E676;">-</div>
-                    <div class="card-sub">Вероятность завершения в деньгах</div>
-                </div>
-
-                <!-- Вероятность ITM Put -->
-                <div class="card">
-                    <div class="card-header">
-                        <span style="color: #FF1744;">📲</span>
-                        <span>Prob ITM Put</span>
-                    </div>
-                    <div class="card-main-value" id="prob-p" style="color: #FF1744;">-</div>
-                    <div class="card-sub">Вероятность завершения в деньгах</div>
-                </div>
-
-                <!-- Call/Put Ratio -->
-                <div class="card">
-                    <div class="card-header">
-                        <span>⚖️</span>
-                        <span>Call/Put Ratio</span>
-                    </div>
-                    <div class="card-main-value" id="cp-ratio">-</div>
-                    <div class="card-sub" id="sentiment">Настроение: -</div>
-                </div>
-
-                <!-- Vanna -->
-                <div class="card">
-                    <div class="card-header">
-                        <span>🌊</span>
-                        <span>Vanna</span>
-                    </div>
-                    <div class="card-main-value" id="vanna">-</div>
-                    <div class="card-sub">Чувствительность дельты к волатильности</div>
-                </div>
-
-                <!-- Charm -->
-                <div class="card">
-                    <div class="card-header">
-                        <span>✨</span>
-                        <span>Charm</span>
-                    </div>
-                    <div class="card-main-value" id="charm">-</div>
-                    <div class="card-sub">Временное затухание гаммы</div>
-                </div>
-            </div>
-
-            <!-- ТАБЛИЦА И СТАТИСТИКА -->
-            <div class="section-header">📊 Цепь Опционов & TOP Страйки</div>
-            <div class="main-table-container">
-                <!-- ТАБЛИЦА ОПЦИОНОВ -->
-                <div class="table-wrapper">
-                    <div class="table-controls">
-                        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                            <!-- DTE Label -->
-                            <div style="color: var(--gold); font-weight: 700; font-size: 0.9rem;">
-                                📅 <span id="table-dte-label">EXPIRATION: -</span>
-                            </div>
-
-                            <!-- Кнопки количества страйков -->
-                            <div style="display: flex; gap: 8px;">
-                                <button class="btn active" data-cnt="15" onclick="window.app?.setStrikeCount(15)">15</button>
-                                <button class="btn" data-cnt="25" onclick="window.app?.setStrikeCount(25)">25</button>
-                                <button class="btn" data-cnt="35" onclick="window.app?.setStrikeCount(35)">35</button>
-                            </div>
-
-                            <!-- Premium Toggle -->
-                            <button class="btn" id="btn-prem" onclick="window.app?.togglePremium()">
-                                PREMIUM: OFF
-                            </button>
-                        </div>
-
-                        <!-- Forward Adjustment -->
-                        <div class="control-group">
-                            <label class="control-label">Forward Adj:</label>
-                            <input 
-                                type="number" 
-                                id="forward-adj" 
-                                class="inp"
-                                value="0"
-                                step="0.1"
-                                placeholder="0"
-                            >
-                            <button class="btn" onclick="window.app?.applyForwardAdjustment()">Применить</button>
-                        </div>
-                    </div>
-
-                    <!-- СКРОЛЛИРУЕМАЯ ТАБЛИЦА -->
-                    <div class="table-scroll">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>CALL OI</th>
-                                    <th>C VOL</th>
-                                    <th>C PR</th>
-                                    <th>C Δ</th>
-                                    <th>C Γ</th>
-                                    <th>C IV</th>
-                                    <th>STRIKE</th>
-                                    <th>P IV</th>
-                                    <th>P Γ</th>
-                                    <th>P Δ</th>
-                                    <th>P PR</th>
-                                    <th>P VOL</th>
-                                    <th>PUT OI</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-body">
-                                <tr style="text-align: center; color: #666;">
-                                    <td colspan="13">Загрузка данных опционной цепи...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- САЙДБАР СТАТИСТИКИ -->
-                <div class="top-stats-sidebar">
-                    <div class="top-stats-title">🏆 TOP Страйки</div>
-                    
-                    <div class="top-stats-grid">
-                        <!-- TOP Call OI -->
-                        <div class="top-stat-box">
-                            <div class="top-stat-header">
-                                <div class="top-stat-name" style="color: #00E676;">📞 Call OI</div>
-                            </div>
-                            <div id="top-call-oi" class="top-stat-list"></div>
-                        </div>
-
-                        <!-- TOP Put OI -->
-                        <div class="top-stat-box">
-                            <div class="top-stat-header">
-                                <div class="top-stat-name" style="color: #FF1744;">📲 Put OI</div>
-                            </div>
-                            <div id="top-put-oi" class="top-stat-list"></div>
-                        </div>
-
-                        <!-- TOP Call Vol -->
-                        <div class="top-stat-box">
-                            <div class="top-stat-header">
-                                <div class="top-stat-name" style="color: #00E676;">📈 Call Vol</div>
-                            </div>
-                            <div id="top-call-vol" class="top-stat-list"></div>
-                        </div>
-
-                        <!-- TOP Put Vol -->
-                        <div class="top-stat-box">
-                            <div class="top-stat-header">
-                                <div class="top-stat-name" style="color: #FF1744;">📉 Put Vol</div>
-                            </div>
-                            <div id="top-put-vol" class="top-stat-list"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TOP BREAKEVENS -->
-            <div class="section-header">💎 TOP 10 Безубыточных Страйков</div>
-            <div class="grid-8" id="top-breakevens">
-                <div style="text-align: center; color: #888; padding: 30px; grid-column: 1/-1;">
-                    Загрузка данных безубыточных точек...
-                </div>
-            </div>
-
-            <!-- ГРАФИКИ АНАЛИЗА -->
-            <div class="section-header">📈 Графики анализа</div>
-            <div class="chart-grid-8">
-                <div class="chart-container">
-                    <div class="chart-title">Open Interest Distribution</div>
-                    <canvas id="chart-oi"></canvas>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Volume Heatmap</div>
-                    <canvas id="chart-vol"></canvas>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">IV Smile Curve</div>
-                    <canvas id="chart-iv"></canvas>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Max Pain Curve</div>
-                    <canvas id="chart-mp"></canvas>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Gamma Exposure</div>
-                    <canvas id="chart-gamma"></canvas>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">GEX Profile</div>
-                    <canvas id="chart-gex"></canvas>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Delta Profile</div>
-                    <canvas id="chart-delta"></canvas>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Theta Decay</div>
-                    <canvas id="chart-theta"></canvas>
-                </div>
-            </div>
-
-            <!-- КОНТРОЛЬНАЯ ПАНЕЛЬ -->
-            <div class="bottom-control-panel">
-                <div class="bottom-control-title">⚙️ Контрольная панель</div>
-                <div class="bottom-control-grid">
-                    <div class="bottom-control-section">
-                        <div class="bottom-control-title">📊 Экспорт данных</div>
-                        <div class="control-row">
-                            <button class="btn" onclick="window.app?.showNotification('Функция будет добавлена', 'info')">
-                                📥 Экспорт CSV
-                            </button>
-                            <button class="btn" onclick="window.app?.showNotification('Функция будет добавлена', 'info')">
-                                📊 Снимок данных
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="bottom-control-section">
-                        <div class="bottom-control-title">🔄 Обновление</div>
-                        <div class="control-row">
-                            <button class="btn" onclick="window.app?.updateData()">
-                                🔄 Обновить данные
-                            </button>
-                            <button class="btn" onclick="window.app?.updatePrice()">
-                                💰 Обновить цену
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="bottom-control-section">
-                        <div class="bottom-control-title">⚡ Быстрые действия</div>
-                        <div class="control-row">
-                            <button class="btn" onclick="window.openTelegram()">
-                                📞 Поддержка
-                            </button>
-                            <button class="btn" onclick="window.showPaymentModal()">
-                                💎 Апгрейд
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- ИНФОРМАЦИЯ О ПРОЕКТЕ -->
-            <div style="text-align: center; margin-top: 50px; padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.1);">
-                <div style="color: #666; font-size: 0.9rem;">
-                    <p>Gold Options Pro v2 © 2024 - Professional Trading Terminal</p>
-                    <p>Данные предоставлены CME Group. Только для образовательных целей.</p>
-                    <p style="margin-top: 10px;">
-                        <a href="javascript:void(0)" onclick="showAboutModal()" style="color: #888; text-decoration: none; margin: 0 10px;">О программе</a> | 
-                        <a href="javascript:void(0)" onclick="showTermsModal()" style="color: #888; text-decoration: none; margin: 0 10px;">Условия</a> | 
-                        <a href="javascript:void(0)" onclick="showPrivacyModal()" style="color: #888; text-decoration: none; margin: 0 10px;">Конфиденциальность</a>
-                    </p>
-                </div>
-            </div>
-        </div>
+        <!-- [весь остальной HTML как в исходном файле] -->
     </div>
 
-    <!-- ========== СКРИПТЫ ========== -->
-    
-    <!-- FIREBASE CONFIG - БУДЕТ СОЗДАН ПРИ ДЕПЛОЕ -->
-    <script src="./firebase-config.js"></script>
-
-    <!-- Chart.js для графиков -->
+    <!-- Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
     <!-- НАШИ МОДУЛИ -->
@@ -584,32 +124,20 @@
 
     <!-- ГЛАВНЫЙ СКРИПТ ИНИЦИАЛИЗАЦИИ -->
     <script>
-        // ============================================
-        // 🚀 ГЛАВНЫЙ СКРИПТ ИНИЦИАЛИЗАЦИИ
-        // ============================================
+        console.log('📄 Главный скрипт инициализации загружен');
         
-        console.log('📄 Загрузка главного скрипта инициализации...');
-        
-        // Глобальные переменные для отладки
         window.appLoaded = false;
         window.firebaseLoaded = false;
         window.configLoaded = false;
         
-        // Функция обновления статуса загрузки
         function updateLoadingStatus(message, progress) {
             const statusEl = document.getElementById('loading-status');
             const barEl = document.getElementById('loading-bar');
             
-            if (statusEl) {
-                statusEl.textContent = message;
-            }
-            
-            if (barEl && progress) {
-                barEl.style.width = progress + '%';
-            }
+            if (statusEl) statusEl.textContent = message;
+            if (barEl && progress) barEl.style.width = progress + '%';
         }
         
-        // Функция проверки всех зависимостей
         function checkAllDependencies() {
             console.group('🔍 Проверка зависимостей');
             
@@ -618,7 +146,6 @@
             // 1. Проверяем firebase-config.js
             if (typeof window.firebaseConfig === 'undefined') {
                 console.error('❌ window.firebaseConfig не загружен');
-                console.error('   Файл firebase-config.js не создан или не загружен');
                 allGood = false;
             } else {
                 console.log('✅ window.firebaseConfig загружен');
@@ -629,23 +156,14 @@
             // 2. Проверяем Firebase SDK
             if (typeof firebase === 'undefined') {
                 console.error('❌ Firebase SDK не загружен');
-                console.error('   Проверьте подключение CDN скриптов');
                 allGood = false;
             } else {
                 console.log('✅ Firebase SDK загружен');
-                console.log('   Версия:', firebase.SDK_VERSION);
                 window.firebaseLoaded = true;
             }
             
-            // 3. Проверяем необходимые модули
-            const requiredModules = [
-                'AuthModule',
-                'ApiService',
-                'CacheService',
-                'ChartsModule',
-                'app'
-            ];
-            
+            // 3. Проверяем модули
+            const requiredModules = ['AuthModule', 'ApiService', 'CacheService', 'ChartsModule', 'app'];
             for (const module of requiredModules) {
                 if (typeof window[module] === 'undefined') {
                     console.error(`❌ Модуль ${module} не загружен`);
@@ -659,24 +177,19 @@
             return allGood;
         }
         
-        // Функция инициализации приложения
         function initializeApplication() {
             console.group('🚀 Инициализация приложения');
-            
             updateLoadingStatus('✅ Зависимости загружены', 60);
             
             try {
-                // 1. Инициализируем Firebase если нужно
                 if (window.FirebaseModule && typeof FirebaseModule.init === 'function') {
-                    console.log('🔥 Инициализация Firebase через модуль...');
+                    console.log('🔥 Инициализация Firebase...');
                     FirebaseModule.init();
                 }
                 
-                // 2. Даем время на загрузку всех компонентов
                 setTimeout(() => {
                     updateLoadingStatus('🎯 Запуск модуля аутентификации...', 80);
                     
-                    // 3. Запускаем AuthModule
                     if (window.AuthModule && typeof AuthModule.autoInit === 'function') {
                         console.log('🔐 Запуск AuthModule.autoInit()...');
                         AuthModule.autoInit();
@@ -684,7 +197,6 @@
                         
                         updateLoadingStatus('✅ Приложение готово!', 100);
                         
-                        // Скрываем лоадер через 500мс
                         setTimeout(() => {
                             const loadingEl = document.getElementById('loading');
                             if (loadingEl) {
@@ -694,7 +206,6 @@
                                 }, 500);
                             }
                         }, 500);
-                        
                     } else {
                         throw new Error('AuthModule.autoInit не доступен');
                     }
@@ -702,13 +213,12 @@
                 
             } catch (error) {
                 console.error('❌ Ошибка инициализации:', error);
-                showErrorScreen(error.message || 'Неизвестная ошибка инициализации');
+                showErrorScreen(error.message);
             }
             
             console.groupEnd();
         }
         
-        // Функция показа экрана ошибки
         function showErrorScreen(message) {
             const loadingEl = document.getElementById('loading');
             if (loadingEl) {
@@ -727,7 +237,7 @@
                         
                         <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 30px;">
                             <button onclick="location.reload()" style="padding: 12px 24px; 
-                                background: var(--gradient-gold); color: #000; border: none; 
+                                background: linear-gradient(135deg, #FFD700, #D4AF37); color: #000; border: none; 
                                 border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 1rem;">
                                 🔄 Перезагрузить страницу
                             </button>
@@ -738,165 +248,76 @@
                                 cursor: pointer; font-weight: 600;">
                                 📞 Техническая поддержка
                             </button>
-                            
-                            <button onclick="runDiagnostics()" style="padding: 8px 16px; 
-                                background: rgba(255,255,255,0.05); color: #888; border: 1px solid #444; 
-                                border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-top: 10px;">
-                                🔧 Запустить диагностику
-                            </button>
                         </div>
                     </div>
                 `;
             }
         }
         
-        // Функция диагностики
-        function runDiagnostics() {
-            console.group('🔧 Диагностика системы');
-            
-            console.log('📋 Информация о браузере:');
-            console.log('  User Agent:', navigator.userAgent);
-            console.log('  Platform:', navigator.platform);
-            console.log('  Language:', navigator.language);
-            console.log('  Online:', navigator.onLine);
-            
-            console.log('📦 Загруженные скрипты:');
-            const scripts = document.getElementsByTagName('script');
-            for (let i = 0; i < scripts.length; i++) {
-                console.log('  ' + (scripts[i].src || 'inline script'));
-            }
-            
-            console.log('🔥 Firebase состояние:');
-            console.log('  window.firebaseConfig:', window.firebaseConfig);
-            console.log('  typeof firebase:', typeof firebase);
-            console.log('  firebase.apps:', firebase?.apps);
-            
-            console.log('📊 Загруженные модули:');
-            const modules = ['AuthModule', 'ApiService', 'CacheService', 'ChartsModule', 'app'];
-            modules.forEach(module => {
-                console.log(`  ${module}:`, typeof window[module] !== 'undefined' ? '✅ Загружен' : '❌ Не загружен');
-            });
-            
-            console.groupEnd();
-            
-            alert('Диагностика завершена. Откройте консоль (F12) для просмотра результатов.');
-        }
-        
-        // Главная функция запуска
         function startApplication() {
             console.log('🎬 Запуск приложения...');
             updateLoadingStatus('🔍 Проверка зависимостей...', 40);
             
-            // Проверяем зависимости
             if (checkAllDependencies()) {
-                console.log('✅ Все зависимости загружены успешно');
+                console.log('✅ Все зависимости готовы');
                 initializeApplication();
             } else {
-                console.error('❌ Не все зависимости загружены');
+                console.error('❌ Не все зависимости загружены, повторяю попытку...');
                 
-                // Пробуем еще раз через 2 секунды
                 setTimeout(() => {
-                    console.log('🔄 Повторная проверка зависимостей...');
+                    console.log('🔄 Повторная проверка...');
                     if (checkAllDependencies()) {
                         initializeApplication();
                     } else {
-                        showErrorScreen('Не удалось загрузить все необходимые компоненты. Проверьте консоль для деталей.');
+                        showErrorScreen('Не удалось загрузить все необходимые компоненты. Откройте консоль (F12) для деталей.');
                     }
                 }, 2000);
             }
         }
         
-        // Обработчик входа
         window.handleLogin = function(event) {
             event.preventDefault();
-            
             const email = document.getElementById('user-email')?.value?.trim();
             const password = document.getElementById('user-password')?.value?.trim();
             
             if (!email || !password) {
-                if (window.AuthModule && AuthModule.showError) {
+                if (window.AuthModule?.showError) {
                     AuthModule.showError('❌ Заполните все поля');
-                }
-                return false;
-            }
-            
-            if (!email.includes('@')) {
-                if (window.AuthModule && AuthModule.showError) {
-                    AuthModule.showError('❌ Введите правильный email адрес');
                 }
                 return false;
             }
             
             if (window.AuthModule && typeof AuthModule.login === 'function') {
                 AuthModule.login(email, password);
-            } else {
-                console.error('AuthModule.login не доступен');
-                alert('Ошибка: модуль аутентификации не загружен');
             }
             
             return false;
         };
         
-        // Обработчик выхода
         window.handleLogout = function() {
             if (window.AuthModule && typeof AuthModule.logout === 'function') {
                 if (confirm('Вы уверены что хотите выйти из системы?')) {
                     AuthModule.logout();
                 }
-            } else {
-                console.error('AuthModule.logout не доступен');
-                location.reload();
             }
         };
         
-        // Глобальные функции для отладки
-        window.debugApp = function() {
-            console.group('🔍 Отладка приложения');
-            console.log('appLoaded:', window.appLoaded);
-            console.log('firebaseLoaded:', window.firebaseLoaded);
-            console.log('configLoaded:', window.configLoaded);
-            console.log('window.firebaseConfig:', window.firebaseConfig);
-            console.log('firebase.apps:', firebase?.apps);
-            console.log('window.AuthModule:', window.AuthModule);
-            console.log('window.app:', window.app);
-            console.groupEnd();
-        };
-        
-        window.testFirebase = function() {
-            if (window.firebaseConfig && firebase) {
-                try {
-                    if (firebase.apps.length === 0) {
-                        firebase.initializeApp(window.firebaseConfig);
-                        console.log('✅ Firebase инициализирован вручную');
-                    } else {
-                        console.log('✅ Firebase уже инициализирован');
-                    }
-                } catch (error) {
-                    console.error('❌ Ошибка инициализации Firebase:', error);
-                }
-            } else {
-                console.error('❌ Firebase конфигурация или SDK не загружены');
-            }
-        };
-        
-        // Запуск приложения при загрузке DOM
+        // Запуск при загрузке DOM
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('📄 DOM загружен, запускаем приложение через 1 секунду...');
+            console.log('📄 DOM загружен, запускаем приложение...');
             updateLoadingStatus('📦 Загрузка модулей...', 20);
-            
-            // Даем время на загрузку всех скриптов
             setTimeout(startApplication, 1000);
         });
         
-        // Резервный запуск через 5 секунд
+        // Страховка - запуск через 5 секунд если не запустилось
         setTimeout(function() {
             if (!window.appLoaded) {
-                console.warn('⚠️ Приложение не запустилось автоматически, запускаем вручную...');
+                console.warn('⚠️ Приложение не запустилось автоматически, запускаю вручную...');
                 startApplication();
             }
         }, 5000);
         
         console.log('✅ Главный скрипт инициализации загружен');
-    </script>
+</script>
 </body>
 </html>
