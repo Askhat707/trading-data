@@ -485,26 +485,37 @@ async loadFirebaseConfig() {
     },
     
     /**
-     * ПОКАЗ ФОРМЫ АУТЕНТИФИКАЦИИ
-     */
-    showAuthModal() {
-        const authModal = document.getElementById('auth-modal');
-        const mainContent = document.getElementById('main-content');
-        const loading = document.getElementById('loading');
+ * ПОКАЗ ФОРМЫ АУТЕНТИФИКАЦИИ
+ */
+showAuthModal() {
+    console.log('🔓 Показываем модальное окно аутентификации');
+    
+    // Скрываем экран загрузки если еще виден
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) {
+        loadingEl.style.display = 'none';
+    }
+    
+    // Показываем модальное окно
+    const authModal = document.getElementById('auth-modal');
+    if (authModal) {
+        authModal.classList.remove('hidden');
+        authModal.style.display = 'flex';
         
-        if (loading) {
-            loading.style.display = 'none';
-        }
-        
-        if (authModal) {
-            authModal.classList.remove('hidden');
-            authModal.style.display = 'flex';
-        }
-        
-        if (mainContent) {
-            mainContent.classList.remove('visible');
-        }
-    },
+        // Анимация появления
+        setTimeout(() => {
+            authModal.style.opacity = '1';
+        }, 10);
+    }
+    
+    // Скрываем основной контент если он виден
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+        mainContent.style.display = 'none';
+    }
+    
+    console.log('✅ Модальное окно показано');
+},
     
     /**
      * ОБНОВЛЕНИЕ UI ПОЛЬЗОВАТЕЛЯ
