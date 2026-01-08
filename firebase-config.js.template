@@ -1,15 +1,18 @@
-// 🔥 FIREBASE CONFIG - AUTO GENERATED FROM GITHUB SECRETS
+// 🔥 FIREBASE CONFIG TEMPLATE - AUTO GENERATED FROM GITHUB SECRETS
 // ⚠️ НЕ КОММИТЬ В РЕПОЗИТОРИЙ - СОЗДАЕТСЯ АВТОМАТИЧЕСКИ ПРИ ДЕПЛОЕ
+// ⚠️ Файл firebase-config.js будет создан автоматически из этого шаблона
+
+console.log('🚀 Шаблон Firebase конфигурации загружен');
 
 const firebaseConfig = {
-  apiKey: "FIREBASE_API_KEY",
-  authDomain: "FIREBASE_AUTH_DOMAIN",
-  databaseURL: "FIREBASE_DATABASE_URL",
-  projectId: "FIREBASE_PROJECT_ID",
-  storageBucket: "FIREBASE_STORAGE_BUCKET",
-  messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID",
-  appId: "FIREBASE_APP_ID",
-  measurementId: "FIREBASE_MEASUREMENT_ID"
+  apiKey: "{{FIREBASE_API_KEY}}",
+  authDomain: "{{FIREBASE_AUTH_DOMAIN}}",
+  databaseURL: "{{FIREBASE_DATABASE_URL}}",
+  projectId: "{{FIREBASE_PROJECT_ID}}",
+  storageBucket: "{{FIREBASE_STORAGE_BUCKET}}",
+  messagingSenderId: "{{FIREBASE_MESSAGING_SENDER_ID}}",
+  appId: "{{FIREBASE_APP_ID}}",
+  measurementId: "{{FIREBASE_MEASUREMENT_ID}}"
 };
 
 // Экспорт для глобального использования
@@ -17,5 +20,6 @@ if (typeof window !== 'undefined') {
     window.firebaseConfig = firebaseConfig;
 }
 
-console.log('✅ Firebase конфигурация загружена из GitHub Secrets');
-console.log('   Проект:', firebaseConfig.projectId);
+console.warn('⚠️  ВНИМАНИЕ: Используется шаблон конфигурации ({{ }} переменные)');
+console.warn('   При деплое этот файл будет заменен на firebase-config.js с реальными ключами');
+console.warn('   Проверьте, что GitHub Secrets настроены правильно');
