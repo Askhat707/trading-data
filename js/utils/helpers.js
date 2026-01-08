@@ -22,43 +22,172 @@ function copyToClipboard(text) {
 }
 
 /**
- * Показ модального окна "О программе"
+ * Показ модального окна "О программе" (ПОЛНАЯ ВЕРСИЯ СО ВСЕМИ ДАННЫМИ)
  */
 function showAboutModal() {
+    // 1. Создаем контейнер
     const modal = document.createElement('div');
     modal.id = 'about-modal';
     modal.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.95); backdrop-filter: blur(20px);
+        background: rgba(0,0,0,0.95); backdrop-filter: blur(15px);
         display: flex; justify-content: center; align-items: center; z-index: 10001;
         overflow-y: auto; padding: 20px;
     `;
     
+    // 2. Наполняем контентом (HTML)
     modal.innerHTML = `
-        <div class="auth-container" style="max-width: 1000px; max-height: 95vh; overflow-y: auto;">
-            <div class="auth-header">
-                <div class="auth-logo">⚡ GOLD OPTIONS PRO v2</div>
-                <div class="auth-subtitle">Professional Trading Terminal</div>
+        <div class="auth-container" style="max-width: 1000px; width: 100%; max-height: 95vh; overflow-y: auto; border: 1px solid var(--gold); box-shadow: 0 0 50px rgba(255, 215, 0, 0.15); padding: 40px; background: #050505;">
+            
+            <!-- ЗАГОЛОВОК -->
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="font-size: 3rem; margin-bottom: 10px;">⚡</div>
+                <h1 style="font-size: 2.5rem; font-weight: 900; background: linear-gradient(135deg, #FFD700, #D4AF37); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">GOLD OPTIONS PRO V2</h1>
+                <div style="color: #666; font-size: 0.9rem; margin-top: 5px; letter-spacing: 2px; text-transform: uppercase;">Professional Trading Terminal</div>
             </div>
             
-            <div style="margin: 30px 0; line-height: 1.8; color: #ccc; text-align: left;">
-                <h3 style="color: var(--gold); margin-bottom: 15px;">🎯 О ПРОГРАММЕ</h3>
-                <p style="margin-bottom: 15px;">
-                    <strong>Gold Options Pro v2</strong> - профессиональный торговый терминал для анализа опционных данных 
-                    золота (XAU/USD) с Чикагской товарной биржи (CME).
-                </p>
+            <div style="text-align: left;">
                 
-                <div style="text-align: center; margin-top: 30px;">
-                    <button onclick="document.body.removeChild(document.getElementById('about-modal'))" 
-                            class="auth-button">
-                        Закрыть
-                    </button>
+                <!-- О ПРОГРАММЕ -->
+                <h3 style="color: var(--gold); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; font-size: 1.2rem;">
+                    🎯 О ПРОГРАММЕ
+                </h3>
+                <p style="color: #ccc; line-height: 1.6; margin-bottom: 30px; font-size: 1rem;">
+                    <strong>Gold Options Pro v2</strong> - профессиональный торговый терминал для анализа опционных данных золота (XAU/USD) с Чикагской товарной биржи (CME).
+                </p>
+
+                <!-- ОСНОВНЫЕ ВОЗМОЖНОСТИ -->
+                <h3 style="color: var(--gold); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; font-size: 1.2rem;">
+                    🚀 ОСНОВНЫЕ ВОЗМОЖНОСТИ
+                </h3>
+                <ul style="list-style: none; padding: 0; margin-bottom: 30px; color: #bbb; line-height: 1.8;">
+                    <li>📊 <strong style="color: #fff;">Live данные</strong> - реальные цены и объемы с CME</li>
+                    <li>📈 <strong style="color: #fff;">Расширенная аналитика</strong> - Max Pain, Expected Move, Zero Gamma</li>
+                    <li>📉 <strong style="color: #fff;">Визуализация</strong> - 8 интерактивных графиков</li>
+                    <li>📋 <strong style="color: #fff;">Option Chain таблица</strong> - полные данные по страйкам</li>
+                    <li>🤖 <strong style="color: #fff;">MT5 интеграция</strong> - автоматические торговые сигналы</li>
+                    <li>🎯 <strong style="color: #fff;">Топ статистика</strong> - лучшие страйки и безубытки</li>
+                    <li>⚡ <strong style="color: #fff;">Real-time обновления</strong> - каждые 3 секунды</li>
+                </ul>
+
+                <!-- ТЕХНИЧЕСКАЯ ИНФОРМАЦИЯ -->
+                <h3 style="color: var(--gold); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; font-size: 1.2rem;">
+                    🔧 ТЕХНИЧЕСКАЯ ИНФОРМАЦИЯ
+                </h3>
+                <div style="background: #111; padding: 20px; border-radius: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; border: 1px solid #222;">
+                    <div>
+                        <div style="color: #666; font-size: 0.8rem; text-transform: uppercase;">Версия</div>
+                        <div style="color: #fff; font-weight: 700;">v2.0 Professional</div>
+                    </div>
+                    <div>
+                        <div style="color: #666; font-size: 0.8rem; text-transform: uppercase;">База данных</div>
+                        <div style="color: #fff; font-weight: 700;">Firebase Realtime</div>
+                    </div>
+                    <div>
+                        <div style="color: #666; font-size: 0.8rem; text-transform: uppercase;">Источник данных</div>
+                        <div style="color: #fff; font-weight: 700;">CME Group</div>
+                    </div>
+                    <div>
+                        <div style="color: #666; font-size: 0.8rem; text-transform: uppercase;">Обновление</div>
+                        <div style="color: #fff; font-weight: 700;">Каждые 3 секунды</div>
+                    </div>
                 </div>
+
+                <!-- ДЛЯ КОГО ЭТОТ ТЕРМИНАЛ -->
+                <h3 style="color: var(--gold); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; font-size: 1.2rem;">
+                    👥 ДЛЯ КОГО ЭТОТ ТЕРМИНАЛ?
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 40px;">
+                    <div style="background: rgba(255, 215, 0, 0.05); padding: 20px; border-radius: 10px; border: 1px solid rgba(255, 215, 0, 0.2);">
+                        <div style="color: var(--gold); font-weight: 700; margin-bottom: 5px;">📊 Трейдеры</div>
+                        <div style="font-size: 0.85rem; color: #888;">Анализ опционных данных для принятия торговых решений</div>
+                    </div>
+                    <div style="background: rgba(255, 215, 0, 0.05); padding: 20px; border-radius: 10px; border: 1px solid rgba(255, 215, 0, 0.2);">
+                        <div style="color: var(--gold); font-weight: 700; margin-bottom: 5px;">📈 Аналитики</div>
+                        <div style="font-size: 0.85rem; color: #888;">Исследование рыночных тенденций и настроений</div>
+                    </div>
+                    <div style="background: rgba(255, 215, 0, 0.05); padding: 20px; border-radius: 10px; border: 1px solid rgba(255, 215, 0, 0.2);">
+                        <div style="color: var(--gold); font-weight: 700; margin-bottom: 5px;">🤖 Алготрейдеры</div>
+                        <div style="font-size: 0.85rem; color: #888;">Интеграция с MT5 для автоматической торговли</div>
+                    </div>
+                </div>
+
+                <!-- КОНТАКТЫ И ПОДДЕРЖКА -->
+                <h3 style="color: var(--put); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; font-size: 1.2rem;">
+                    📞 КОНТАКТЫ И ПОДДЕРЖКА
+                </h3>
+                <div style="border: 1px solid var(--gold); border-radius: 15px; padding: 25px; margin-bottom: 30px; background: rgba(255, 215, 0, 0.02);">
+                    
+                    <!-- EMAIL -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <div style="color: #fff; font-size: 0.95rem;">
+                            📧 <span style="color: var(--gold); font-weight: 700;">Email для оплаты:</span> omaralinovaskar95@gmail.com
+                        </div>
+                        <button onclick="copyToClipboard('omaralinovaskar95@gmail.com')" style="background: #222; border: 1px solid #444; color: #888; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; transition: 0.3s;" onmouseover="this.style.borderColor='var(--gold)'; this.style.color='#fff'" onmouseout="this.style.borderColor='#444'; this.style.color='#888'">
+                            КОПИРОВАТЬ
+                        </button>
+                    </div>
+
+                    <!-- TRC20 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <div style="color: #fff; font-size: 0.95rem; word-break: break-all;">
+                            🔗 <span style="color: var(--gold); font-weight: 700;">USDT (TRC20):</span> TQ7LLoSwTzUyHox4rkXjZyfkvE9Wcoy5A4
+                        </div>
+                        <button onclick="copyToClipboard('TQ7LLoSwTzUyHox4rkXjZyfkvE9Wcoy5A4')" style="background: #222; border: 1px solid #444; color: #888; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; transition: 0.3s;" onmouseover="this.style.borderColor='var(--gold)'; this.style.color='#fff'" onmouseout="this.style.borderColor='#444'; this.style.color='#888'">
+                            КОПИРОВАТЬ
+                        </button>
+                    </div>
+
+                    <!-- TON -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <div style="color: #fff; font-size: 0.95rem; word-break: break-all;">
+                            🔗 <span style="color: var(--gold); font-weight: 700;">USDT (TON):</span> UQDLbRtRSfxSK-I5QGW3Wu-q5PxCAo_IdwAD6iM349ylmtuH
+                        </div>
+                        <button onclick="copyToClipboard('UQDLbRtRSfxSK-I5QGW3Wu-q5PxCAo_IdwAD6iM349ylmtuH')" style="background: #222; border: 1px solid #444; color: #888; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; transition: 0.3s;" onmouseover="this.style.borderColor='var(--gold)'; this.style.color='#fff'" onmouseout="this.style.borderColor='#444'; this.style.color='#888'">
+                            КОПИРОВАТЬ
+                        </button>
+                    </div>
+                    
+                    <!-- SOL -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <div style="color: #fff; font-size: 0.95rem; word-break: break-all;">
+                            🔗 <span style="color: var(--gold); font-weight: 700;">USDT (SOL):</span> H5mCXSxckDvrf655p4BfYZ2KpvfLACbnr8866dfJLLbi
+                        </div>
+                        <button onclick="copyToClipboard('H5mCXSxckDvrf655p4BfYZ2KpvfLACbnr8866dfJLLbi')" style="background: #222; border: 1px solid #444; color: #888; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; transition: 0.3s;" onmouseover="this.style.borderColor='var(--gold)'; this.style.color='#fff'" onmouseout="this.style.borderColor='#444'; this.style.color='#888'">
+                            КОПИРОВАТЬ
+                        </button>
+                    </div>
+
+                    <!-- ERC20 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div style="color: #fff; font-size: 0.95rem; word-break: break-all;">
+                            🔗 <span style="color: var(--gold); font-weight: 700;">USDT (ERC20):</span> 0xFE9C87D538E4b0a269ac9b33B466A0D92D7e1B5b
+                        </div>
+                        <button onclick="copyToClipboard('0xFE9C87D538E4b0a269ac9b33B466A0D92D7e1B5b')" style="background: #222; border: 1px solid #444; color: #888; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; transition: 0.3s;" onmouseover="this.style.borderColor='var(--gold)'; this.style.color='#fff'" onmouseout="this.style.borderColor='#444'; this.style.color='#888'">
+                            КОПИРОВАТЬ
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px; color: #666; font-size: 0.8rem; padding-top: 20px; border-top: 1px solid #222;">
+                © 2025 Gold Options Pro v2. Все права защищены.<br>
+                Система полностью защищена и соответствует новым правилам безопасности Firebase.
+            </div>
+
+            <!-- КНОПКА ЗАКРЫТЬ -->
+            <div style="text-align: center; margin-top: 30px;">
+                <button onclick="document.body.removeChild(document.getElementById('about-modal'))" 
+                        class="auth-button" 
+                        style="min-width: 200px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 10px 30px rgba(255, 215, 0, 0.2);">
+                    ЗАКРЫТЬ
+                </button>
             </div>
         </div>
     `;
     
-    // Закрытие по клику вне окна
+    // Закрытие по клику на фон
     modal.addEventListener('click', (e) => {
         if (e.target === modal) modal.remove();
     });
