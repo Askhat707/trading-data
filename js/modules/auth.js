@@ -29,10 +29,6 @@ const AuthModule = {
         if (!window.firebaseConfig) {
             console.error('❌ window.firebaseConfig не определен');
             console.error('   Файл firebase-config.js не загружен или не создан GitHub Actions');
-            console.error('   Проверьте:');
-            console.error('   1. Файл firebase-config.js существует в корне проекта');
-            console.error('   2. Он подключен в index.html до других скриптов');
-            console.error('   3. GitHub Actions создал файл с реальными ключами');
             console.groupEnd();
             return false;
         }
@@ -48,13 +44,11 @@ const AuthModule = {
             if (!window.firebaseConfig[field] || window.firebaseConfig[field].includes('{{')) {
                 console.error(`❌ Поле ${field} пусто или содержит плейсхолдер!`);
                 valid = false;
-            } else {
-                console.log(`✅ ${field}: ${window.firebaseConfig[field].substring(0, 10)}...`);
             }
         });
         
         if (!valid) {
-            console.error('❌ Конфигурация Firebase неполная! Проверьте GitHub Secrets');
+            console.error('❌ Конфигурация Firebase неполная!');
             console.groupEnd();
             return false;
         }
@@ -62,6 +56,60 @@ const AuthModule = {
         console.log('✅ Конфигурация Firebase загружена');
         console.groupEnd();
         return true;
+    },
+    
+    /**
+     * АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
+     */
+    async autoInit() {
+        console.log('🚀 AuthModule.autoInit() запущен');
+        
+        // Сначала скрываем loading
+        const loadingEl = document.getElementById('loading');
+        if (loadingEl) {
+            loadingEl.style.display = 'none';
+        }
+        
+        // Ждем 2 секунды чтобы дать время загрузиться firebase-config.js
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Проверяем конфигурацию
+        const configLoaded = this.checkFirebaseConfig();
+        
+        if (!configLoaded) {
+            console.warn('⚠️ Firebase конфиг не загружен, но показываем форму входа');
+            this.showAuthModal();
+            return;
+        }
+        
+        try {
+            // Инициализируем Firebase
+            if (!firebase.apps.length) {
+                firebase.initializeApp(window.firebaseConfig);
+                console.log('✅ Firebase инициализирован');
+            }
+            
+            // Пытаемся восстановить сессию
+            const savedUser = localStorage.getItem(this.config.localStorageKey);
+            if (savedUser) {
+                try {
+                    const userData = JSON.parse(savedUser);
+                    console.log('📱 Восстановление сессии из localStorage:', userData.email);
+                    await this.login(userData.email, userData.password, true);
+                    return;
+                } catch (e) {
+                    console.warn('⚠️ Не удалось восстановить сессию:', e);
+                    localStorage.removeItem(this.config.localStorageKey);
+                }
+            }
+            
+            // Если нет сохраненной сессии, показываем форму входа
+            this.showAuthModal();
+            
+        } catch (error) {
+            console.error('❌ Ошибка инициализации:', error);
+            this.showAuthModal(); // Все равно показываем форму входа
+        }
     },
     
     /**
@@ -95,64 +143,6 @@ const AuthModule = {
         
         this.status.initialized = true;
         console.log('✅ Модуль аутентификации инициализирован');
-    },
-    
-    /**
-     * АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
-     */
-    async autoInit() {
-        console.log('🚀 AuthModule.autoInit()');
-        
-        // Проверяем конфигурацию
-        if (!this.checkFirebaseConfig()) {
-            console.error('❌ Ошибка конфигурации Firebase');
-            
-            // Показываем ошибку
-            const loadingEl = document.getElementById('loading');
-            if (loadingEl) {
-                loadingEl.innerHTML = `
-                    <div style="text-align: center; padding: 40px; max-width: 600px;">
-                        <div style="font-size: 4rem; color: #ff4444; margin-bottom: 20px;">🔥</div>
-                        <h2 style="color: #ff4444; margin-bottom: 15px; font-size: 1.8rem;">
-                            Ошибка конфигурации Firebase
-                        </h2>
-                        <div style="background: rgba(255,68,68,0.1); padding: 20px; border-radius: 10px; 
-                            margin: 20px 0; text-align: left; color: #ccc; font-size: 0.95rem;">
-                            <p style="margin: 0 0 10px 0;"><strong>Проблема:</strong> Не загружен firebase-config.js</p>
-                            <p style="margin: 0 0 10px 0;"><strong>Решение:</strong></p>
-                            <ol style="margin: 0; padding-left: 20px;">
-                                <li>Проверьте что GitHub Actions создал firebase-config.js</li>
-                                <li>Убедитесь что все Secrets добавлены в GitHub</li>
-                                <li>Перезапустите деплой в GitHub Actions</li>
-                            </ol>
-                        </div>
-                        <button onclick="location.reload()" style="padding: 12px 24px; 
-                            background: linear-gradient(135deg, #FFD700, #D4AF37); color: #000; border: none; 
-                            border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 1rem;">
-                            🔄 Перезагрузить страницу
-                        </button>
-                    </div>
-                `;
-            }
-            return;
-        }
-        
-        // Пытаемся восстановить сессию из localStorage
-        const savedUser = localStorage.getItem(this.config.localStorageKey);
-        if (savedUser) {
-            try {
-                const userData = JSON.parse(savedUser);
-                console.log('📱 Восстановление сессии из localStorage:', userData.email);
-                await this.login(userData.email, userData.password, true);
-                return;
-            } catch (e) {
-                console.warn('⚠️ Не удалось восстановить сессию:', e);
-                localStorage.removeItem(this.config.localStorageKey);
-            }
-        }
-        
-        // Если нет сохраненной сессии, показываем форму входа
-        this.showAuthModal();
     },
     
     /**
@@ -212,6 +202,7 @@ const AuthModule = {
         } catch (error) {
             console.error('❌ Ошибка получения данных пользователя:', error);
             this.showError('Ошибка загрузки данных пользователя');
+            this.showAuthModal(); // Если ошибка, показываем форму входа
         }
     },
     
@@ -256,6 +247,7 @@ const AuthModule = {
         } catch (error) {
             console.error('❌ Ошибка регистрации пользователя:', error);
             this.showError('Ошибка регистрации');
+            this.showAuthModal();
         }
     },
     
