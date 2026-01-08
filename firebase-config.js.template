@@ -1,8 +1,10 @@
-// 🔥 FIREBASE CONFIG TEMPLATE - AUTO GENERATED FROM GITHUB SECRETS
-// ⚠️ НЕ КОММИТЬ В РЕПОЗИТОРИЙ - СОЗДАЕТСЯ АВТОМАТИЧЕСКИ ПРИ ДЕПЛОЕ
-// ⚠️ Файл firebase-config.js будет создан автоматически из этого шаблона
+// ====================================================
+// 🔥 FIREBASE CONFIG TEMPLATE
+// ⚠️ Этот файл используется для генерации firebase-config.js
+// Не редактировать вручную!
+// ====================================================
 
-console.log('🚀 Шаблон Firebase конфигурации загружен');
+console.log('🚀 Загрузка Firebase конфигурации из GitHub Secrets...');
 
 const firebaseConfig = {
   apiKey: "{{FIREBASE_API_KEY}}",
@@ -15,11 +17,89 @@ const firebaseConfig = {
   measurementId: "{{FIREBASE_MEASUREMENT_ID}}"
 };
 
-// Экспорт для глобального использования
-if (typeof window !== 'undefined') {
-    window.firebaseConfig = firebaseConfig;
+// ====================================================
+// 🎯 ДЕТАЛЬНАЯ ПРОВЕРКА КОНФИГУРАЦИИ
+// ====================================================
+
+console.group('📊 Проверка конфигурации Firebase:');
+console.log('🔍 Проверка наличия всех полей...');
+
+const requiredFields = [
+  'apiKey', 'authDomain', 'databaseURL', 'projectId',
+  'storageBucket', 'messagingSenderId', 'appId', 'measurementId'
+];
+
+let hasMissingFields = false;
+requiredFields.forEach(field => {
+  if (!firebaseConfig[field]) {
+    console.error(`❌ Отсутствует поле: ${field}`);
+    hasMissingFields = true;
+  } else if (firebaseConfig[field].includes('{{')) {
+    console.error(`❌ Поле ${field} содержит плейсхолдер: ${firebaseConfig[field]}`);
+    hasMissingFields = true;
+  } else {
+    console.log(`✅ Поле ${field}: ${field.includes('Key') || field.includes('Id') 
+      ? '***' + firebaseConfig[field].substring(firebaseConfig[field].length - 4) 
+      : firebaseConfig[field]}`);
+  }
+});
+
+console.groupEnd();
+
+if (hasMissingFields) {
+  console.error('\n❌ КРИТИЧЕСКАЯ ОШИБКА: Конфигурация Firebase неполная!');
+  console.error('   🔧 Проверьте:');
+  console.error('   1. GitHub Secrets в репозитории');
+  console.error('   2. Workflow файл deploy.yml');
+  console.error('   3. Что все FIREBASE_* секреты добавлены');
+  
+  // Бросаем ошибку для остановки приложения
+  throw new Error('Firebase конфигурация неполная. Проверьте консоль.');
+} else {
+  console.log('\n✅ ВСЕ ПОЛЯ КОНФИГУРАЦИИ ЗАПОЛНЕНЫ КОРРЕКТНО');
+  console.log(`📁 Проект: ${firebaseConfig.projectId}`);
+  console.log(`🌐 Database: ${firebaseConfig.databaseURL}`);
+  console.log(`🔐 Auth Domain: ${firebaseConfig.authDomain}`);
 }
 
-console.warn('⚠️  ВНИМАНИЕ: Используется шаблон конфигурации ({{ }} переменные)');
-console.warn('   При деплое этот файл будет заменен на firebase-config.js с реальными ключами');
-console.warn('   Проверьте, что GitHub Secrets настроены правильно');
+// ====================================================
+// 🔧 ДОПОЛНИТЕЛЬНЫЕ ПРОВЕРКИ
+// ====================================================
+
+console.group('🔍 Дополнительные проверки:');
+
+// Проверка формата API ключа
+if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('AIza')) {
+  console.warn('⚠️ API ключ может быть в неверном формате. Ожидается "AIza..."');
+}
+
+// Проверка URL базы данных
+if (firebaseConfig.databaseURL && !firebaseConfig.databaseURL.startsWith('https://')) {
+  console.error('❌ Database URL должен начинаться с https://');
+}
+
+// Проверка projectId
+if (firebaseConfig.projectId && firebaseConfig.projectId.includes(' ')) {
+  console.error('❌ Project ID не должен содержать пробелов');
+}
+
+console.groupEnd();
+
+// ====================================================
+// 📦 ЭКСПОРТ ДЛЯ ИСПОЛЬЗОВАНИЯ
+// ====================================================
+
+if (typeof window !== 'undefined') {
+  window.firebaseConfig = firebaseConfig;
+  console.log('\n✅ Конфигурация Firebase сохранена в window.firebaseConfig');
+  console.log('🎯 Приложение может использовать firebaseConfig');
+}
+
+// Экспорт для Node.js (если нужно)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = firebaseConfig;
+}
+
+console.log('\n====================================================');
+console.log('🔥 КОНФИГУРАЦИЯ FIREBASE ГОТОВА К ИСПОЛЬЗОВАНИЮ');
+console.log('====================================================');
