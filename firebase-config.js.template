@@ -53,7 +53,6 @@ if (hasMissingFields) {
   console.error('   2. Workflow файл deploy.yml');
   console.error('   3. Что все FIREBASE_* секреты добавлены');
   
-  // Бросаем ошибку для остановки приложения
   throw new Error('Firebase конфигурация неполная. Проверьте консоль.');
 } else {
   console.log('\n✅ ВСЕ ПОЛЯ КОНФИГУРАЦИИ ЗАПОЛНЕНЫ КОРРЕКТНО');
