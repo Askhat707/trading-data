@@ -1,13 +1,16 @@
+================================================
+FILE: service-worker.js
+================================================
 // ============================================
 // ⚡ SERVICE WORKER - С АВТООБНОВЛЕНИЕМ КЭША
 // ============================================
 
-const CACHE_NAME = 'gold-options-pro-v8-' + Date.now(); // Уникальное имя кэша
-const STATIC_CACHE_NAME = 'gold-options-static-v3';
+const CACHE_NAME = 'gold-options-pro-v9-' + Date.now(); // Уникальное имя кэша
+const STATIC_CACHE_NAME = 'gold-options-static-v4';
 
 const urlsToCache = [
     '/',
-    '/index.html',
+    '/index.html', // Кэшируем, но с особой обработкой
     '/css/base.css',
     '/css/components/modal.css',
     '/css/components/cards.css',
@@ -87,6 +90,46 @@ self.addEventListener('fetch', event => {
                         { 
                             status: 404,
                             headers: { 'Content-Type': 'application/json' }
+                        }
+                    );
+                })
+        );
+        return;
+    }
+    
+    // 🔥 ВАЖНО: index.html загружаем НАПРЯМУЮ из сети для свежей версии
+    if (url.includes('/index.html') || url.includes('/trading-data/index.html') || 
+        (event.request.destination === 'document' && url.includes('/trading-data/'))) {
+        console.log('🌐 Загружаем index.html напрямую из сети (без кэша)');
+        event.respondWith(
+            fetch(event.request, { cache: 'no-store' })
+                .then(response => {
+                    // Возвращаем свежий HTML
+                    return response;
+                })
+                .catch(error => {
+                    console.error('❌ Ошибка загрузки index.html:', error);
+                    // Возвращаем fallback HTML
+                    return new Response(
+                        `<!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>Gold Options Pro - Ошибка</title>
+                            <style>
+                                body { background: #000; color: #fff; font-family: sans-serif; padding: 40px; text-align: center; }
+                                h1 { color: #FFD700; }
+                                button { background: #FFD700; color: #000; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+                            </style>
+                        </head>
+                        <body>
+                            <h1>⚠️ Ошибка загрузки страницы</h1>
+                            <p>Пожалуйста, обновите страницу или очистите кэш браузера</p>
+                            <button onclick="location.reload()">🔄 Обновить страницу</button>
+                        </body>
+                        </html>`,
+                        { 
+                            status: 200,
+                            headers: { 'Content-Type': 'text/html' }
                         }
                     );
                 })
