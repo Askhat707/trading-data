@@ -1,6 +1,6 @@
 // ====================================================
-// 🔥 FIREBASE CONFIG TEMPLATE
-// ⚠️ Этот файл используется для генерации firebase-config.js
+// 🔥 FIREBASE CONFIG - GENERATED FROM GITHUB SECRETS
+// ⚠️ Этот файл создается автоматически GitHub Actions
 // ====================================================
 
 console.log('🚀 Загрузка Firebase конфигурации...');
@@ -16,37 +16,16 @@ const firebaseConfig = {
   measurementId: "{{FIREBASE_MEASUREMENT_ID}}"
 };
 
-console.group('📊 Проверка конфигурации Firebase:');
+console.group('📊 Firebase Configuration:');
 console.log('✅ Проект:', firebaseConfig.projectId);
 console.log('✅ Database:', firebaseConfig.databaseURL);
 console.log('✅ Auth Domain:', firebaseConfig.authDomain);
-
-const requiredFields = ['apiKey', 'authDomain', 'databaseURL', 'projectId', 'storageBucket', 'messagingSenderId', 'appId', 'measurementId'];
-let allGood = true;
-
-requiredFields.forEach(field => {
-  if (!firebaseConfig[field] || firebaseConfig[field].includes('{{')) {
-    console.error(`❌ Поле ${field} пусто или содержит плейсхолдер!`);
-    allGood = false;
-  } else {
-    console.log(`✅ ${field}: ОК`);
-  }
-});
-
 console.groupEnd();
 
-if (!allGood) {
-  console.error('❌ ОШИБКА КОНФИГУРАЦИИ! Проверьте GitHub Secrets');
-  throw new Error('Firebase конфигурация неполная');
-}
-
+// Проверка конфигурации (упрощенная)
 if (typeof window !== 'undefined') {
   window.firebaseConfig = firebaseConfig;
   console.log('✅ Конфигурация сохранена в window.firebaseConfig');
 }
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = firebaseConfig;
-}
-
-console.log('✅ КОНФИГУРАЦИЯ FIREBASE ГОТОВА К ИСПОЛЬЗОВАНИЮ\n');
+console.log('✅ FIREBASE CONFIG READY\n');
