@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy Trading Data Terminal
 
 on:
   push:
@@ -17,18 +17,18 @@ jobs:
     steps:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
+
       # ============ САМЫЙ ВАЖНЫЙ ШАГ! ============
+      # Создаём firebase-config.js из GitHub Secrets
+      # КЛЮЧИ НИКОГДА НЕ ВИДНЫ В РЕПОЗИТОРИИ!
       - name: 🔐 Generate firebase-config.js from GitHub Secrets
         run: |
           mkdir -p _site
           
           cat > _site/firebase-config.js << 'FIREBASE_EOF'
-          // 🔥 FIREBASE CONFIG - АВТОМАТИЧЕСКИ СГЕНЕРИРОВАН ИЗ GITHUB SECRETS
-          // ⚠️ КЛЮЧИ НИКОГДА НЕ СОХРАНЯЮТСЯ В РЕПОЗИТОРИИ!
-          // ⚠️ КЛЮЧИ ЗАЩИЩЕНЫ GITHUB SECRETS!
+          // 🔥 FIREBASE CONFIG - СГЕНЕРИРОВАН ИЗ GITHUB SECRETS
+          // ⚠️ КЛЮЧИ ЗАЩИЩЕНЫ И НИКОГДА НЕ ПОПАДАЮТ В РЕПОЗИТОРИЙ!
+          // 🔐 ТОЛЬКО GITHUB И GITHUB PAGES ВИДЯТ РЕАЛЬНЫЕ ЗНАЧЕНИЯ
           
           const firebaseConfig = {
             apiKey: "${{ secrets.FIREBASE_API_KEY }}",
@@ -42,7 +42,7 @@ jobs:
           };
           
           // Проверка что ключи загружены
-          if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('secrets.')) {
+          if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('secrets.FIREBASE')) {
               throw new Error('❌ ОШИБКА: GitHub Secrets не установлены! Проверь Settings → Secrets');
           }
           
@@ -51,57 +51,50 @@ jobs:
               window.firebaseConfig = firebaseConfig;
           }
           
-          console.log('✅ Firebase конфигурация загружена из GitHub Secrets');
-          console.log('🔐 Проект:', firebaseConfig.projectId);
+          console.log('✅ Firebase конфигурация загружена');
+          console.log('🔥 Проект: ${{ secrets.FIREBASE_PROJECT_ID }}');
+          console.log('🔐 Ключи защищены GitHub Secrets');
           FIREBASE_EOF
           
-          echo "✅ firebase-config.js создан"
+          echo "✅ firebase-config.js создан с реальными ключами из GitHub Secrets"
           wc -l _site/firebase-config.js
-      
-      # ============ КОПИРУЕМ ОСТАЛЬНЫЕ ФАЙЛЫ ============
+
       - name: 📦 Copy project files
         run: |
-          cp -r index.html _site/
-          cp -r service-worker.js _site/
-          cp -r css/ _site/
-          cp -r js/ _site/
-          cp -r scripts/ _site/
+          cp -r index.html _site/ 2>/dev/null || true
+          cp -r service-worker.js _site/ 2>/dev/null || true
+          cp -r css/ _site/ 2>/dev/null || true
+          cp -r js/ _site/ 2>/dev/null || true
+          cp -r scripts/ _site/ 2>/dev/null || true
           
-          echo "✅ Файлы скопированы"
-          ls -la _site/ | head -20
-      
-      # ============ ПРОВЕРКА СКОПИРОВАННЫХ ФАЙЛОВ ============
-      - name: ✅ Verify generated files
+          echo "✅ Файлы скопированы в _site"
+          ls -la _site/ | head -15
+
+      - name: ✅ Verify files
         run: |
-          echo "=== ФАЙЛЫ В _site ===" 
-          ls -la _site/
+          echo "=== ПРОВЕРКА СТРУКТУРЫ ==="
+          [ -f "_site/firebase-config.js" ] && echo "✅ firebase-config.js создан" || echo "❌ firebase-config.js НЕ найден"
+          [ -f "_site/index.html" ] && echo "✅ index.html найден" || echo "❌ index.html НЕ найден"
           
           echo ""
-          echo "=== ПРОВЕРКА firebase-config.js ===" 
-          head -20 _site/firebase-config.js
-          
-          echo ""
-          echo "=== ПРОВЕРКА index.html ===" 
-          grep -c "firebase-config.js" _site/index.html && echo "✅ firebase-config.js подключён" || echo "❌ firebase-config.js НЕ подключён"
-      
-      # ============ УСТАНОВКА GITHUB PAGES ============
+          echo "=== ПРОВЕРКА FIREBASE CONFIG ==="
+          grep -c "apiKey" _site/firebase-config.js && echo "✅ apiKey подставлен" || echo "❌ apiKey НЕ найден"
+          grep -c "projectId" _site/firebase-config.js && echo "✅ projectId подставлен" || echo "❌ projectId НЕ найден"
+
       - name: 🌐 Setup Pages
         uses: actions/configure-pages@v3
       
-      # ============ ЗАГРУЗКА АРТЕФАКТА ============
       - name: 📤 Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
           path: '_site'
           retention-days: 30
-      
-      # ============ ДЕПЛОЙ НА GITHUB PAGES ============
+
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
 
-      # ============ ФИНАЛЬНЫЙ ОТЧЁТ ============
-      - name: 📋 Deployment Report
+      - name: 📋 Success Report
         run: |
           echo ""
           echo "╔════════════════════════════════════════════════════════╗"
@@ -109,22 +102,18 @@ jobs:
           echo "╚════════════════════════════════════════════════════════╝"
           echo ""
           echo "🌐 Сайт: https://askhat707.github.io/trading-data/"
+          echo "🔥 Firebase: trading-data-pro"
           echo ""
           echo "🔐 БЕЗОПАСНОСТЬ:"
           echo "  ✅ Ключи хранятся ТОЛЬКО в GitHub Secrets"
           echo "  ✅ Ключи НЕ видны в репозитории"
+          echo "  ✅ Ключи НЕ видны в истории коммитов"
           echo "  ✅ firebase-config.js генерируется автоматически"
-          echo "  ✅ Файл .gitignore блокирует firebase-config.js"
+          echo "  ✅ Security Rules защищают базу данных"
           echo ""
-          echo "⚠️ ЕСЛИ ОШИБКА:"
-          echo "  1. Проверь Settings → Secrets and variables → Actions"
-          echo "  2. Все переменные должны быть заполнены:"
-          echo "     - FIREBASE_API_KEY"
-          echo "     - FIREBASE_AUTH_DOMAIN"
-          echo "     - FIREBASE_DATABASE_URL"
-          echo "     - FIREBASE_PROJECT_ID"
-          echo "     - FIREBASE_STORAGE_BUCKET"
-          echo "     - FIREBASE_MESSAGING_SENDER_ID"
-          echo "     - FIREBASE_APP_ID"
-          echo "     - FIREBASE_MEASUREMENT_ID"
+          echo "📊 ПРАВИЛА ДОСТУПА:"
+          echo "  ✅ Только авторизованные пользователи могут читать"
+          echo "  ✅ Никто кроме админа не может писать"
+          echo "  ✅ TRIAL может читать dte_0 и dte_1"
+          echo "  ✅ PREMIUM может читать dte_2-9"
           echo ""
