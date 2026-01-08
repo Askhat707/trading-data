@@ -1,26 +1,19 @@
-// ⚠️ ВНИМАНИЕ: Этот файл генерируется автоматически!
-// Не коммитьте его в репозиторий!
-// Все значения подставляются из GitHub Secrets
+// 🔥 FIREBASE CONFIG TEMPLATE
+// ⚠️ Этот файл генерируется автоматически из GitHub Secrets
+// Не коммитьте этот файл в репозиторий!
 
 const firebaseConfig = {
-  apiKey: "%%FIREBASE_API_KEY%%",
-  authDomain: "%%FIREBASE_AUTH_DOMAIN%%",
-  databaseURL: "%%FIREBASE_DATABASE_URL%%",
-  projectId: "%%FIREBASE_PROJECT_ID%%",
-  storageBucket: "%%FIREBASE_STORAGE_BUCKET%%",
-  messagingSenderId: "%%FIREBASE_MESSAGING_SENDER_ID%%",
-  appId: "%%FIREBASE_APP_ID%%"
+  apiKey: "FIREBASE_API_KEY",
+  authDomain: "FIREBASE_AUTH_DOMAIN",
+  databaseURL: "FIREBASE_DATABASE_URL",
+  projectId: "FIREBASE_PROJECT_ID",
+  storageBucket: "FIREBASE_STORAGE_BUCKET",
+  messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID",
+  appId: "FIREBASE_APP_ID",
+  measurementId: "FIREBASE_MEASUREMENT_ID"
 };
 
-// Проверяем, что Firebase еще не инициализирован
-if (typeof firebase !== 'undefined' && !firebase.apps.length) {
-  try {
-    firebase.initializeApp(firebaseConfig);
-    console.log('✅ Firebase инициализирован');
-  } catch (error) {
-    console.error('❌ Ошибка инициализации Firebase:', error);
-  }
-}
+// Экспорт для глобального использования
+window.firebaseConfig = firebaseConfig;
 
-// Экспортируем конфиг для использования в других модулях
-window.FIREBASE_CONFIG = firebaseConfig;
+console.log('✅ Firebase конфигурация загружена');
