@@ -1,25 +1,33 @@
-# ⚠️ НИКОГДА НЕ КОММИТИТЬ КОНФИГУРАЦИЮ С КЛЮЧАМИ!
+# 🔐 НИКОГДА НЕ КОММИТИТЬ КОНФИГИ С КЛЮЧАМИ!
 
-# Firebase конфигурфайл (генерируется при деплое из Secrets)
+# Firebase конфигурация (генерируется при деплое)
 firebase-config.js
-Node modules
+!firebase-config.js.template
+
+# Node modules
 node_modules/
 package-lock.json
 yarn.lock
-IDE
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-OS
+*~
+
+# OS
 .DS_Store
 Thumbs.db
-Логи
-.log
-npm-debug.log
+
+# Логи
+*.log
+npm-debug.log*
 yarn-debug.log*
-Временные файлы
+
+# Временные файлы
 .temp/
 .cache/
 dist/
 build/
+_site/
