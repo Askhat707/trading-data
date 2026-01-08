@@ -54,7 +54,8 @@
     <div id="auth-modal" class="hidden" style="
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.95); backdrop-filter: blur(20px);
-        display: flex; justify-content: center; align-items: center;
+        display: none; /* <--- ИЗМЕНЕНО НА NONE */
+        justify-content: center; align-items: center;
         z-index: 9999; opacity: 0; transition: opacity 0.5s ease;
     ">
         <div class="auth-container">
@@ -420,14 +421,25 @@
     <script>
         console.log('📥 Загрузка firebase-config.js...');
         
-        // Загружаем конфиг в синхронно
-        (function loadConfig() {
+        // Используем IIFE для изоляции
+        (function() {
             const timestamp = Date.now();
             const script = document.createElement('script');
-            script.src = `/trading-data/firebase-config.js?nocache=${timestamp}`;
+            // Убрали начальный слеш, чтобы путь был относительным (безопаснее для GitHub Pages)
+            // Если сайт в корне домена, верните слеш: /trading-data/...
+            script.src = "trading-data/firebase-config.js?nocache=" + timestamp; 
             script.async = false;
-            script.onload = () => console.log('✅ firebase-config.js загружен');
-            script.onerror = () => console.error('❌ Ошибка загрузки firebase-config.js');
+            
+            script.onload = () => {
+                console.log('✅ firebase-config.js загружен');
+            };
+            
+            script.onerror = () => {
+                console.error('❌ Ошибка загрузки firebase-config.js. Проверьте путь!');
+                // Можно вызвать экран ошибки сразу
+                if (typeof showConfigError === 'function') showConfigError();
+            };
+            
             document.head.appendChild(script);
         })();
     </script>
