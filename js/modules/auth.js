@@ -62,14 +62,22 @@ const AuthModule = {
     },
     
     /**
-     * ПРОВЕРКА: ЗАГРУЖЕН ЛИ FIREBASE SDK
-     */
-    isFirebaseSDKLoaded() {
-        return typeof firebase !== 'undefined' && 
-               typeof firebase.initializeApp === 'function' &&
-               typeof firebase.auth === 'function' &&
-               typeof firebase.database === 'function';
-    },
+ * ПРОВЕРКА: ЗАГРУЖЕН ЛИ FIREBASE SDK
+ */
+isFirebaseSDKLoaded() {
+    // Проверяем Firebase Compat версию
+    if (typeof firebase !== 'undefined' && 
+        typeof firebase.initializeApp === 'function' &&
+        typeof firebase.auth === 'function' &&
+        typeof firebase.database === 'function') {
+        console.log('✅ Firebase SDK загружен (Compat версия)');
+        return true;
+    }
+    
+    // Если нет - показываем ошибку
+    console.error('❌ Firebase SDK не найден. Проверьте подключение в index.html');
+    return false;
+},
     
     /**
      * ПРОВЕРКА: ИНИЦИАЛИЗИРОВАН ЛИ FIREBASE
