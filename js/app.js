@@ -27,7 +27,7 @@ const App = {
         // Пытаемся загрузить заново
         const timestamp = Date.now();
         const script = document.createElement('script');
-        script.src = `/trading-data/firebase-config.js?retry=${timestamp}`;
+        script.src = `firebase-config.js?retry=${timestamp}`;
         script.async = false;
         
         script.onload = () => {
