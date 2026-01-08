@@ -18,18 +18,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-      
       - name: Generate Firebase Config from Secrets
         run: |
-          # Создаем скрипт для генерации конфига
-          cat > generate-config.js << 'EOF'
-          const fs = require('fs');
-          
-          // Получаем ключи из GitHub Secrets
+          cat > firebase-config.js << 'EOF'
+          // 🔥 FIREBASE CONFIG - СГЕНЕРИРОВАН ИЗ GITHUB SECRETS
           const firebaseConfig = {
             apiKey: "${{ secrets.FIREBASE_API_KEY }}",
             authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
@@ -41,40 +33,14 @@ jobs:
             measurementId: "${{ secrets.FIREBASE_MEASUREMENT_ID }}"
           };
           
-          const configContent = `// 🔥 FIREBASE CONFIG - AUTO GENERATED FROM GITHUB SECRETS
-          const firebaseConfig = ${JSON.stringify(firebaseConfig, null, 2)};
-          
           // Экспорт для глобального использования
           window.firebaseConfig = firebaseConfig;
           
-          // Автоматическая инициализация при загрузке
-          if (typeof firebase !== 'undefined') {
-            try {
-              if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-                console.log('✅ Firebase инициализирован из конфига');
-              }
-            } catch (error) {
-              console.error('❌ Ошибка инициализации Firebase:', error);
-            }
-          }`;
-          
-          fs.writeFileSync('firebase-config.js', configContent);
-          console.log('✅ Firebase config generated from GitHub Secrets');
+          console.log('✅ Firebase конфиг загружен из GitHub Secrets');
           EOF
           
-          node generate-config.js
-      
-      - name: Verify Generated Config
-        run: |
-          echo "=== Проверка сгенерированного конфига ==="
-          if [ -f "firebase-config.js" ]; then
-            echo "✅ firebase-config.js создан"
-            head -20 firebase-config.js
-          else
-            echo "❌ firebase-config.js не создан!"
-            exit 1
-          fi
+          echo "✅ firebase-config.js создан"
+          head -20 firebase-config.js
       
       - name: Setup Pages
         uses: actions/configure-pages@v3
@@ -82,12 +48,12 @@ jobs:
       - name: Build and copy files
         run: |
           mkdir -p _site
-          # Копируем ВСЕ файлы
           cp -r index.html _site/
           cp -r firebase-config.js _site/
           cp -r service-worker.js _site/
           cp -r css/ _site/
           cp -r js/ _site/
+          cp -r scripts/ _site/
           
           echo "=== Файлы в _site ==="
           ls -la _site/
@@ -103,6 +69,5 @@ jobs:
 
       - name: Deployment Status
         run: |
-          echo "✅ Деployment успешен!"
-          echo "🌐 Сайт доступен по адресу:"
-          echo "   https://askhat707.github.io/trading-data/"
+          echo "✅ Deployment успешен!"
+          echo "🌐 Сайт: https://askhat707.github.io/trading-data/"
