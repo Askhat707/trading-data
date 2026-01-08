@@ -2,7 +2,7 @@
 // ⚡ SERVICE WORKER - С АВТООБНОВЛЕНИЕМ КЭША
 // ============================================
 
-const CACHE_NAME = 'gold-options-pro-v8-' + Date.now();
+const CACHE_NAME = 'gold-options-pro-v9-' + Date.now();
 const STATIC_CACHE_NAME = 'gold-options-static-v3';
 
 const urlsToCache = [
@@ -56,18 +56,27 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     const url = event.request.url;
     
-    // 🔥 ВАЖНО: НИКОГДА не кэшируем firebase-config.js
+    // 🔥 НИКОГДА не кэшируем firebase-config.js - ВСЕГДА из сети!
     if (url.includes('firebase-config.js')) {
-        console.log('🔥 Загружаем firebase-config.js напрямую из сети');
+        console.log('🔥 firebase-config.js - ПРЯМАЯ ЗАГРУЗКА ИЗ СЕТИ');
         event.respondWith(
-            fetch(event.request)
+            fetch(event.request, { cache: 'no-store' })
                 .then(response => {
-                    // Не сохраняем в кэш
-                    return response;
-                })
-                .catch(() => {
+                    if (response.ok) {
+                        return response;
+                    }
+                    // Если сеть недоступна - возвращаем ошибку
                     return new Response(
-                        `console.error('❌ Ошибка загрузки firebase-config.js');`,
+                        `console.error('❌ Ошибка загрузки firebase-config.js: ' + ${response.status});`,
+                        { 
+                            headers: { 'Content-Type': 'application/javascript' }
+                        }
+                    );
+                })
+                .catch(err => {
+                    console.error('❌ Ошибка загрузки firebase-config.js:', err);
+                    return new Response(
+                        `console.error('❌ Ошибка сети при загрузке firebase-config.js');`,
                         { 
                             headers: { 'Content-Type': 'application/javascript' }
                         }
@@ -77,17 +86,16 @@ self.addEventListener('fetch', event => {
         return;
     }
     
-    // Пропускаем не GET запросы (POST, PUT, DELETE)
+    // Пропускаем не GET запросы
     if (event.request.method !== 'GET') {
-        return; // Пусть браузер обрабатывает сам
+        return;
     }
     
-    // Для HTML всегда загружаем свежую версию
+    // Для HTML - сеть сначала
     if (url.includes('.html') || event.request.destination === 'document') {
         event.respondWith(
-            fetch(event.request)
+            fetch(event.request, { cache: 'no-store' })
                 .then(response => {
-                    // Клонируем ответ, потому что он может быть использован только один раз
                     const responseClone = response.clone();
                     caches.open(STATIC_CACHE_NAME).then(cache => {
                         cache.put(event.request, responseClone);
@@ -99,17 +107,20 @@ self.addEventListener('fetch', event => {
         return;
     }
     
-    // Для остальных - стратегия "сеть сначала"
+    // Для остальных - кэш с обновлением из сети
     event.respondWith(
-        fetch(event.request)
+        caches.match(event.request)
             .then(response => {
-                // Клонируем ответ
-                const responseClone = response.clone();
-                caches.open(STATIC_CACHE_NAME).then(cache => {
-                    cache.put(event.request, responseClone);
-                });
-                return response;
+                const fetchPromise = fetch(event.request)
+                    .then(networkResponse => {
+                        const responseClone = networkResponse.clone();
+                        caches.open(STATIC_CACHE_NAME).then(cache => {
+                            cache.put(event.request, responseClone);
+                        });
+                        return networkResponse;
+                    });
+                
+                return response || fetchPromise;
             })
-            .catch(() => caches.match(event.request))
     );
 });
