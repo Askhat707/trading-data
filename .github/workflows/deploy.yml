@@ -18,69 +18,121 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      # ============ САМЫЙ ВАЖНЫЙ ШАГ! ============
-      # Создаём firebase-config.js из GitHub Secrets
-      # КЛЮЧИ НИКОГДА НЕ ВИДНЫ В РЕПОЗИТОРИИ!
+      # ============ ГЕНЕРИРУЕМ firebase-config.js ============
       - name: 🔐 Generate firebase-config.js from GitHub Secrets
         run: |
+          # Создаём папку для сайта
           mkdir -p _site
           
-          cat > _site/firebase-config.js << 'FIREBASE_EOF'
-          // 🔥 FIREBASE CONFIG - СГЕНЕРИРОВАН ИЗ GITHUB SECRETS
-          // ⚠️ КЛЮЧИ ЗАЩИЩЕНЫ И НИКОГДА НЕ ПОПАДАЮТ В РЕПОЗИТОРИЙ!
-          // 🔐 ТОЛЬКО GITHUB И GITHUB PAGES ВИДЯТ РЕАЛЬНЫЕ ЗНАЧЕНИЯ
-          
-          const firebaseConfig = {
-            apiKey: "${{ secrets.FIREBASE_API_KEY }}",
-            authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
-            databaseURL: "${{ secrets.FIREBASE_DATABASE_URL }}",
-            projectId: "${{ secrets.FIREBASE_PROJECT_ID }}",
-            storageBucket: "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
-            messagingSenderId: "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
-            appId: "${{ secrets.FIREBASE_APP_ID }}",
-            measurementId: "${{ secrets.FIREBASE_MEASUREMENT_ID }}"
-          };
-          
-          // Проверка что ключи загружены
-          if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('secrets.FIREBASE')) {
-              throw new Error('❌ ОШИБКА: GitHub Secrets не установлены! Проверь Settings → Secrets');
-          }
-          
-          // Экспорт для глобального использования
-          if (typeof window !== 'undefined') {
-              window.firebaseConfig = firebaseConfig;
-          }
-          
-          console.log('✅ Firebase конфигурация загружена');
-          console.log('🔥 Проект: ${{ secrets.FIREBASE_PROJECT_ID }}');
-          console.log('🔐 Ключи защищены GitHub Secrets');
-          FIREBASE_EOF
-          
-          echo "✅ firebase-config.js создан с реальными ключами из GitHub Secrets"
-          wc -l _site/firebase-config.js
+          # САМЫЙ ВАЖНЫЙ ШАГ - СОЗДАЁМ КОНФИГ
+          cat > _site/firebase-config.js << 'EOF'
+// 🔥 FIREBASE CONFIG - СГЕНЕРИРОВАН ИЗ GITHUB SECRETS
+// ⚠️ КЛЮЧИ ЗАЩИЩЕНЫ И НИКОГДА НЕ ПОПАДАЮТ В РЕПОЗИТОРИЙ!
 
-      - name: 📦 Copy project files
-        run: |
-          cp -r index.html _site/ 2>/dev/null || true
-          cp -r service-worker.js _site/ 2>/dev/null || true
-          cp -r css/ _site/ 2>/dev/null || true
-          cp -r js/ _site/ 2>/dev/null || true
-          cp -r scripts/ _site/ 2>/dev/null || true
-          
-          echo "✅ Файлы скопированы в _site"
-          ls -la _site/ | head -15
+const firebaseConfig = {
+  apiKey: "${{ secrets.FIREBASE_API_KEY }}",
+  authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
+  databaseURL: "${{ secrets.FIREBASE_DATABASE_URL }}",
+  projectId: "${{ secrets.FIREBASE_PROJECT_ID }}",
+  storageBucket: "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
+  messagingSenderId: "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
+  appId: "${{ secrets.FIREBASE_APP_ID }}",
+  measurementId: "${{ secrets.FIREBASE_MEASUREMENT_ID }}"
+};
 
-      - name: ✅ Verify files
+// Проверка что ключи загружены
+if (!firebaseConfig.apiKey) {
+  console.error('❌ ОШИБКА: GitHub Secrets не установлены!');
+  throw new Error('Firebase API Key is missing');
+}
+
+// Экспорт для глобального использования
+if (typeof window !== 'undefined') {
+  window.firebaseConfig = firebaseConfig;
+}
+
+console.log('✅ Firebase конфигурация загружена');
+console.log('🔥 Проект:', firebaseConfig.projectId);
+EOF
+
+          echo "✅ firebase-config.js создан!"
+          echo ""
+          echo "=== ПРОВЕРКА ФАЙЛА ==="
+          ls -lh _site/firebase-config.js
+          echo ""
+          echo "=== ПЕРВЫЕ 10 СТРОК ==="
+          head -10 _site/firebase-config.js
+
+      # ============ КОПИРУЕМ ОСТАЛЬНЫЕ ФАЙЛЫ ============
+      - name: 📦 Copy all project files
         run: |
-          echo "=== ПРОВЕРКА СТРУКТУРЫ ==="
-          [ -f "_site/firebase-config.js" ] && echo "✅ firebase-config.js создан" || echo "❌ firebase-config.js НЕ найден"
-          [ -f "_site/index.html" ] && echo "✅ index.html найден" || echo "❌ index.html НЕ найден"
+          echo "📂 Копируем файлы..."
+          
+          # Копируем основные файлы
+          cp -v index.html _site/ || true
+          cp -v service-worker.js _site/ || true
+          cp -v firebase-config.js.template _site/ || true
+          cp -v README.md _site/ || true
+          
+          # Копируем папки
+          cp -rv css _site/ || true
+          cp -rv js _site/ || true
+          cp -rv scripts _site/ || true
           
           echo ""
-          echo "=== ПРОВЕРКА FIREBASE CONFIG ==="
-          grep -c "apiKey" _site/firebase-config.js && echo "✅ apiKey подставлен" || echo "❌ apiKey НЕ найден"
-          grep -c "projectId" _site/firebase-config.js && echo "✅ projectId подставлен" || echo "❌ projectId НЕ найден"
+          echo "✅ Все файлы скопированы!"
+          echo ""
+          echo "=== СТРУКТУРА _site ==="
+          find _site -type f -name "*.js" -o -name "*.html" -o -name "*.json" | head -20
 
+      # ============ ПРОВЕРКА ФАЙЛОВ ============
+      - name: ✅ Verify generated files
+        run: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════╗"
+          echo "║               ПРОВЕРКА ФАЙЛОВ                          ║"
+          echo "╚════════════════════════════════════════════════════════╝"
+          echo ""
+          
+          # Проверяем firebase-config.js
+          echo "🔥 firebase-config.js:"
+          if [ -f "_site/firebase-config.js" ]; then
+            echo "  ✅ НАЙДЕН"
+            echo "  📊 Размер: $(wc -c < _site/firebase-config.js) байт"
+            echo "  📝 Строк: $(wc -l < _site/firebase-config.js)"
+            echo ""
+            echo "  🔍 Содержит ключевые поля:"
+            grep -c "apiKey" _site/firebase-config.js && echo "    ✅ apiKey"
+            grep -c "authDomain" _site/firebase-config.js && echo "    ✅ authDomain"
+            grep -c "projectId" _site/firebase-config.js && echo "    ✅ projectId"
+            grep -c "databaseURL" _site/firebase-config.js && echo "    ✅ databaseURL"
+          else
+            echo "  ❌ НЕ НАЙДЕН!"
+            exit 1
+          fi
+          
+          echo ""
+          echo "📄 index.html:"
+          if [ -f "_site/index.html" ]; then
+            echo "  ✅ НАЙДЕН"
+            if grep -q "firebase-config.js" _site/index.html; then
+              echo "  ✅ Подключён firebase-config.js"
+            else
+              echo "  ❌ firebase-config.js НЕ подключён!"
+            fi
+          else
+            echo "  ❌ НЕ НАЙДЕН!"
+          fi
+          
+          echo ""
+          echo "📁 Остальные файлы:"
+          [ -f "_site/service-worker.js" ] && echo "  ✅ service-worker.js" || echo "  ⚠️ service-worker.js"
+          [ -d "_site/js" ] && echo "  ✅ js/ папка" || echo "  ⚠️ js/ папка"
+          [ -d "_site/css" ] && echo "  ✅ css/ папка" || echo "  ⚠️ css/ папка"
+          
+          echo ""
+
+      # ============ GITHUB PAGES ============
       - name: 🌐 Setup Pages
         uses: actions/configure-pages@v3
       
@@ -94,26 +146,60 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v2
 
-      - name: 📋 Success Report
+      # ============ ФИНАЛЬНЫЙ ОТЧЁТ ============
+      - name: 📋 Deployment Success Report
+        if: success()
         run: |
           echo ""
           echo "╔════════════════════════════════════════════════════════╗"
-          echo "║           ✅ DEPLOYMENT УСПЕШЕН!                        ║"
+          echo "║        ✅ DEPLOYMENT УСПЕШЕН!                          ║"
           echo "╚════════════════════════════════════════════════════════╝"
           echo ""
-          echo "🌐 Сайт: https://askhat707.github.io/trading-data/"
-          echo "🔥 Firebase: trading-data-pro"
+          echo "🌐 Сайт доступен по адресу:"
+          echo "   https://askhat707.github.io/trading-data/"
           echo ""
           echo "🔐 БЕЗОПАСНОСТЬ:"
-          echo "  ✅ Ключи хранятся ТОЛЬКО в GitHub Secrets"
+          echo "  ✅ firebase-config.js создан из GitHub Secrets"
           echo "  ✅ Ключи НЕ видны в репозитории"
           echo "  ✅ Ключи НЕ видны в истории коммитов"
-          echo "  ✅ firebase-config.js генерируется автоматически"
           echo "  ✅ Security Rules защищают базу данных"
           echo ""
-          echo "📊 ПРАВИЛА ДОСТУПА:"
+          echo "📊 ПРАВИЛА ДОСТУПА (Security Rules):"
           echo "  ✅ Только авторизованные пользователи могут читать"
-          echo "  ✅ Никто кроме админа не может писать"
-          echo "  ✅ TRIAL может читать dte_0 и dte_1"
-          echo "  ✅ PREMIUM может читать dte_2-9"
+          echo "  ✅ Никто не может писать (read-only)"
+          echo "  ✅ TRIAL: dte_0, dte_1"
+          echo "  ✅ PREMIUM: dte_2-9"
+          echo ""
+          echo "⏱️ Deploy завершён в $(date)"
+          echo ""
+
+      # ============ ОТЧЁТ ОБ ОШИБКЕ ============
+      - name: ❌ Deployment Error Report
+        if: failure()
+        run: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════╗"
+          echo "║          ❌ DEPLOYMENT ОШИБКА!                         ║"
+          echo "╚════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "🔍 ПРОВЕРЬ:"
+          echo ""
+          echo "1️⃣ GitHub Secrets установлены?"
+          echo "   Settings → Secrets and variables → Actions"
+          echo ""
+          echo "   Должны быть эти переменные:"
+          echo "   - FIREBASE_API_KEY"
+          echo "   - FIREBASE_AUTH_DOMAIN"
+          echo "   - FIREBASE_DATABASE_URL"
+          echo "   - FIREBASE_PROJECT_ID"
+          echo "   - FIREBASE_STORAGE_BUCKET"
+          echo "   - FIREBASE_MESSAGING_SENDER_ID"
+          echo "   - FIREBASE_APP_ID"
+          echo "   - FIREBASE_MEASUREMENT_ID"
+          echo ""
+          echo "2️⃣ .github/workflows/deploy.yml скопирован правильно?"
+          echo "   Проверь что синтаксис YAML правильный"
+          echo ""
+          echo "3️⃣ Смотри логи GitHub Actions"
+          echo "   Actions → [последний запуск] → [job]"
           echo ""
