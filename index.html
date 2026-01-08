@@ -425,9 +425,13 @@
         (function() {
             const timestamp = Date.now();
             const script = document.createElement('script');
-            // Убрали начальный слеш, чтобы путь был относительным (безопаснее для GitHub Pages)
-            // Если сайт в корне домена, верните слеш: /trading-data/...
-            script.src = "trading-data/firebase-config.js?nocache=" + timestamp; 
+            
+            // 👇 ИСПРАВЛЕНО ЗДЕСЬ:
+            // Было: "trading-data/firebase-config.js?..." (создавало дубль папки)
+            // Стало: "/trading-data/firebase-config.js?..." (абсолютный путь от корня сайта)
+            
+            script.src = "/trading-data/firebase-config.js?nocache=" + timestamp; 
+            
             script.async = false;
             
             script.onload = () => {
@@ -435,8 +439,7 @@
             };
             
             script.onerror = () => {
-                console.error('❌ Ошибка загрузки firebase-config.js. Проверьте путь!');
-                // Можно вызвать экран ошибки сразу
+                console.error('❌ Ошибка загрузки firebase-config.js. Проверьте, лежит ли файл в корне репозитория!');
                 if (typeof showConfigError === 'function') showConfigError();
             };
             
