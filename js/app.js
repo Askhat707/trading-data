@@ -17,39 +17,70 @@ const App = {
      * Инициализация приложения
      */
     async init() {
-        if (this.initialized) return;
+    // 🔥 ДОБАВЛЕННЫЙ КОД ДЛЯ ПРИНУДИТЕЛЬНОЙ ПРОВЕРКИ КОНФИГА
+    console.log('🚀 App.init() запущен...');
+    
+    // 🔥 ПРИНУДИТЕЛЬНАЯ ПРОВЕРКА КОНФИГА FIREBASE
+    if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
+        console.error('🚨 КРИТИЧЕСКАЯ ОШИБКА: firebase-config.js не загружен в App.init()!');
         
-        console.log('🚀 Запуск основного приложения...');
+        // Пытаемся загрузить заново
+        const timestamp = Date.now();
+        const script = document.createElement('script');
+        script.src = `/trading-data/firebase-config.js?retry=${timestamp}`;
+        script.async = false;
         
-        // Определяем тип пользователя
-        this.isTrial = window.AuthModule?.currentUser ? 
-            (window.AuthModule.currentUser.plan !== "PREMIUM" || window.AuthModule.isSubscriptionExpired(window.AuthModule.currentUser)) : 
-            true;
+        script.onload = () => {
+            console.log('✅ Конфиг перезагружен, перезапускаем приложение...');
+            setTimeout(() => this.init(), 500);
+        };
         
-        // Обновляем UI в зависимости от типа пользователя
-        this.updateUIForUserType();
+        script.onerror = () => {
+            console.error('❌ Не удалось перезагрузить конфиг в App.init()');
+            if (typeof window.showErrorScreen === 'function') {
+                window.showErrorScreen('Не удалось загрузить конфигурацию Firebase. Проверьте деплой.');
+            }
+        };
         
-        // Запускаем обновления данных
-        this.startPriceUpdates();
-        this.startDataUpdates();
-        this.startAnalyticsUpdates();
-        
-        // Загружаем начальные данные
-        await this.loadInitialData();
-        await this.loadDTEList();
-        
-        // Обновляем время
-        this.updateTime();
-        setInterval(() => this.updateTime(), 1000);
-        
-        // Инициализируем MT5 модуль
-        if (window.MT5Module) {
-            MT5Module.init();
-        }
-        
-        this.initialized = true;
-        console.log('✅ Приложение инициализировано');
-    },
+        document.head.appendChild(script);
+        return;
+    }
+    // 🔥 КОНЕЦ ДОБАВЛЕННОГО КОДА
+    
+    // ⬇️ СУЩЕСТВУЮЩИЙ КОД НИЖЕ (НЕ МЕНЯЕТСЯ)
+    if (this.initialized) return;
+    
+    console.log('🚀 Запуск основного приложения...');
+    
+    // Определяем тип пользователя
+    this.isTrial = window.AuthModule?.currentUser ? 
+        (window.AuthModule.currentUser.plan !== "PREMIUM" || window.AuthModule.isSubscriptionExpired(window.AuthModule.currentUser)) : 
+        true;
+    
+    // Обновляем UI в зависимости от типа пользователя
+    this.updateUIForUserType();
+    
+    // Запускаем обновления данных
+    this.startPriceUpdates();
+    this.startDataUpdates();
+    this.startAnalyticsUpdates();
+    
+    // Загружаем начальные данные
+    await this.loadInitialData();
+    await this.loadDTEList();
+    
+    // Обновляем время
+    this.updateTime();
+    setInterval(() => this.updateTime(), 1000);
+    
+    // Инициализируем MT5 модуль
+    if (window.MT5Module) {
+        MT5Module.init();
+    }
+    
+    this.initialized = true;
+    console.log('✅ Приложение инициализировано');
+},
     
     /**
      * Обновление UI для типа пользователя
