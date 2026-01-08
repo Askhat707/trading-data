@@ -119,52 +119,82 @@ const AuthModule = {
     /**
      * ПРОВЕРКА КОНФИГУРАЦИИ FIREBASE
      */
-    checkFirebaseConfig() {
-        console.log('⚙️ Проверка конфигурации Firebase...');
-        
-        if (typeof window.firebaseConfig === 'undefined') {
-            console.error('❌ window.firebaseConfig не определен');
-            console.error('   Файл firebase-config.js не загружен или не создан GitHub Actions');
-            return false;
+    /**
+ * ПРОВЕРКА КОНФИГУРАЦИИ FIREBASE
+ */
+checkFirebaseConfig() {
+    console.group('⚙️ Проверка конфигурации Firebase');
+    
+    if (typeof window.firebaseConfig === 'undefined') {
+        console.error('❌ window.firebaseConfig не определен');
+        console.error('   Файл firebase-config.js не загружен или не создан GitHub Actions');
+        console.error('   Проверьте:');
+        console.error('   1. Файл firebase-config.js существует в корне проекта');
+        console.error('   2. Он подключен в index.html до других скриптов');
+        console.error('   3. GitHub Actions создал файл с реальными ключами');
+        console.groupEnd();
+        return false;
+    }
+    
+    const config = window.firebaseConfig;
+    console.log('📄 Конфигурация Firebase:', config);
+    
+    // Проверяем обязательные поля
+    const requiredFields = [
+        'apiKey',
+        'authDomain',
+        'databaseURL',
+        'projectId',
+        'storageBucket',
+        'messagingSenderId',
+        'appId'
+    ];
+    
+    let allFieldsValid = true;
+    
+    for (const field of requiredFields) {
+        if (!config[field]) {
+            console.error(`❌ Отсутствует поле конфигурации: ${field}`);
+            allFieldsValid = false;
+            continue;
         }
         
-        const config = window.firebaseConfig;
-        console.log('📄 Конфигурация:', config);
-        
-        // Проверяем обязательные поля
-        const requiredFields = [
-            'apiKey',
-            'authDomain',
-            'databaseURL',
-            'projectId',
-            'storageBucket',
-            'messagingSenderId',
-            'appId'
-        ];
-        
-        for (const field of requiredFields) {
-            if (!config[field]) {
-                console.error(`❌ Отсутствует поле конфигурации: ${field}`);
-                return false;
-            }
-            
-            // Проверяем что это реальные значения, а не заглушки
-            if (config[field].includes('FIREBASE_')) {
+        // Проверяем что это реальные значения, а не заглушки
+        if (typeof config[field] === 'string') {
+            if (config[field].includes('{{') || 
+                config[field].includes('FIREBASE_') || 
+                config[field].includes('secrets.')) {
                 console.error(`❌ Поле ${field} содержит переменную: ${config[field]}`);
                 console.error('   GitHub Secrets не подставлены! Проверьте:');
                 console.error('   - Secrets в настройках репозитория');
                 console.error('   - Workflow файл deploy.yml');
                 console.error('   - Переменные окружения');
-                return false;
+                allFieldsValid = false;
             }
         }
-        
-        console.log('✅ Конфигурация Firebase корректна');
-        console.log(`   Проект: ${config.projectId}`);
-        console.log(`   Database: ${config.databaseURL}`);
-        
-        return true;
-    },
+    }
+    
+    if (!allFieldsValid) {
+        console.error('❌ Конфигурация Firebase содержит ошибки');
+        console.groupEnd();
+        return false;
+    }
+    
+    // Дополнительные проверки
+    console.log('✅ Конфигурация Firebase корректна');
+    console.log(`   Проект: ${config.projectId}`);
+    console.log(`   Database: ${config.databaseURL}`);
+    console.log(`   Auth Domain: ${config.authDomain}`);
+    console.log(`   API Key присутствует: ${config.apiKey ? 'Да' : 'Нет'}`);
+    
+    // Проверяем формат projectId
+    if (config.projectId) {
+        console.log(`   Project ID валидный: ${config.projectId.length > 0 ? 'Да' : 'Нет'}`);
+    }
+    
+    console.groupEnd();
+    return true;
+},
     
     /**
      * ИНИЦИАЛИЗАЦИЯ FIREBASE
