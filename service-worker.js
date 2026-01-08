@@ -6,21 +6,21 @@ const CACHE_NAME = 'gold-options-pro-v9-' + Date.now();
 const STATIC_CACHE_NAME = 'gold-options-static-v3';
 
 const urlsToCache = [
-    '/trading-data/',
-    '/trading-data/index.html',
-    '/trading-data/css/base.css',
-    '/trading-data/css/components/modal.css',
-    '/trading-data/css/components/cards.css',
-    '/trading-data/css/components/table.css',
-    '/trading-data/css/pages/terminal.css',
-    '/trading-data/js/constants.js',
-    '/trading-data/js/services/cache.js',
-    '/trading-data/js/utils/helpers.js',
-    '/trading-data/js/modules/firebase.js',
-    '/trading-data/js/modules/auth.js',
-    '/trading-data/js/services/api.js',
-    '/trading-data/js/modules/charts.js',
-    '/trading-data/js/app.js'
+    './',
+    './index.html',
+    './css/base.css',
+    './css/components/modal.css',
+    './css/components/cards.css',
+    './css/components/table.css',
+    './css/pages/terminal.css',
+    './js/constants.js',
+    './js/services/cache.js',
+    './js/utils/helpers.js',
+    './js/modules/firebase.js',
+    './js/modules/auth.js',
+    './js/services/api.js',
+    './js/modules/charts.js',
+    './js/app.js'
 ];
 
 self.addEventListener('install', event => {
