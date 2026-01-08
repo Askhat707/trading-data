@@ -26,8 +26,7 @@ jobs:
           
           # САМЫЙ ВАЖНЫЙ ШАГ - СОЗДАЁМ КОНФИГ
           cat > _site/firebase-config.js << 'EOF'
-// 🔥 FIREBASE CONFIG - СГЕНЕРИРОВАН ИЗ GITHUB SECRETS
-// ⚠️ КЛЮЧИ ЗАЩИЩЕНЫ И НИКОГДА НЕ ПОПАДАЮТ В РЕПОЗИТОРИЙ!
+
 
 const firebaseConfig = {
   apiKey: "${{ secrets.FIREBASE_API_KEY }}",
