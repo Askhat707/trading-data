@@ -962,7 +962,8 @@ cleanup() {
     this.initialized = false;
     console.log('✅ Приложение очищено');
 
-},
+} // Убираем запятую (если это последний метод)
+}; // <--- ДОБАВЛЯЕМ ЭТУ СТРОКУ (закрываем объект App)
 
 // Экспорт
 if (typeof module !== 'undefined' && module.exports) {
