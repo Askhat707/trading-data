@@ -20,18 +20,6 @@
     <meta name="theme-color" content="#050505">
 </head>
 <body>
-    <!-- 🔥 ЗАГРУЗКА FIREBASE КОНФИГА -->
-    <script id="firebase-config-loader" src="/trading-data/firebase-config.js?nocache=1"></script>
-    
-    <!-- 🔥 FIREBASE SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-analytics.js"></script>
-    
-    <!-- 📊 CHART.JS -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    
     <!-- LOADING SCREEN -->
     <div id="loading" style="
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -72,7 +60,7 @@
         <div class="auth-container">
             <div class="auth-header">
                 <div class="auth-logo">⚡ GOLD OPTIONS PRO</div>
-                <div class="auth-subtitle">Professional Trading Terminal</div>
+                <div class="auth-subtitle">Professional Trading Terminal v2</div>
             </div>
             
             <div id="auth-error" class="auth-error"></div>
@@ -80,17 +68,17 @@
             
             <div id="auth-form-container" class="auth-form">
                 <div class="form-group">
-                    <label class="form-label">📧 Email</label>
-                    <input type="email" id="auth-email" class="form-input" placeholder="your@email.com">
+                    <label class="form-label">📧 Email Адрес</label>
+                    <input type="email" id="auth-email" class="form-input" placeholder="your@email.com" autocomplete="email">
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">🔐 Пароль</label>
-                    <input type="password" id="auth-password" class="form-input" placeholder="Введите пароль">
+                    <input type="password" id="auth-password" class="form-input" placeholder="Введите пароль" autocomplete="current-password">
                 </div>
                 
                 <button id="auth-login-btn" class="auth-button" onclick="handleLogin()">🚀 ВОЙТИ</button>
-                <button id="auth-register-btn" class="auth-button secondary" onclick="toggleAuthMode()">📝 РЕГИСТРАЦИЯ</button>
+                <button id="auth-register-btn" class="auth-button secondary" onclick="toggleAuthMode()">📝 СОЗДАТЬ АККАУНТ</button>
             </div>
             
             <div id="logout-btn" style="display: none; margin-top: 10px;">
@@ -111,10 +99,10 @@
                         background: none; border: none; color: var(--gold);
                         cursor: pointer; text-decoration: underline;
                         font-size: 0.85rem;
-                    " onclick="openTelegram()">Telegram</button>
+                    " onclick="openTelegram()">📱 Telegram: @ASKHAT_1985</button>
                 </div>
                 <div style="font-size: 0.8rem; color: #666;">
-                    ✅ Trial: 3 дня | 📱 Управление через Telegram
+                    ✅ TRIAL: 3 дня бесплатно
                 </div>
             </div>
         </div>
@@ -142,19 +130,25 @@
         <!-- STATUS BAR -->
         <div class="container">
             <div class="status-bar">
-                <div class="connection-status" id="connStatus">🔴 CONNECTING...</div>
+                <div class="connection-status" id="connStatus">
+                    <span style="color:#ff4444">🔴 OFFLINE</span>
+                </div>
                 <div class="data-grid">
                     <div class="data-box">
-                        <div class="data-label">ЦЕНА ЗОЛОТА</div>
-                        <div class="data-value price" id="price">$0.00</div>
+                        <div class="data-label">ТЕКУЩАЯ ЦЕНА</div>
+                        <div class="data-value price" id="price">$2600.00</div>
                     </div>
                     <div class="data-box">
                         <div class="data-label">ВОЛАТИЛЬНОСТЬ</div>
-                        <div class="data-value" id="volatility">0.00%</div>
+                        <div class="data-value" id="volatility">18.50%</div>
                     </div>
                     <div class="data-box">
                         <div class="data-label">ПОСЛЕДНЕЕ ОБНОВЛЕНИЕ</div>
                         <div class="data-value" style="font-size: 1.2rem;" id="updated">--:--:--</div>
+                    </div>
+                    <div class="data-box">
+                        <div class="data-label">ТЕКУЩАЯ DTE</div>
+                        <div class="data-value" id="current-dte-display">0</div>
                     </div>
                 </div>
             </div>
@@ -182,23 +176,23 @@
                         <div class="bottom-control-title">📊 КОЛИЧЕСТВО СТРАЙКОВ</div>
                         <div class="control-row">
                             <button class="btn" data-cnt="7" onclick="App.setStrikeCount(7)">7</button>
-                            <button class="btn" data-cnt="15" onclick="App.setStrikeCount(15)" style="background: var(--gradient-gold); color: #000;">15</button>
+                            <button class="btn active" data-cnt="15" onclick="App.setStrikeCount(15)">15</button>
                             <button class="btn" data-cnt="21" onclick="App.setStrikeCount(21)">21</button>
                             <button class="btn" data-cnt="31" onclick="App.setStrikeCount(31)">31</button>
                         </div>
                     </div>
                     
                     <div class="bottom-control-section">
-                        <div class="bottom-control-title">💎 ОПЦИИ</div>
+                        <div class="bottom-control-title">💎 ОПЦИИ ОТОБРАЖЕНИЯ</div>
                         <div class="control-row">
                             <button id="btn-prem" class="btn" onclick="App.togglePremium()">ПРЕМИИ: OFF</button>
                         </div>
                     </div>
                 </div>
                 
-                <div class="control-row" style="margin-top: 15px; padding: 0 15px;">
+                <div class="control-row" style="margin-top: 15px; padding: 0 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
                     <div class="control-label">⬆️ FORWARD ADJ:</div>
-                    <input type="number" id="forward-adj" class="inp" placeholder="0" onchange="App.applyForwardAdjustment()">
+                    <input type="number" id="forward-adj" class="inp" placeholder="0" value="0" onchange="App.applyForwardAdjustment()">
                 </div>
             </div>
         </div>
@@ -214,9 +208,9 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>CALL OI</th>
-                                    <th>CALL VOL</th>
-                                    <th>C PREM</th>
+                                    <th>CALL<br>OI</th>
+                                    <th>CALL<br>VOL</th>
+                                    <th>CALL<br>PREM</th>
                                     <th>DELTA</th>
                                     <th>GAMMA</th>
                                     <th>IV</th>
@@ -224,14 +218,14 @@
                                     <th>IV</th>
                                     <th>GAMMA</th>
                                     <th>DELTA</th>
-                                    <th>P PREM</th>
-                                    <th>PUT VOL</th>
-                                    <th>PUT OI</th>
+                                    <th>PUT<br>PREM</th>
+                                    <th>PUT<br>VOL</th>
+                                    <th>PUT<br>OI</th>
                                 </tr>
                             </thead>
                             <tbody id="table-body">
                                 <tr>
-                                    <td colspan="13" style="text-align: center; color: #666; padding: 50px;">Loading data...</td>
+                                    <td colspan="13" style="text-align: center; color: #666; padding: 50px;">Loading option chain data...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -246,7 +240,9 @@
                                 <div class="top-stat-name">TOP CALL OI</div>
                                 <div class="top-stat-icon">📈</div>
                             </div>
-                            <div class="top-stat-list" id="top-call-oi"></div>
+                            <div class="top-stat-list" id="top-call-oi">
+                                <div style="color: #888; padding: 20px; text-align: center;">Loading...</div>
+                            </div>
                         </div>
                         
                         <div class="top-stat-box">
@@ -254,7 +250,9 @@
                                 <div class="top-stat-name">TOP PUT OI</div>
                                 <div class="top-stat-icon">📉</div>
                             </div>
-                            <div class="top-stat-list" id="top-put-oi"></div>
+                            <div class="top-stat-list" id="top-put-oi">
+                                <div style="color: #888; padding: 20px; text-align: center;">Loading...</div>
+                            </div>
                         </div>
                         
                         <div class="top-stat-box">
@@ -262,7 +260,9 @@
                                 <div class="top-stat-name">TOP CALL VOL</div>
                                 <div class="top-stat-icon">📊</div>
                             </div>
-                            <div class="top-stat-list" id="top-call-vol"></div>
+                            <div class="top-stat-list" id="top-call-vol">
+                                <div style="color: #888; padding: 20px; text-align: center;">Loading...</div>
+                            </div>
                         </div>
                         
                         <div class="top-stat-box">
@@ -270,16 +270,106 @@
                                 <div class="top-stat-name">TOP PUT VOL</div>
                                 <div class="top-stat-icon">📊</div>
                             </div>
-                            <div class="top-stat-list" id="top-put-vol"></div>
+                            <div class="top-stat-list" id="top-put-vol">
+                                <div style="color: #888; padding: 20px; text-align: center;">Loading...</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- CHARTS -->
+        <!-- ANALYTICS -->
+        <div class="container" id="analytics">
+            <h2 class="section-header">📈 АНАЛИТИКА И РИСКИ</h2>
+            <div class="grid-8">
+                <div class="card">
+                    <div class="card-header">
+                        <span>💰</span>
+                        <span>МАКСИМАЛЬНАЯ БОЛЬ</span>
+                    </div>
+                    <div class="card-main-value" id="mp">$2600</div>
+                    <div class="card-sub">Max Pain Level</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span>📊</span>
+                        <span>ОЖИДАЕМОЕ ДВИЖЕНИЕ</span>
+                    </div>
+                    <div class="card-main-value" id="em">±$45</div>
+                    <div class="card-sub" id="em-range">Range: $2555 - $2645</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span>🎯</span>
+                        <span>НУЛЕВАЯ ГАММА</span>
+                    </div>
+                    <div class="card-main-value" id="zg">$2605</div>
+                    <div class="card-sub" id="zg-pos">↑ +5.0</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span>🌊</span>
+                        <span>ВАННА</span>
+                    </div>
+                    <div class="card-main-value" id="vanna">0.12</div>
+                    <div class="card-sub">Vanna Greeks</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span>⏰</span>
+                        <span>CHARM</span>
+                    </div>
+                    <div class="card-main-value" id="charm">0.0045</div>
+                    <div class="card-sub">Time Decay</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span>🎨</span>
+                        <span>COLOR</span>
+                    </div>
+                    <div class="card-main-value" id="color">-0.08</div>
+                    <div class="card-sub">Gamma Decay</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span>📈</span>
+                        <span>PROB CALL ITM</span>
+                    </div>
+                    <div class="card-main-value" id="prob-c" style="color: var(--call);">45.2%</div>
+                    <div class="card-sub">Probability</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span>📉</span>
+                        <span>PROB PUT ITM</span>
+                    </div>
+                    <div class="card-main-value" id="prob-p" style="color: var(--put);">54.8%</div>
+                    <div class="card-sub">Probability</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BREAKEVENS -->
         <div class="container">
-            <h2 class="section-header">📈 АНАЛИТИЧЕСКИЕ ГРАФИКИ</h2>
+            <h2 class="section-header">🔓 TOP 10 БЕЗУБЫТКОВ</h2>
+            <div class="grid-8" id="top-breakevens">
+                <div style="grid-column: 1/-1; text-align: center; color: #888; padding: 30px;">
+                    Loading breakeven data...
+                </div>
+            </div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="container" id="charts">
+            <h2 class="section-header">📊 АНАЛИТИЧЕСКИЕ ГРАФИКИ</h2>
             <div class="chart-grid-8">
                 <div class="chart-container">
                     <div class="chart-title">OI DISTRIBUTION</div>
@@ -317,127 +407,104 @@
         </div>
     </div>
 
-    <!-- JAVASCRIPT -->
+    <!-- FIREBASE SDK (COMPAT VERSION - БЕЗ МОДУЛЕЙ!) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-analytics.js"></script>
+
+    <!-- CHART.JS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- 🔥 FIREBASE CONFIG - ЗАГРУЖАЕТСЯ СИНХРОННО -->
+    <script>
+        console.log('📥 Загрузка firebase-config.js...');
+        
+        // Загружаем конфиг в синхронно
+        (function loadConfig() {
+            const timestamp = Date.now();
+            const script = document.createElement('script');
+            script.src = `/trading-data/firebase-config.js?nocache=${timestamp}`;
+            script.async = false;
+            script.onload = () => console.log('✅ firebase-config.js загружен');
+            script.onerror = () => console.error('❌ Ошибка загрузки firebase-config.js');
+            document.head.appendChild(script);
+        })();
+    </script>
+
+    <!-- CONSTANTS -->
     <script src="/trading-data/js/constants.js"></script>
+    
+    <!-- SERVICES -->
     <script src="/trading-data/js/services/cache.js"></script>
     <script src="/trading-data/js/utils/helpers.js"></script>
+    
+    <!-- MODULES -->
     <script src="/trading-data/js/modules/firebase.js"></script>
     <script src="/trading-data/js/modules/auth.js"></script>
     <script src="/trading-data/js/services/api.js"></script>
     <script src="/trading-data/js/modules/charts.js"></script>
     <script src="/trading-data/js/app.js"></script>
-    
-    <!-- INIT SCRIPT -->
+
+    <!-- ИНИЦИАЛИЗАЦИЯ -->
     <script>
-        console.log('🚀 СИСТЕМА ИНИЦИАЛИЗИРУЕТСЯ...');
+        console.log('🚀 ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ...');
         
-        // Проверяем загрузку Firebase конфига
-        function checkFirebaseConfig() {
-            return new Promise((resolve) => {
-                let attempts = 0;
-                const maxAttempts = 50; // 5 сек
+        // Ждём конфига Firebase
+        let attempts = 0;
+        const waitForConfig = setInterval(() => {
+            if (window.firebaseConfig && window.firebaseConfig.projectId) {
+                clearInterval(waitForConfig);
+                console.log('✅ Firebase конфиг готов!');
                 
-                const check = setInterval(() => {
-                    if (window.firebaseConfig && window.firebaseConfig.projectId) {
-                        console.log('✅ Firebase конфиг загружен!');
-                        clearInterval(check);
-                        resolve(true);
-                    } else if (attempts >= maxAttempts) {
-                        console.error('❌ Firebase конфиг не загрузился за 5 секунд');
-                        clearInterval(check);
-                        resolve(false);
-                    }
-                    attempts++;
-                }, 100);
-            });
-        }
-        
-        // Инициализация приложения
-        async function initializeApp() {
-            console.log('🔍 Проверка Firebase конфигурации...');
-            
-            const configLoaded = await checkFirebaseConfig();
-            
-            if (!configLoaded) {
-                console.error('❌ ОШИБКА: Firebase конфигурация не загружена!');
-                const loading = document.getElementById('loading');
-                if (loading) {
-                    loading.innerHTML = `
-                        <div style="
-                            font-size: 4rem; margin-bottom: 30px; color: #FF1744;
-                        ">❌</div>
-                        <div style="
-                            font-size: 1.5rem; color: #FF1744; font-weight: 800;
-                            margin-bottom: 20px;
-                        ">ОШИБКА ИНИЦИАЛИЗАЦИИ</div>
-                        <div style="
-                            font-size: 1rem; color: #888; margin-bottom: 20px;
-                            text-align: center; max-width: 400px;
-                        ">Не удалось загрузить конфигурацию Firebase.<br>Проверьте консоль браузера и GitHub Actions логи.</div>
-                        <button onclick="location.reload()" style="
-                            background: var(--gradient-gold); color: #000;
-                            border: none; padding: 12px 30px; border-radius: 8px;
-                            font-weight: 700; cursor: pointer;
-                        ">🔄 ПЕРЕЗАГРУЗИТЬ</button>
-                    `;
-                }
-                return;
-            }
-            
-            console.log('✅ Инициализация AuthModule...');
-            
-            // Инициализируем Auth
-            if (window.AuthModule) {
-                await AuthModule.autoInit();
-            }
-        }
-        
-        // Ждём загрузки DOM
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeApp);
-        } else {
-            initializeApp();
-        }
-        
-        // Глобальные функции
-        function handleLogin() {
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
-            
-            if (!email || !password) {
+                // Инициализируем Auth
                 if (window.AuthModule) {
-                    AuthModule.showError('Заполните все поля!');
+                    AuthModule.autoInit();
+                } else {
+                    console.error('❌ AuthModule не загружен');
                 }
-                return;
+            } else if (attempts > 100) {
+                clearInterval(waitForConfig);
+                console.error('❌ Timeout при загрузке конфига');
+                showConfigError();
             }
-            
-            if (window.AuthModule) {
-                AuthModule.login(email, password);
-            }
-        }
+            attempts++;
+        }, 50);
         
-        function handleLogout() {
-            if (window.AuthModule) {
-                AuthModule.logout();
+        function showConfigError() {
+            const loading = document.getElementById('loading');
+            if (loading) {
+                loading.innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="font-size: 4rem; margin-bottom: 20px; color: #FF1744;">❌</div>
+                        <div style="color: #FF1744; font-size: 1.5rem; font-weight: 800; margin-bottom: 20px;">
+                            ОШИБКА КОНФИГУРАЦИИ
+                        </div>
+                        <div style="color: #888; font-size: 1rem; margin-bottom: 30px; max-width: 400px;">
+                            Не удалось загрузить firebase-config.js<br>
+                            Проверьте консоль браузера (F12)
+                        </div>
+                        <button onclick="location.reload()" style="
+                            background: var(--gold); color: #000;
+                            border: none; padding: 12px 30px; border-radius: 8px;
+                            font-weight: 700; cursor: pointer; font-size: 1rem;
+                        ">🔄 ПЕРЕЗАГРУЗИТЬ</button>
+                    </div>
+                `;
             }
-        }
-        
-        function toggleAuthMode() {
-            // Можно добавить регистрацию позже
-            alert('Регистрация будет добавлена в следующем обновлении');
         }
     </script>
-    
+
     <!-- SERVICE WORKER -->
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/trading-data/service-worker.js')
                 .then(reg => console.log('✅ Service Worker зарегистрирован'))
-                .catch(err => console.warn('⚠️ Service Worker ошибка:', err));
+                .catch(err => console.warn('⚠️ Service Worker не поддерживается:', err));
         }
     </script>
-    
-    <!-- ANIMATIONS -->
+
+    <!-- GLOBAL ANIMATIONS -->
     <style>
         @keyframes pulse {
             0%, 100% { transform: scale(1); opacity: 1; }
@@ -447,6 +514,16 @@
         @keyframes loading {
             0% { transform: translateX(-100%); }
             100% { transform: translateX(300%); }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
         }
     </style>
 </body>
