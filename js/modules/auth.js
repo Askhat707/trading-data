@@ -65,18 +65,69 @@ const AuthModule = {
  * ПРОВЕРКА: ЗАГРУЖЕН ЛИ FIREBASE SDK
  */
 isFirebaseSDKLoaded() {
-    // Проверяем Firebase Compat версию
-    if (typeof firebase !== 'undefined' && 
-        typeof firebase.initializeApp === 'function' &&
-        typeof firebase.auth === 'function' &&
-        typeof firebase.database === 'function') {
-        console.log('✅ Firebase SDK загружен (Compat версия)');
-        return true;
+    if (typeof firebase === 'undefined') {
+        console.error('❌ Firebase SDK не загружен');
+        console.error('   Проверь что в index.html подключены CDN скрипты');
+        return false;
     }
     
-    // Если нет - показываем ошибку
-    console.error('❌ Firebase SDK не найден. Проверьте подключение в index.html');
-    return false;
+    if (typeof firebase.initializeApp !== 'function') {
+        console.error('❌ firebase.initializeApp недоступен');
+        return false;
+    }
+    
+    if (typeof firebase.auth !== 'function') {
+        console.error('❌ firebase.auth недоступен');
+        return false;
+    }
+    
+    if (typeof firebase.database !== 'function') {
+        console.error('❌ firebase.database недоступен');
+        return false;
+    }
+    
+    console.log('✅ Firebase SDK загружен правильно (Compat версия)');
+    return true;
+},
+
+/**
+ * ПРОВЕРКА: КОНФИГУРАЦИЯ FIREBASE ДОСТУПНА
+ */
+isFirebaseConfigLoaded() {
+    if (typeof window.firebaseConfig === 'undefined') {
+        console.error('❌ Firebase конфигурация не найдена в window.firebaseConfig');
+        console.error('   Проверь что firebase-config.js загружен');
+        return false;
+    }
+    
+    const config = window.firebaseConfig;
+    const requiredFields = [
+        'apiKey',
+        'authDomain',
+        'databaseURL',
+        'projectId',
+        'storageBucket',
+        'messagingSenderId',
+        'appId'
+    ];
+    
+    for (const field of requiredFields) {
+        if (!config[field]) {
+            console.error(`❌ Firebase конфигурация неполная: отсутствует ${field}`);
+            return false;
+        }
+        
+        // Проверяем что это не заглушка из template
+        if (config[field].includes('FIREBASE_')) {
+            console.error(`❌ Firebase конфигурация не подставлена: ${field} содержит переменную`);
+            console.error('   Это означает что GitHub Secrets не установлены правильно');
+            return false;
+        }
+    }
+    
+    console.log('✅ Firebase конфигурация загружена правильно');
+    console.log('   Проект:', config.projectId);
+    return true;
 },
     
     /**
