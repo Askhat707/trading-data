@@ -1,10 +1,14 @@
-# Firebase config
+# Firebase configs
 firebase-config.js
+
+# Build directories
 build/
 _site/
+dist/
 
 # Node
 node_modules/
+package-lock.json
 npm-debug.log*
 
 # IDE
