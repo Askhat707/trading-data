@@ -962,7 +962,7 @@ cleanup() {
     this.initialized = false;
     console.log('✅ Приложение очищено');
 
-};
+},
 
 // Экспорт
 if (typeof module !== 'undefined' && module.exports) {
