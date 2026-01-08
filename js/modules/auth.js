@@ -262,6 +262,47 @@ async login(email, password, silent = false) {
 },
 
 /**
+ * Проверка истекла ли подписка
+ */
+isSubscriptionExpired(user) {
+    if (!user) return true;
+    
+    // Если пользователь PREMIUM
+    if (user.plan === 'PREMIUM') {
+        if (user.premiumEnd && user.premiumEnd > Date.now()) {
+            return false; // Подписка активна
+        }
+        return true; // Подписка истекла
+    }
+    
+    // Если пользователь TRIAL
+    if (user.trialEnd && user.trialEnd > Date.now()) {
+        return false; // Триал активен
+    }
+    
+    return true; // Триал истек
+},
+
+/**
+ * Получить количество оставшихся дней
+ */
+getDaysLeft(user = this.currentUser) {
+    if (!user) return 0;
+    
+    if (user.plan === 'PREMIUM' && user.premiumEnd) {
+        const days = Math.ceil((user.premiumEnd - Date.now()) / (1000 * 60 * 60 * 24));
+        return Math.max(0, days);
+    }
+    
+    if (user.trialEnd) {
+        const days = Math.ceil((user.trialEnd - Date.now()) / (1000 * 60 * 60 * 24));
+        return Math.max(0, days);
+    }
+    
+    return 0;
+},
+    
+/**
  * ВЫХОД ПОЛЬЗОВАТЕЛЯ
  */
 async logout() {
