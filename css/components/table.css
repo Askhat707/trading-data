@@ -1,0 +1,206 @@
+/* ========================================================================== */
+/* 📋 ТАБЛИЦЫ И ТАБЛИЧНЫЕ КОМПОНЕНТЫ */
+/* ========================================================================== */
+.main-table-container {
+    display: flex;
+    gap: 25px;
+    margin: 40px 0;
+    flex-direction: row;
+    width: 100%;
+    align-items: stretch;
+    min-height: calc(100vh - 600px);
+    flex: 1;
+}
+
+.table-wrapper {
+    background: var(--bg-card); 
+    border: var(--border); 
+    border-radius: 15px;
+    overflow: hidden; 
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(10px);
+    flex: 1;
+    min-height: auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.table-controls {
+    padding: 15px 25px; 
+    background: rgba(30, 30, 30, 0.5);
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+
+.table-scroll { 
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    min-height: 0;
+}
+
+table { 
+    width: 100%;
+    border-collapse: collapse; 
+    font-size: 0.95rem; 
+    table-layout: fixed;
+}
+
+th, td {
+    padding: 10px 5px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+th {
+    background: rgba(15, 15, 15, 0.95); 
+    color: var(--text-muted); 
+    position: sticky; 
+    top: 0; 
+    z-index: 10; 
+    font-weight: 700; 
+    font-size: 0.75rem;
+    border-bottom: 1px solid #333;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.strike-cell {
+    background: rgba(25, 25, 25, 0.95); 
+    border-left: 1px solid #333; 
+    border-right: 1px solid #333;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #fff; 
+    width: 90px;
+    padding: 10px 8px;
+    white-space: nowrap;
+}
+
+.row-atm { 
+    background: rgba(255, 215, 0, 0.08) !important; 
+    border-top: 2px solid var(--gold); 
+    border-bottom: 2px solid var(--gold); 
+    position: relative;
+}
+
+.row-atm::after {
+    content: 'ATM';
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7em;
+    color: var(--gold);
+    background: rgba(0, 0, 0, 0.5);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+/* ========================================================================== */
+/* 🏆 TOP STATS SIDEBAR */
+/* ========================================================================== */
+.top-stats-sidebar {
+    background: var(--bg-card);
+    border: var(--border);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(10px);
+    height: fit-content;
+    position: sticky;
+    top: 100px;
+    width: 280px;
+    flex-shrink: 0;
+    min-width: 280px;
+}
+
+.top-stats-title {
+    color: var(--gold);
+    font-size: 1.2rem;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 2px solid var(--gold);
+    padding-bottom: 10px;
+}
+
+.top-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+
+.top-stat-box {
+    background: rgba(30, 30, 30, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    transition: var(--transition);
+}
+
+.top-stat-box:hover {
+    border-color: var(--gold);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+}
+
+.top-stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.top-stat-name {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.top-stat-icon {
+    color: var(--gold);
+    font-size: 1.1rem;
+}
+
+.top-stat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.top-stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background: rgba(40, 40, 40, 0.5);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: var(--transition);
+}
+
+.top-stat-item:hover {
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.top-stat-strike {
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.top-stat-value {
+    font-weight: 800;
+    color: var(--gold);
+}

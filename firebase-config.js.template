@@ -1,0 +1,31 @@
+// ====================================================
+// 🔥 FIREBASE CONFIG - GENERATED FROM GITHUB SECRETS
+// ⚠️ Этот файл создается автоматически GitHub Actions
+// ====================================================
+
+console.log('🚀 Загрузка Firebase конфигурации...');
+
+const firebaseConfig = {
+  apiKey: "{{FIREBASE_API_KEY}}",
+  authDomain: "{{FIREBASE_AUTH_DOMAIN}}",
+  databaseURL: "{{FIREBASE_DATABASE_URL}}",
+  projectId: "{{FIREBASE_PROJECT_ID}}",
+  storageBucket: "{{FIREBASE_STORAGE_BUCKET}}",
+  messagingSenderId: "{{FIREBASE_MESSAGING_SENDER_ID}}",
+  appId: "{{FIREBASE_APP_ID}}",
+  measurementId: "{{FIREBASE_MEASUREMENT_ID}}"
+};
+
+console.group('📊 Firebase Configuration:');
+console.log('✅ Проект:', firebaseConfig.projectId);
+console.log('✅ Database:', firebaseConfig.databaseURL);
+console.log('✅ Auth Domain:', firebaseConfig.authDomain);
+console.groupEnd();
+
+// Проверка конфигурации (упрощенная)
+if (typeof window !== 'undefined') {
+  window.firebaseConfig = firebaseConfig;
+  console.log('✅ Конфигурация сохранена в window.firebaseConfig');
+}
+
+console.log('✅ FIREBASE CONFIG READY\n');
