@@ -9,11 +9,13 @@
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' fill='%23FFD700'>🔥</text></svg>">
     
     <!-- CSS -->
-    <link rel="stylesheet" href="/trading-data/css/base.css">
-    <link rel="stylesheet" href="/trading-data/css/components/modal.css">
-    <link rel="stylesheet" href="/trading-data/css/components/cards.css">
-    <link rel="stylesheet" href="/trading-data/css/components/table.css">
-    <link rel="stylesheet" href="/trading-data/css/pages/terminal.css">
+    <!-- Было: href="/trading-data/css/..." -->
+    <!-- Стало: href="css/..." (относительный путь) -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components/modal.css">
+    <link rel="stylesheet" href="css/components/cards.css">
+    <link rel="stylesheet" href="css/components/table.css">
+    <link rel="stylesheet" href="css/pages/terminal.css">
     
     <!-- Meta -->
     <meta name="description" content="Professional Gold Options Trading Terminal">
@@ -449,18 +451,18 @@
     </script>
 
     <!-- CONSTANTS -->
-    <script src="/trading-data/js/constants.js"></script>
+    <script src="js/constants.js"></script>
     
     <!-- SERVICES -->
-    <script src="/trading-data/js/services/cache.js"></script>
-    <script src="/trading-data/js/utils/helpers.js"></script>
+    <script src="js/services/cache.js"></script>
+    <script src="js/utils/helpers.js"></script>
     
     <!-- MODULES -->
-    <script src="/trading-data/js/modules/firebase.js"></script>
-    <script src="/trading-data/js/modules/auth.js"></script>
-    <script src="/trading-data/js/services/api.js"></script>
-    <script src="/trading-data/js/modules/charts.js"></script>
-    <script src="/trading-data/js/app.js"></script>
+    <script src="js/modules/firebase.js"></script>
+    <script src="js/modules/auth.js"></script>
+    <script src="js/services/api.js"></script>
+    <script src="js/modules/charts.js"></script>
+    <script src="js/app.js"></script>
     <!-- 👇 ГЛОБАЛЬНЫЕ ФУНКЦИИ ДЛЯ КНОПОК (ВСТАВИТЬ ПЕРЕД </body>) -->
     <script>
         // Функция выхода
@@ -544,7 +546,7 @@
     <!-- SERVICE WORKER -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/trading-data/service-worker.js')
+            navigator.serviceWorker.register('service-worker.js')
                 .then(reg => console.log('✅ Service Worker зарегистрирован'))
                 .catch(err => console.warn('⚠️ Service Worker не поддерживается:', err));
         }
