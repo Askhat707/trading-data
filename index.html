@@ -430,7 +430,8 @@
             // Было: "trading-data/firebase-config.js?..." (создавало дубль папки)
             // Стало: "/trading-data/firebase-config.js?..." (абсолютный путь от корня сайта)
             
-            script.src = "/trading-data/firebase-config.js?nocache=" + timestamp; 
+            // Убрали начало пути, теперь он ищет файл рядом с index.html
+            script.src = "firebase-config.js?nocache=" + timestamp;
             
             script.async = false;
             
