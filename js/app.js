@@ -1,5 +1,5 @@
 // ============================================
-// 🚀 ОСНОВНОЕ ПРИЛОЖЕНИЕ
+// 🚀 ОСНОВНОЕ ПРИЛОЖЕНИЕ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 // ============================================
 
 const App = {
@@ -17,70 +17,59 @@ const App = {
      * Инициализация приложения
      */
     async init() {
-    // 🔥 ДОБАВЛЕННЫЙ КОД ДЛЯ ПРИНУДИТЕЛЬНОЙ ПРОВЕРКИ КОНФИГА
-    console.log('🚀 App.init() запущен...');
-    
-    // 🔥 ПРИНУДИТЕЛЬНАЯ ПРОВЕРКА КОНФИГА FIREBASE
-    if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
-        console.error('🚨 КРИТИЧЕСКАЯ ОШИБКА: firebase-config.js не загружен в App.init()!');
+        console.log('🚀 App.init() запущен...');
         
-        // Пытаемся загрузить заново
-        const timestamp = Date.now();
-        const script = document.createElement('script');
-        script.src = `/trading-data/firebase-config.js?retry=${timestamp}`;
-        script.async = false;
+        // 🔥 ПЕРВАЯ ПРОВЕРКА: МОДАЛЬНОЕ ОКНО ДОЛЖНО БЫТЬ СКРЫТО
+        const authModal = document.getElementById('auth-modal');
+        if (authModal && authModal.style.display === 'flex') {
+            console.log('⚠️ Пользователь еще не вошел, откладываем init()');
+            return; // Не запускаем приложение, пока пользователь не вошел
+        }
         
-        script.onload = () => {
-            console.log('✅ Конфиг перезагружен, перезапускаем приложение...');
-            setTimeout(() => this.init(), 500);
-        };
-        
-        script.onerror = () => {
-            console.error('❌ Не удалось перезагрузить конфиг в App.init()');
-            if (typeof window.showErrorScreen === 'function') {
-                window.showErrorScreen('Не удалось загрузить конфигурацию Firebase. Проверьте деплой.');
+        // 🔥 ВТОРАЯ ПРОВЕРКА: FIREBASE КОНФИГ
+        if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
+            console.error('🚨 КРИТИЧЕСКАЯ ОШИБКА: firebase-config.js не загружен в App.init()!');
+            
+            // Если нет конфига, перенаправляем на модальное окно
+            if (window.AuthModule && window.AuthModule.forceShowAuthModal) {
+                AuthModule.forceShowAuthModal();
             }
-        };
+            return;
+        }
         
-        document.head.appendChild(script);
-        return;
-    }
-    // 🔥 КОНЕЦ ДОБАВЛЕННОГО КОДА
-    
-    // ⬇️ СУЩЕСТВУЮЩИЙ КОД НИЖЕ (НЕ МЕНЯЕТСЯ)
-    if (this.initialized) return;
-    
-    console.log('🚀 Запуск основного приложения...');
-    
-    // Определяем тип пользователя
-    this.isTrial = window.AuthModule?.currentUser ? 
-        (window.AuthModule.currentUser.plan !== "PREMIUM" || window.AuthModule.isSubscriptionExpired(window.AuthModule.currentUser)) : 
-        true;
-    
-    // Обновляем UI в зависимости от типа пользователя
-    this.updateUIForUserType();
-    
-    // Запускаем обновления данных
-    this.startPriceUpdates();
-    this.startDataUpdates();
-    this.startAnalyticsUpdates();
-    
-    // Загружаем начальные данные
-    await this.loadInitialData();
-    await this.loadDTEList();
-    
-    // Обновляем время
-    this.updateTime();
-    setInterval(() => this.updateTime(), 1000);
-    
-    // Инициализируем MT5 модуль
-    if (window.MT5Module) {
-        MT5Module.init();
-    }
-    
-    this.initialized = true;
-    console.log('✅ Приложение инициализировано');
-},
+        if (this.initialized) return;
+        
+        console.log('🚀 Запуск основного приложения...');
+        
+        // Определяем тип пользователя
+        this.isTrial = window.AuthModule?.currentUser ? 
+            (window.AuthModule.currentUser.plan !== "PREMIUM" || window.AuthModule.isSubscriptionExpired(window.AuthModule.currentUser)) : 
+            true;
+        
+        // Обновляем UI в зависимости от типа пользователя
+        this.updateUIForUserType();
+        
+        // Запускаем обновления данных
+        this.startPriceUpdates();
+        this.startDataUpdates();
+        this.startAnalyticsUpdates();
+        
+        // Загружаем начальные данные
+        await this.loadInitialData();
+        await this.loadDTEList();
+        
+        // Обновляем время
+        this.updateTime();
+        setInterval(() => this.updateTime(), 1000);
+        
+        // Инициализируем MT5 модуль
+        if (window.MT5Module) {
+            MT5Module.init();
+        }
+        
+        this.initialized = true;
+        console.log('✅ Приложение инициализировано');
+    },
     
     /**
      * Обновление UI для типа пользователя
