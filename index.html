@@ -461,7 +461,37 @@
     <script src="/trading-data/js/services/api.js"></script>
     <script src="/trading-data/js/modules/charts.js"></script>
     <script src="/trading-data/js/app.js"></script>
+    <!-- 👇 ГЛОБАЛЬНЫЕ ФУНКЦИИ ДЛЯ КНОПОК (ВСТАВИТЬ ПЕРЕД </body>) -->
+    <script>
+        // Функция выхода
+        window.handleLogout = function() {
+            console.log('👋 Нажата кнопка выхода');
+            if (window.AuthModule) {
+                AuthModule.logout();
+            } else {
+                console.error('❌ AuthModule не загружен!');
+                alert('Ошибка: модуль авторизации не готов.');
+            }
+        };
 
+        // Функция входа
+        window.handleLogin = function() {
+            const emailField = document.getElementById('auth-email');
+            const passField = document.getElementById('auth-password');
+            
+            if (window.AuthModule && emailField && passField) {
+                AuthModule.login(emailField.value, passField.value);
+            }
+        };
+
+        // Переключение режимов (если нужно)
+        window.toggleAuthMode = function() {
+            // Логика переключения форм, если она есть
+            console.log('Переключение режима авторизации');
+            const container = document.querySelector('.auth-container');
+            if(container) container.classList.toggle('register-mode');
+        };
+    </script>
     <!-- ИНИЦИАЛИЗАЦИЯ -->
     <script>
         console.log('🚀 ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ...');
