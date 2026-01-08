@@ -77,11 +77,17 @@ self.addEventListener('fetch', event => {
         return;
     }
     
+    // Пропускаем не GET запросы (POST, PUT, DELETE)
+    if (event.request.method !== 'GET') {
+        return; // Пусть браузер обрабатывает сам
+    }
+    
     // Для HTML всегда загружаем свежую версию
     if (url.includes('.html') || event.request.destination === 'document') {
         event.respondWith(
             fetch(event.request)
                 .then(response => {
+                    // Клонируем ответ, потому что он может быть использован только один раз
                     const responseClone = response.clone();
                     caches.open(STATIC_CACHE_NAME).then(cache => {
                         cache.put(event.request, responseClone);
@@ -97,6 +103,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         fetch(event.request)
             .then(response => {
+                // Клонируем ответ
                 const responseClone = response.clone();
                 caches.open(STATIC_CACHE_NAME).then(cache => {
                     cache.put(event.request, responseClone);
