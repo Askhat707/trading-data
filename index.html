@@ -459,5 +459,106 @@
         `;
         document.head.appendChild(style);
     </script>
+    <!-- После всех скриптов, перед закрывающим </body> -->
+<script>
+// ============================================
+// 🚀 АВТО-ПРОВЕРКА ВСЕХ ЗАВИСИМОСТЕЙ
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 DOM полностью загружен');
+    
+    // Функция для проверки загрузки всех скриптов
+    function checkAllScriptsLoaded() {
+        const requiredScripts = [
+            'firebase-config.js',
+            'js/constants.js',
+            'js/modules/auth.js',
+            'js/app.js'
+        ];
+        
+        let allLoaded = true;
+        
+        // Проверяем firebase-config.js
+        if (typeof window.firebaseConfig === 'undefined') {
+            console.error('❌ window.firebaseConfig не загружен');
+            allLoaded = false;
+            
+            // Показываем ошибку пользователю
+            const loading = document.getElementById('loading');
+            if (loading) {
+                loading.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 3rem; color: #ff4444;">❌</div>
+                        <h2 style="color: #ff4444; margin: 20px 0;">Ошибка конфигурации</h2>
+                        <p style="color: #ccc;">Firebase конфигурация не загружена</p>
+                        <p style="color: #666;">Проверьте настройки GitHub Secrets</p>
+                        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; 
+                            background: #FFD700; color: #000; border: none; border-radius: 5px; 
+                            cursor: pointer; font-weight: bold;">
+                            🔄 Перезагрузить
+                        </button>
+                    </div>
+                `;
+            }
+        } else {
+            console.log('✅ window.firebaseConfig загружен:', window.firebaseConfig.projectId);
+        }
+        
+        return allLoaded;
+    }
+    
+    // Запускаем проверку через 2 секунды (после загрузки всех скриптов)
+    setTimeout(() => {
+        console.log('🔍 Проверка всех зависимостей...');
+        
+        if (checkAllScriptsLoaded()) {
+            console.log('✅ Все скрипты загружены успешно');
+            
+            // Скрываем лоадер
+            const loading = document.getElementById('loading');
+            if (loading) {
+                loading.style.opacity = '0';
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                }, 500);
+            }
+            
+            // Запускаем AuthModule если он доступен
+            if (window.AuthModule && typeof AuthModule.autoInit === 'function') {
+                console.log('🚀 Запуск AuthModule.autoInit()...');
+                AuthModule.autoInit();
+            } else {
+                console.error('❌ AuthModule не найден или autoInit недоступен');
+                const loading = document.getElementById('loading');
+                if (loading) {
+                    loading.innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <div style="font-size: 3rem; color: #ff4444;">❌</div>
+                            <h2 style="color: #ff4444; margin: 20px 0;">Ошибка загрузки</h2>
+                            <p style="color: #ccc;">Модуль аутентификации не загружен</p>
+                            <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; 
+                                background: #FFD700; color: #000; border: none; border-radius: 5px; 
+                                cursor: pointer; font-weight: bold;">
+                                🔄 Перезагрузить
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        }
+    }, 2000);
+});
+
+// Глобальная функция для отладки
+window.debugFirebase = function() {
+    console.group('🔥 Firebase Debug Info');
+    console.log('window.firebaseConfig:', window.firebaseConfig);
+    console.log('window.firebase:', typeof firebase);
+    console.log('window.firebase.apps:', firebase?.apps);
+    console.log('window.AuthModule:', window.AuthModule);
+    console.groupEnd();
+};
+</script>
 </body>
 </html>
