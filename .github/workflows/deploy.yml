@@ -10,6 +10,7 @@ on:
         required: false
         default: 'false'
 
+# Даём разрешения для GitHub Pages
 permissions:
   contents: write
   pages: write
@@ -17,7 +18,6 @@ permissions:
 
 env:
   NODE_VERSION: '18'
-  NODE_OPTIONS: '--max-old-space-size=4096'
 
 jobs:
   validate-secrets:
@@ -76,7 +76,12 @@ jobs:
       - name: 📥 Загрузка репозитория
         uses: actions/checkout@v4
         
-      - name: 🔧 Генерация firebase-config.js
+      - name: 🔧 Установка Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 📦 Генерация конфига с помощью Node
         env:
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -89,28 +94,64 @@ jobs:
         run: |
           echo "🚀 Генерация firebase-config.js из шаблона..."
           
-          # Читаем шаблон
-          TEMPLATE=$(cat firebase-config.js.template)
+          # Проверяем существование скрипта
+          if [ ! -f "scripts/generate-config.js" ]; then
+            echo "📝 Создаем простой скрипт генерации..."
+            cat > generate-config-simple.js << 'EOF'
+            const fs = require('fs');
+            
+            const template = `// ====================================================
+            // 🔥 FIREBASE CONFIG - GENERATED FROM GITHUB SECRETS
+            // ⚠️ Этот файл создается автоматически GitHub Actions
+            // ====================================================
+            
+            console.log('🚀 Загрузка Firebase конфигурации...');
+            
+            const firebaseConfig = {
+              apiKey: "${process.env.FIREBASE_API_KEY}",
+              authDomain: "${process.env.FIREBASE_AUTH_DOMAIN}",
+              databaseURL: "${process.env.FIREBASE_DATABASE_URL}",
+              projectId: "${process.env.FIREBASE_PROJECT_ID}",
+              storageBucket: "${process.env.FIREBASE_STORAGE_BUCKET}",
+              messagingSenderId: "${process.env.FIREBASE_MESSAGING_SENDER_ID}",
+              appId: "${process.env.FIREBASE_APP_ID}",
+              measurementId: "${process.env.FIREBASE_MEASUREMENT_ID}"
+            };
+            
+            console.group('📊 Firebase Configuration:');
+            console.log('✅ Проект:', firebaseConfig.projectId);
+            console.log('✅ Database:', firebaseConfig.databaseURL);
+            console.log('✅ Auth Domain:', firebaseConfig.authDomain);
+            console.groupEnd();
+            
+            // Проверка конфигурации
+            if (typeof window !== 'undefined') {
+              window.firebaseConfig = firebaseConfig;
+              console.log('✅ Конфигурация сохранена в window.firebaseConfig');
+            }
+            
+            console.log('✅ FIREBASE CONFIG READY\\n');`;
+            
+            fs.writeFileSync('firebase-config.js', template);
+            console.log('✅ Конфиг создан');
+            EOF
+            
+            node generate-config-simple.js
+          else
+            node scripts/generate-config.js
+          fi
           
-          # Заменяем все переменные
-          CONFIG="$TEMPLATE"
-          CONFIG="${CONFIG//\{\{FIREBASE_API_KEY\}\}/$FIREBASE_API_KEY}"
-          CONFIG="${CONFIG//\{\{FIREBASE_AUTH_DOMAIN\}\}/$FIREBASE_AUTH_DOMAIN}"
-          CONFIG="${CONFIG//\{\{FIREBASE_DATABASE_URL\}\}/$FIREBASE_DATABASE_URL}"
-          CONFIG="${CONFIG//\{\{FIREBASE_PROJECT_ID\}\}/$FIREBASE_PROJECT_ID}"
-          CONFIG="${CONFIG//\{\{FIREBASE_STORAGE_BUCKET\}\}/$FIREBASE_STORAGE_BUCKET}"
-          CONFIG="${CONFIG//\{\{FIREBASE_MESSAGING_SENDER_ID\}\}/$FIREBASE_MESSAGING_SENDER_ID}"
-          CONFIG="${CONFIG//\{\{FIREBASE_APP_ID\}\}/$FIREBASE_APP_ID}"
-          CONFIG="${CONFIG//\{\{FIREBASE_MEASUREMENT_ID\}\}/$FIREBASE_MEASUREMENT_ID}"
-          
-          # Сохраняем
-          echo "$CONFIG" > firebase-config.js
-          
-          echo "✅ Конфиг создан"
-          head -15 firebase-config.js
+          echo "🔍 Проверяем результат..."
+          if [ -f "firebase-config.js" ]; then
+            echo "✅ Файл создан:"
+            head -20 firebase-config.js
+          else
+            echo "❌ Файл не создан!"
+            exit 1
+          fi
 
-  deploy:
-    name: 🚀 Деплой на GitHub Pages
+  build-and-deploy:
+    name: 🏗️ Сборка и деплой
     runs-on: ubuntu-latest
     needs: generate-config
     environment:
@@ -120,10 +161,13 @@ jobs:
     steps:
       - name: 📥 Загрузка репозитория
         uses: actions/checkout@v4
+        
+      - name: 🔧 Установка Node.js
+        uses: actions/setup-node@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          node-version: ${{ env.NODE_VERSION }}
           
-      - name: 🔧 Восстановление сгенерированного конфига
+      - name: 🔄 Восстановление конфига
         env:
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -136,9 +180,10 @@ jobs:
         run: |
           echo "🔄 Восстановление firebase-config.js..."
           
-          # Генерируем конфиг заново (как в предыдущем шаге)
+          # Читаем шаблон
           TEMPLATE=$(cat firebase-config.js.template)
           
+          # Заменяем все переменные
           CONFIG="${TEMPLATE//\{\{FIREBASE_API_KEY\}\}/$FIREBASE_API_KEY}"
           CONFIG="${CONFIG//\{\{FIREBASE_AUTH_DOMAIN\}\}/$FIREBASE_AUTH_DOMAIN}"
           CONFIG="${CONFIG//\{\{FIREBASE_DATABASE_URL\}\}/$FIREBASE_DATABASE_URL}"
@@ -151,50 +196,37 @@ jobs:
           echo "$CONFIG" > firebase-config.js
           
           # Проверяем
-          if [ ! -f "firebase-config.js" ]; then
-            echo "::error::Не удалось создать firebase-config.js"
+          echo "🔍 Проверка конфига:"
+          echo "Размер файла: $(wc -l < firebase-config.js) строк"
+          
+          if grep -q "{{" firebase-config.js; then
+            echo "❌ В файле остались плейсхолдеры!"
             exit 1
           fi
           
-          echo "✅ Конфиг восстановлен"
+          echo "✅ Конфиг восстановлен и проверен"
           
       - name: 📄 Создание .nojekyll
         run: |
           echo "📄 Создаю .nojekyll для GitHub Pages..."
           touch .nojekyll
           
+      - name: 📁 Проверка файлов
+        run: |
+          echo "📁 Структура файлов:"
+          ls -la
+          echo ""
+          echo "📁 Структура директорий:"
+          find . -type f -name "*.html" -o -name "*.js" -o -name "*.css" | head -20
+          
       - name: 🏗️ Настройка GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v4
         
       - name: 📦 Создание артефакта
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v2
         with:
           path: .
           
       - name: 🚀 Деплой на GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
-        
-      - name: ✅ Проверка деплоя
-        run: |
-          echo "🎉 ДЕПЛОЙ ЗАВЕРШЕН УСПЕШНО!"
-          echo ""
-          echo "🌐 Сайт доступен по адресу:"
-          echo "   https://askhat707.github.io/trading-data/"
-          echo ""
-          echo "🔍 Проверка файлов:"
-          echo "   • firebase-config.js: $([ -f "firebase-config.js" ] && echo "✅" || echo "❌")"
-          echo "   • .nojekyll: $([ -f ".nojekyll" ] && echo "✅" || echo "❌")"
-          echo "   • index.html: $([ -f "index.html" ] && echo "✅" || echo "❌")"
-          echo ""
-          echo "📊 Проверка конфига:"
-          if [ -f "firebase-config.js" ]; then
-            echo "   Размер: $(wc -c < firebase-config.js) байт"
-            echo "   Строк: $(wc -l < firebase-config.js)"
-            echo "   Содержит ключи: $([ $(grep -c "apiKey:" firebase-config.js) -gt 0 ] && echo "✅" || echo "❌")"
-          fi
-          echo ""
-          echo "🚀 Следующие шаги:"
-          echo "   1. Откройте сайт в браузере"
-          echo "   2. Нажмите F12 для проверки консоли"
-          echo "   3. Убедитесь что firebase-config.js загружен"
+        uses: actions/deploy-pages@v3
