@@ -15,13 +15,21 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
-      - name: Generate Firebase Config from Secrets
+      # ============ САМЫЙ ВАЖНЫЙ ШАГ! ============
+      - name: 🔐 Generate firebase-config.js from GitHub Secrets
         run: |
-          cat > firebase-config.js << 'EOF'
-          // 🔥 FIREBASE CONFIG - СГЕНЕРИРОВАН ИЗ GITHUB SECRETS
+          mkdir -p _site
+          
+          cat > _site/firebase-config.js << 'FIREBASE_EOF'
+          // 🔥 FIREBASE CONFIG - АВТОМАТИЧЕСКИ СГЕНЕРИРОВАН ИЗ GITHUB SECRETS
+          // ⚠️ КЛЮЧИ НИКОГДА НЕ СОХРАНЯЮТСЯ В РЕПОЗИТОРИИ!
+          // ⚠️ КЛЮЧИ ЗАЩИЩЕНЫ GITHUB SECRETS!
+          
           const firebaseConfig = {
             apiKey: "${{ secrets.FIREBASE_API_KEY }}",
             authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
@@ -33,41 +41,90 @@ jobs:
             measurementId: "${{ secrets.FIREBASE_MEASUREMENT_ID }}"
           };
           
-          // Экспорт для глобального использования
-          window.firebaseConfig = firebaseConfig;
+          // Проверка что ключи загружены
+          if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('secrets.')) {
+              throw new Error('❌ ОШИБКА: GitHub Secrets не установлены! Проверь Settings → Secrets');
+          }
           
-          console.log('✅ Firebase конфиг загружен из GitHub Secrets');
-          EOF
+          // Экспорт для глобального использования
+          if (typeof window !== 'undefined') {
+              window.firebaseConfig = firebaseConfig;
+          }
+          
+          console.log('✅ Firebase конфигурация загружена из GitHub Secrets');
+          console.log('🔐 Проект:', firebaseConfig.projectId);
+          FIREBASE_EOF
           
           echo "✅ firebase-config.js создан"
-          head -20 firebase-config.js
+          wc -l _site/firebase-config.js
       
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-      
-      - name: Build and copy files
+      # ============ КОПИРУЕМ ОСТАЛЬНЫЕ ФАЙЛЫ ============
+      - name: 📦 Copy project files
         run: |
-          mkdir -p _site
           cp -r index.html _site/
-          cp -r firebase-config.js _site/
           cp -r service-worker.js _site/
           cp -r css/ _site/
           cp -r js/ _site/
           cp -r scripts/ _site/
           
-          echo "=== Файлы в _site ==="
-          ls -la _site/
+          echo "✅ Файлы скопированы"
+          ls -la _site/ | head -20
       
-      - name: Upload artifact
+      # ============ ПРОВЕРКА СКОПИРОВАННЫХ ФАЙЛОВ ============
+      - name: ✅ Verify generated files
+        run: |
+          echo "=== ФАЙЛЫ В _site ===" 
+          ls -la _site/
+          
+          echo ""
+          echo "=== ПРОВЕРКА firebase-config.js ===" 
+          head -20 _site/firebase-config.js
+          
+          echo ""
+          echo "=== ПРОВЕРКА index.html ===" 
+          grep -c "firebase-config.js" _site/index.html && echo "✅ firebase-config.js подключён" || echo "❌ firebase-config.js НЕ подключён"
+      
+      # ============ УСТАНОВКА GITHUB PAGES ============
+      - name: 🌐 Setup Pages
+        uses: actions/configure-pages@v3
+      
+      # ============ ЗАГРУЗКА АРТЕФАКТА ============
+      - name: 📤 Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
           path: '_site'
+          retention-days: 30
       
-      - name: Deploy to GitHub Pages
+      # ============ ДЕПЛОЙ НА GITHUB PAGES ============
+      - name: 🚀 Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
 
-      - name: Deployment Status
+      # ============ ФИНАЛЬНЫЙ ОТЧЁТ ============
+      - name: 📋 Deployment Report
         run: |
-          echo "✅ Deployment успешен!"
+          echo ""
+          echo "╔════════════════════════════════════════════════════════╗"
+          echo "║           ✅ DEPLOYMENT УСПЕШЕН!                        ║"
+          echo "╚════════════════════════════════════════════════════════╝"
+          echo ""
           echo "🌐 Сайт: https://askhat707.github.io/trading-data/"
+          echo ""
+          echo "🔐 БЕЗОПАСНОСТЬ:"
+          echo "  ✅ Ключи хранятся ТОЛЬКО в GitHub Secrets"
+          echo "  ✅ Ключи НЕ видны в репозитории"
+          echo "  ✅ firebase-config.js генерируется автоматически"
+          echo "  ✅ Файл .gitignore блокирует firebase-config.js"
+          echo ""
+          echo "⚠️ ЕСЛИ ОШИБКА:"
+          echo "  1. Проверь Settings → Secrets and variables → Actions"
+          echo "  2. Все переменные должны быть заполнены:"
+          echo "     - FIREBASE_API_KEY"
+          echo "     - FIREBASE_AUTH_DOMAIN"
+          echo "     - FIREBASE_DATABASE_URL"
+          echo "     - FIREBASE_PROJECT_ID"
+          echo "     - FIREBASE_STORAGE_BUCKET"
+          echo "     - FIREBASE_MESSAGING_SENDER_ID"
+          echo "     - FIREBASE_APP_ID"
+          echo "     - FIREBASE_MEASUREMENT_ID"
+          echo ""
