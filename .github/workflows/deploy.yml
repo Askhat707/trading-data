@@ -17,9 +17,10 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    # УДАЛИТЕ СТРОКУ environment - используем Repository secrets
+    # environment:
+    #   name: github-pages
+    #   url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
       - name: 📥 Checkout
@@ -29,78 +30,74 @@ jobs:
         run: |
           echo "🔐 Проверка Firebase Secrets..."
           
-          # Проверяем все 8 обязательных секретов
-          REQUIRED_SECRETS=(
-            "FIREBASE_API_KEY"
-            "FIREBASE_AUTH_DOMAIN"
-            "FIREBASE_DATABASE_URL"
-            "FIREBASE_PROJECT_ID"
-            "FIREBASE_STORAGE_BUCKET"
-            "FIREBASE_MESSAGING_SENDER_ID"
-            "FIREBASE_APP_ID"
-            "FIREBASE_MEASUREMENT_ID"
-          )
+          # Проверяем доступность Repository secrets
+          echo "✅ FIREBASE_API_KEY: ${#FIREBASE_API_KEY} символов"
+          echo "✅ FIREBASE_AUTH_DOMAIN: ${#FIREBASE_AUTH_DOMAIN} символов"
+          echo "✅ FIREBASE_DATABASE_URL: ${#FIREBASE_DATABASE_URL} символов"
+          echo "✅ FIREBASE_PROJECT_ID: ${#FIREBASE_PROJECT_ID} символов"
+          echo "✅ FIREBASE_STORAGE_BUCKET: ${#FIREBASE_STORAGE_BUCKET} символов"
+          echo "✅ FIREBASE_MESSAGING_SENDER_ID: ${#FIREBASE_MESSAGING_SENDER_ID} символов"
+          echo "✅ FIREBASE_APP_ID: ${#FIREBASE_APP_ID} символов"
+          echo "✅ FIREBASE_MEASUREMENT_ID: ${#FIREBASE_MEASUREMENT_ID} символов"
           
-          HAS_ERROR=false
-          for SECRET in "${REQUIRED_SECRETS[@]}"; do
-            if [ -z "${!SECRET}" ]; then
-              echo "❌ $SECRET: ОТСУТСТВУЕТ в GitHub Secrets"
-              HAS_ERROR=true
-            else
-              # Маскируем значение для логов
-              VALUE="${!SECRET}"
-              MASKED="${VALUE:0:6}...${VALUE: -6}"
-              echo "✅ $SECRET: присутствует ($MASKED)"
-            fi
-          done
-          
-          if [ "$HAS_ERROR" = true ]; then
-            echo "❌ КРИТИЧЕСКАЯ ОШИБКА: Отсутствуют обязательные Firebase Secrets"
-            echo "📋 Добавьте все 8 секретов в GitHub: Settings → Secrets and variables → Actions"
+          # Проверка что все секреты не пустые
+          if [ -z "$FIREBASE_API_KEY" ]; then
+            echo "❌ FIREBASE_API_KEY: ПУСТОЙ"
             exit 1
           fi
+          if [ -z "$FIREBASE_AUTH_DOMAIN" ]; then
+            echo "❌ FIREBASE_AUTH_DOMAIN: ПУСТОЙ"
+            exit 1
+          fi
+          if [ -z "$FIREBASE_DATABASE_URL" ]; then
+            echo "❌ FIREBASE_DATABASE_URL: ПУСТОЙ"
+            exit 1
+          fi
+          if [ -z "$FIREBASE_PROJECT_ID" ]; then
+            echo "❌ FIREBASE_PROJECT_ID: ПУСТОЙ"
+            exit 1
+          fi
+          if [ -z "$FIREBASE_STORAGE_BUCKET" ]; then
+            echo "❌ FIREBASE_STORAGE_BUCKET: ПУСТОЙ"
+            exit 1
+          fi
+          if [ -z "$FIREBASE_MESSAGING_SENDER_ID" ]; then
+            echo "❌ FIREBASE_MESSAGING_SENDER_ID: ПУСТОЙ"
+            exit 1
+          fi
+          if [ -z "$FIREBASE_APP_ID" ]; then
+            echo "❌ FIREBASE_APP_ID: ПУСТОЙ"
+            exit 1
+          fi
+          if [ -z "$FIREBASE_MEASUREMENT_ID" ]; then
+            echo "❌ FIREBASE_MEASUREMENT_ID: ПУСТОЙ"
+            exit 1
+          fi
+          
+          echo "✅ ВСЕ СЕКРЕТЫ ПРИСУТСТВУЮТ И ЗАПОЛНЕНЫ"
 
       - name: 🔧 Generate Firebase Config
-        env:
-          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
-          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
-          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
-          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
-          FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
         run: |
           echo "🔧 Генерация firebase-config.js..."
           
-          # Создаем конфиг с реальными значениями из Secrets
-          cat > firebase-config.js << 'EOF'
+          # Используем напрямую Repository secrets
+          cat > firebase-config.js << EOF
           // ====================================================
           // 🔥 FIREBASE CONFIG - GENERATED FROM GITHUB SECRETS
-          // ⚠️ Этот файл создается автоматически GitHub Actions
           // ====================================================
           
           console.log('🚀 Загрузка Firebase конфигурации...');
           
           const firebaseConfig = {
-            apiKey: "$FIREBASE_API_KEY",
-            authDomain: "$FIREBASE_AUTH_DOMAIN",
-            databaseURL: "$FIREBASE_DATABASE_URL",
-            projectId: "$FIREBASE_PROJECT_ID",
-            storageBucket: "$FIREBASE_STORAGE_BUCKET",
-            messagingSenderId: "$FIREBASE_MESSAGING_SENDER_ID",
-            appId: "$FIREBASE_APP_ID",
-            measurementId: "$FIREBASE_MEASUREMENT_ID"
+            apiKey: "${{ secrets.FIREBASE_API_KEY }}",
+            authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
+            databaseURL: "${{ secrets.FIREBASE_DATABASE_URL }}",
+            projectId: "${{ secrets.FIREBASE_PROJECT_ID }}",
+            storageBucket: "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
+            messagingSenderId: "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
+            appId: "${{ secrets.FIREBASE_APP_ID }}",
+            measurementId: "${{ secrets.FIREBASE_MEASUREMENT_ID }}"
           };
-          
-          // Валидация конфигурации
-          if (!firebaseConfig.apiKey || firebaseConfig.apiKey === '') {
-            console.error('❌ КРИТИЧЕСКАЯ ОШИБКА: FIREBASE_API_KEY отсутствует');
-          }
-          
-          if (!firebaseConfig.projectId || firebaseConfig.projectId === '') {
-            console.error('❌ КРИТИЧЕСКАЯ ОШИБКА: FIREBASE_PROJECT_ID отсутствует');
-          }
           
           console.group('📊 Firebase Configuration:');
           console.log('✅ Проект:', firebaseConfig.projectId);
@@ -108,85 +105,36 @@ jobs:
           console.log('✅ Database:', firebaseConfig.databaseURL);
           console.groupEnd();
           
-          // Глобальная переменная для доступа из других скриптов
-          if (typeof window !== 'undefined') {
-            window.firebaseConfig = firebaseConfig;
-            console.log('✅ Конфигурация сохранена в window.firebaseConfig');
-          }
+          window.firebaseConfig = firebaseConfig;
+          console.log('✅ Конфигурация сохранена в window.firebaseConfig');
           
-          console.log('✅ FIREBASE CONFIG READY\n');
-          
-          // CommonJS экспорт (если нужно)
           if (typeof module !== 'undefined' && module.exports) {
             module.exports = firebaseConfig;
           }
           EOF
           
           echo "✅ Конфиг создан"
-          echo "📏 Размер файла:" $(wc -c < firebase-config.js) "байт"
-          
-          # Проверяем что Secrets корректно подставились
-          echo "🔍 Проверка подстановки переменных..."
-          if grep -q '\$FIREBASE_' firebase-config.js; then
-            echo "❌ ОШИБКА: Не все переменные подставились!"
-            echo "Первые 500 символов файла:"
-            head -c 500 firebase-config.js
-            exit 1
-          fi
-          
-          if grep -q 'apiKey: ""' firebase-config.js; then
-            echo "❌ ОШИБКА: API Key пустой!"
-            exit 1
-          fi
-          
-          echo "✅ Все проверки пройдены"
+          echo "Содержимое firebase-config.js (первые 10 строк):"
+          head -10 firebase-config.js
 
       - name: 📄 Create GitHub Pages Files
         run: |
           echo "📄 Создание вспомогательных файлов..."
-          # Отключаем Jekyll
           touch .nojekyll
           
-          # Опционально: CNAME файл для кастомного домена
-          # echo "askhat707.github.io" > CNAME
-          
-          # Создаем robots.txt
           cat > robots.txt << 'EOF'
           User-agent: *
           Allow: /
           Sitemap: https://askhat707.github.io/trading-data/sitemap.xml
           EOF
-          
-          echo "✅ Вспомогательные файлы созданы"
 
       - name: 📁 Verify Build Structure
         run: |
           echo "📁 Проверка структуры файлов..."
-          echo "Текущая директория: $(pwd)"
-          echo ""
-          echo "Содержимое:"
           ls -la
           echo ""
-          echo "Проверка критических файлов:"
           test -f "index.html" && echo "✅ index.html" || echo "❌ index.html"
           test -f "firebase-config.js" && echo "✅ firebase-config.js" || echo "❌ firebase-config.js"
-          test -d "js" && echo "✅ js directory" || echo "❌ js directory"
-          test -d "css" && echo "✅ css directory" || echo "❌ css directory"
-          
-          echo ""
-          echo "🔍 Проверка firebase-config.js:"
-          if [ -f "firebase-config.js" ]; then
-            echo "Первые 5 строк:"
-            head -5 firebase-config.js
-            echo ""
-            echo "Содержит ли API Key?"
-            if grep -q 'apiKey: "AIza' firebase-config.js; then
-              echo "✅ API Key найден (начинается с AIza)"
-            else
-              echo "⚠️  API Key может быть в другом формате"
-              grep 'apiKey:' firebase-config.js | head -1
-            fi
-          fi
 
       - name: 📦 Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
