@@ -23,57 +23,39 @@ const AuthModule = {
      * АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
      */
     async autoInit() {
-        console.group('🚀 [AUTH] Автоматическая инициализация');
-        
         try {
-            // Проверяем конфиг Firebase
-            if (!window.firebaseConfig || typeof window.firebaseConfig !== 'object') {
-                console.error('❌ [AUTH] Firebase конфигурация не загружена');
-                throw new Error('Firebase конфигурация не загружена');
-            }
+            console.log('🔐 [AUTH] Автоинициализация...');
             
-            // Проверяем Firebase SDK
-            if (typeof firebase === 'undefined') {
-                console.error('❌ [AUTH] Firebase SDK не загружен');
-                throw new Error('Firebase SDK не загружен');
-            }
-            
-            // Инициализируем Firebase
-            if (!window.FirebaseModule || !window.FirebaseModule.init()) {
-                console.error('❌ [AUTH] Не удалось инициализировать Firebase');
-                throw new Error('Не удалось инициализировать Firebase');
-            }
-            
-            console.log('✅ [AUTH] Firebase инициализирован');
-            
-            // Показываем окно аутентификации (скроем позже если есть сессия)
-            this.showAuthModal();
-            
-            // Подписываемся на изменения состояния аутентификации
-            firebase.auth().onAuthStateChanged(async (user) => {
-                console.log(`👤 [AUTH] Состояние аутентификации:`, user ? `вошел ${user.email}` : 'не вошел');
-                
-                if (user) {
-                    // Пользователь вошел
-                    await this.handleUserLogin(user);
-                } else {
-                    // Пользователь вышел или не авторизован
-                    this.handleUserLogout();
+            // Ждем инициализации Firebase
+            let attempts = 0;
+            while (!window.FirebaseModule || !window.FirebaseModule.isInitialized()) {
+                attempts++;
+                if (attempts > 30) { // 30 * 100ms = 3 секунды
+                    throw new Error('Таймаут ожидания Firebase');
                 }
-            });
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
             
-            // Пытаемся восстановить сессию
-            await this.restoreSession();
+            // Настраиваем persistence ДО получения auth
+            const auth = firebase.auth();
+            if (auth && auth.setPersistence) {
+                await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                console.log('✅ [AUTH] Persistence установлен в LOCAL');
+            }
             
-            this.status.initialized = true;
-            console.log('✅ [AUTH] Модуль аутентификации инициализирован');
+            // Проверяем сохраненную сессию
+            await this.checkSavedAuth();
+            
+            // Инициализируем обработчики
+            this.initAuthHandlers();
+            
+            console.log('✅ [AUTH] Автоинициализация завершена');
+            return true;
             
         } catch (error) {
-            console.error('❌ [AUTH] Ошибка инициализации:', error);
-            this.showAuthModal();
+            console.error('❌ [AUTH] Ошибка автоинициализации:', error);
+            return false;
         }
-        
-        console.groupEnd();
     },
     
     /**
