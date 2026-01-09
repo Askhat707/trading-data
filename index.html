@@ -22,236 +22,12 @@
     <link rel="stylesheet" href="css/components/table.css">
     <link rel="stylesheet" href="css/pages/terminal.css">
     
-    <!-- FIREBASE SDK -->
+    <!-- FIREBASE SDK (ЗАГРУЖАЕМ ПЕРВЫМИ!) -->
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-database-compat.js"></script>
-
 </head>
 <body>
-    <!-- 🔥 ДИНАМИЧЕСКАЯ ЗАГРУЗКА FIREBASE CONFIG -->
-    <script>
-        (function() {
-            'use strict';
-            
-            console.log('🚀 [INIT] Запуск системы инициализации...');
-            
-            // ============================================
-            // 🔐 СОСТОЯНИЕ ПРИЛОЖЕНИЯ
-            // ============================================
-            window.appState = {
-                initialized: false,
-                firebaseLoaded: false,
-                configLoaded: false,
-                authRestored: false,
-                authChecked: false,
-                userLogged: false
-            };
-            
-            function loadFirebaseConfig() {
-    return new Promise((resolve, reject) => {
-        console.log('🔥 [CONFIG] Загрузка firebase-config.js...');
-        
-        const timestamp = Date.now();
-        
-        // 🔥 УНИВЕРСАЛЬНЫЙ ПУТЬ - работает на GitHub Pages и локально
-        const basePath = window.location.pathname.includes('/trading-data/') 
-            ? '/trading-data/' 
-            : '/';
-        const configUrl = basePath + 'firebase-config.js?nocache=' + timestamp;
-        
-        console.log('📡 [CONFIG] URL конфига:', configUrl);
-        console.log('📍 [CONFIG] Текущий путь:', window.location.pathname);
-        console.log('📡 [CONFIG] Полный URL:', window.location.href);
-        
-        const script = document.createElement('script');
-        script.id = 'firebase-config-loader';
-        script.src = configUrl;
-        script.async = false;
-        script.type = 'text/javascript';
-        script.crossOrigin = 'anonymous';
-        
-        let timeoutId = null;
-        
-        script.onload = function() {
-            console.log('✅ [CONFIG] firebase-config.js загружен');
-            clearTimeout(timeoutId);
-            
-            if (typeof window.firebaseConfig !== 'undefined' && window.firebaseConfig.apiKey) {
-                console.log('📊 [CONFIG] Конфигурация готова:', window.firebaseConfig.projectId);
-                console.log('🏗️ [CONFIG] Auth Domain:', window.firebaseConfig.authDomain);
-                console.log('💾 [CONFIG] Database:', window.firebaseConfig.databaseURL);
-                window.appState.configLoaded = true;
-                resolve(true);
-            } else {
-                console.error('❌ [CONFIG] firebaseConfig не определен или не имеет apiKey');
-                console.error('❌ [CONFIG] window.firebaseConfig:', window.firebaseConfig);
-                reject(new Error('firebaseConfig не определен после загрузки'));
-            }
-        };
-        
-        script.onerror = function(error) {
-            console.error('❌ [CONFIG] Ошибка загрузки:', error);
-            console.error('❌ [CONFIG] URL который пытались загрузить:', configUrl);
-            console.error('❌ [CONFIG] Текущий location:', window.location.href);
-            console.error('❌ [CONFIG] Base элемент:', document.querySelector('base')?.href);
-            
-            // Попробуем альтернативный путь
-            if (configUrl.includes('/trading-data/')) {
-                console.log('🔄 [CONFIG] Пробуем альтернативный путь: ./firebase-config.js');
-                const altScript = document.createElement('script');
-                altScript.src = './firebase-config.js?nocache=' + timestamp;
-                altScript.onload = function() {
-                    if (typeof window.firebaseConfig !== 'undefined') {
-                        console.log('✅ [CONFIG] Загружено через альтернативный путь');
-                        resolve(true);
-                    } else {
-                        reject(new Error('Не удалось загрузить firebase-config.js через альтернативный путь'));
-                    }
-                };
-                altScript.onerror = function(e) {
-                    console.error('❌ [CONFIG] Альтернативный путь тоже не сработал:', e);
-                    reject(new Error('Не удалось загрузить firebase-config.js (404)'));
-                };
-                document.head.appendChild(altScript);
-                return;
-            }
-            
-            clearTimeout(timeoutId);
-            reject(new Error('Не удалось загрузить firebase-config.js (404)'));
-        };
-        
-        timeoutId = setTimeout(() => {
-            console.error('⏱️ [CONFIG] Таймаут загрузки (15 сек)');
-            console.error('⏱️ [CONFIG] URL:', configUrl);
-            script.remove();
-            reject(new Error('Таймаут загрузки конфига'));
-        }, 15000);
-        
-        console.log('📤 [CONFIG] Добавляем script в head...');
-        document.head.appendChild(script);
-    });
-}
-            
-            // ============================================
-            // 🔄 ОБНОВЛЕНИЕ СТАТУСА ЗАГРУЗКИ
-            // ============================================
-            window.updateLoadingStatus = function(message, progress) {
-                const statusEl = document.getElementById('loading-status');
-                const barEl = document.getElementById('loading-bar');
-                
-                console.log(`📊 [LOADING] ${message} (${progress}%)`);
-                
-                if (statusEl) statusEl.textContent = message;
-                if (barEl && progress !== undefined) {
-                    barEl.style.width = progress + '%';
-                }
-            };
-            
-            // ============================================
-            // 🎬 ОСНОВНАЯ ИНИЦИАЛИЗАЦИЯ
-            // ============================================
-            async function initSystem() {
-                console.group('🚀 [INIT] ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ');
-                
-                try {
-                    // Шаг 1: Загружаем конфиг
-                    window.updateLoadingStatus('🔥 Загрузка конфигурации Firebase...', 25);
-                    await loadFirebaseConfig();
-                    
-                    // Шаг 2: Проверяем Firebase SDK
-                    window.updateLoadingStatus('🔧 Проверка Firebase SDK...', 40);
-                    if (typeof firebase === 'undefined') {
-                        throw new Error('Firebase SDK не загружен');
-                    }
-                    window.appState.firebaseLoaded = true;
-                    console.log('✅ [INIT] Firebase SDK готов');
-                    
-                    // Шаг 3: Инициализируем Firebase
-                    window.updateLoadingStatus('🔌 Инициализация Firebase...', 55);
-                    if (!window.FirebaseModule) {
-                        throw new Error('FirebaseModule не загружен');
-                    }
-                    
-                    if (!window.FirebaseModule.init()) {
-                        throw new Error('Не удалось инициализировать Firebase');
-                    }
-                    console.log('✅ [INIT] Firebase инициализирован');
-                    
-                    // Шаг 4: Регистрируем Service Worker
-                    window.updateLoadingStatus('⚙️ Регистрация Service Worker...', 70);
-                    if ('serviceWorker' in navigator) {
-                        navigator.serviceWorker.register('/trading-data/service-worker.js', { scope: '/trading-data/' })
-                            .then(reg => {
-                                console.log('✅ [SW] Service Worker зарегистрирован');
-                            })
-                            .catch(err => {
-                                console.warn('⚠️ [SW] Service Worker ошибка:', err);
-                            });
-                    }
-                    
-                    // Шаг 5: Запускаем Auth и приложение
-                    window.updateLoadingStatus('🔐 Инициализация аутентификации...', 85);
-                    if (!window.AuthModule) {
-                        throw new Error('AuthModule не загружен');
-                    }
-                    
-                    await window.AuthModule.autoInit();
-                    
-                    console.log('✅ [INIT] Все системы инициализированы');
-                    window.appState.initialized = true;
-                    
-                } catch (error) {
-                    console.error('❌ [INIT] Ошибка инициализации:', error);
-                    window.showErrorScreen(error.message);
-                }
-                
-                console.groupEnd();
-            }
-            
-            // ============================================
-            // 🖥️ ЭКРАН ОШИБКИ
-            // ============================================
-            window.showErrorScreen = function(message) {
-                const loading = document.getElementById('loading');
-                if (loading) {
-                    loading.innerHTML = `
-                        <div style="text-align: center; max-width: 600px; padding: 40px;">
-                            <div style="font-size: 4rem; color: #ff4444; margin-bottom: 20px;">🔥</div>
-                            <h2 style="color: #ff4444; margin-bottom: 15px;">КРИТИЧЕСКАЯ ОШИБКА</h2>
-                            <div style="background: rgba(255,68,68,0.1); padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #ff4444;">
-                                <p style="color: #ccc; margin: 0; line-height: 1.6; font-size: 1rem;">
-                                    <strong style="color: #ff8888;">${message}</strong>
-                                </p>
-                            </div>
-                            <button onclick="location.reload(true)" style="padding: 12px 24px; background: #FFD700; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 1rem;">
-                                🔄 Перезагрузить страницу
-                            </button>
-                        </div>
-                    `;
-                    loading.style.display = 'flex';
-                }
-            };
-            
-            // ============================================
-            // 📄 ЗАПУСК ПРИ ЗАГРУЗКЕ DOM
-            // ============================================
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function() {
-                    console.log('📄 [DOM] DOM загружен');
-                    window.updateLoadingStatus('🚀 Инициализация...', 10);
-                    setTimeout(() => initSystem(), 500);
-                });
-            } else {
-                console.log('📄 [DOM] DOM уже готов');
-                window.updateLoadingStatus('🚀 Инициализация...', 10);
-                setTimeout(() => initSystem(), 500);
-            }
-            
-            console.log('✅ [INIT] Инициализатор готов');
-        })();
-    </script>
-
     <!-- ЛОАДЕР -->
     <div id="loading" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #050505; display: flex; justify-content: center; align-items: center; z-index: 9999;">
         <div style="text-align: center; max-width: 400px; padding: 30px;">
@@ -427,7 +203,7 @@
     <!-- Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
-    <!-- НАШИ МОДУЛИ -->
+    <!-- 🔥 ВАЖНО: ЗАГРУЖАЕМ ВСЕ МОДУЛИ В ПРАВИЛЬНОМ ПОРЯДКЕ ПЕРЕД ИНИЦИАЛИЗАЦИЕЙ -->
     <script src="js/constants.js"></script>
     <script src="js/services/cache.js"></script>
     <script src="js/utils/helpers.js"></script>
@@ -437,5 +213,180 @@
     <script src="js/services/api.js"></script>
     <script src="js/modules/charts.js"></script>
     <script src="js/app.js"></script>
+
+    <!-- 🔥 ДИНАМИЧЕСКАЯ ЗАГРУЗКА FIREBASE CONFIG И ИНИЦИАЛИЗАЦИЯ -->
+    <script>
+        (function() {
+            'use strict';
+            
+            console.log('🚀 [INIT] Запуск системы инициализации...');
+            
+            // ============================================
+            // 🔐 СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+            // ============================================
+            window.appState = {
+                initialized: false,
+                firebaseLoaded: false,
+                configLoaded: false,
+                authRestored: false,
+                authChecked: false,
+                userLogged: false
+            };
+            
+            function loadFirebaseConfig() {
+                return new Promise((resolve, reject) => {
+                    console.log('🔥 [CONFIG] Загрузка firebase-config.js...');
+                    
+                    const timestamp = Date.now();
+                    const basePath = window.location.pathname.includes('/trading-data/') 
+                        ? '/trading-data/' 
+                        : '/';
+                    const configUrl = basePath + 'firebase-config.js?nocache=' + timestamp;
+                    
+                    console.log('📡 [CONFIG] URL конфига:', configUrl);
+                    
+                    const script = document.createElement('script');
+                    script.id = 'firebase-config-loader';
+                    script.src = configUrl;
+                    script.async = false;
+                    script.type = 'text/javascript';
+                    
+                    let timeoutId = null;
+                    
+                    script.onload = function() {
+                        console.log('✅ [CONFIG] firebase-config.js загружен');
+                        clearTimeout(timeoutId);
+                        
+                        if (typeof window.firebaseConfig !== 'undefined' && window.firebaseConfig.apiKey) {
+                            console.log('📊 [CONFIG] Конфигурация готова:', window.firebaseConfig.projectId);
+                            window.appState.configLoaded = true;
+                            resolve(true);
+                        } else {
+                            console.error('❌ [CONFIG] firebaseConfig не определен');
+                            reject(new Error('firebaseConfig не определен'));
+                        }
+                    };
+                    
+                    script.onerror = function(error) {
+                        console.error('❌ [CONFIG] Ошибка загрузки:', configUrl);
+                        clearTimeout(timeoutId);
+                        reject(new Error('Не удалось загрузить firebase-config.js'));
+                    };
+                    
+                    timeoutId = setTimeout(() => {
+                        console.error('⏱️ [CONFIG] Таймаут загрузки (15 сек)');
+                        script.remove();
+                        reject(new Error('Таймаут загрузки конфига'));
+                    }, 15000);
+                    
+                    document.head.appendChild(script);
+                });
+            }
+            
+            window.updateLoadingStatus = function(message, progress) {
+                const statusEl = document.getElementById('loading-status');
+                const barEl = document.getElementById('loading-bar');
+                
+                console.log(`📊 [LOADING] ${message} (${progress}%)`);
+                
+                if (statusEl) statusEl.textContent = message;
+                if (barEl && progress !== undefined) {
+                    barEl.style.width = progress + '%';
+                }
+            };
+            
+            async function initSystem() {
+                console.group('🚀 [INIT] ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ');
+                
+                try {
+                    // Шаг 1: Загружаем конфиг
+                    window.updateLoadingStatus('🔥 Загрузка конфигурации Firebase...', 25);
+                    await loadFirebaseConfig();
+                    
+                    // Шаг 2: Проверяем Firebase SDK
+                    window.updateLoadingStatus('🔧 Проверка Firebase SDK...', 40);
+                    if (typeof firebase === 'undefined') {
+                        throw new Error('Firebase SDK не загружен');
+                    }
+                    window.appState.firebaseLoaded = true;
+                    console.log('✅ [INIT] Firebase SDK готов');
+                    
+                    // Шаг 3: Проверяем что FirebaseModule загружен
+                    if (!window.FirebaseModule) {
+                        throw new Error('FirebaseModule не загружен');
+                    }
+                    console.log('✅ [INIT] FirebaseModule найден');
+                    
+                    // Шаг 4: Инициализируем Firebase
+                    window.updateLoadingStatus('🔌 Инициализация Firebase...', 55);
+                    if (!window.FirebaseModule.init()) {
+                        throw new Error('Не удалось инициализировать Firebase');
+                    }
+                    console.log('✅ [INIT] Firebase инициализирован');
+                    
+                    // Шаг 5: Регистрируем Service Worker
+                    window.updateLoadingStatus('⚙️ Регистрация Service Worker...', 70);
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.register('/trading-data/service-worker.js', { scope: '/trading-data/' })
+                            .then(reg => console.log('✅ [SW] Service Worker зарегистрирован'))
+                            .catch(err => console.warn('⚠️ [SW] Service Worker ошибка:', err));
+                    }
+                    
+                    // Шаг 6: Запускаем Auth и приложение
+                    window.updateLoadingStatus('🔐 Инициализация аутентификации...', 85);
+                    if (!window.AuthModule) {
+                        throw new Error('AuthModule не загружен');
+                    }
+                    
+                    await window.AuthModule.autoInit();
+                    
+                    console.log('✅ [INIT] Все системы инициализированы');
+                    window.appState.initialized = true;
+                    
+                } catch (error) {
+                    console.error('❌ [INIT] Ошибка инициализации:', error);
+                    window.showErrorScreen(error.message);
+                }
+                
+                console.groupEnd();
+            }
+            
+            window.showErrorScreen = function(message) {
+                const loading = document.getElementById('loading');
+                if (loading) {
+                    loading.innerHTML = `
+                        <div style="text-align: center; max-width: 600px; padding: 40px;">
+                            <div style="font-size: 4rem; color: #ff4444; margin-bottom: 20px;">🔥</div>
+                            <h2 style="color: #ff4444; margin-bottom: 15px;">КРИТИЧЕСКАЯ ОШИБКА</h2>
+                            <div style="background: rgba(255,68,68,0.1); padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #ff4444;">
+                                <p style="color: #ccc; margin: 0; line-height: 1.6; font-size: 1rem;">
+                                    <strong style="color: #ff8888;">${message}</strong>
+                                </p>
+                            </div>
+                            <button onclick="location.reload(true)" style="padding: 12px 24px; background: #FFD700; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 1rem;">
+                                🔄 Перезагрузить страницу
+                            </button>
+                        </div>
+                    `;
+                    loading.style.display = 'flex';
+                }
+            };
+            
+            // Запускаем после полной загрузки DOM
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('📄 [DOM] DOM загружен');
+                    window.updateLoadingStatus('🚀 Инициализация...', 10);
+                    setTimeout(() => initSystem(), 500);
+                });
+            } else {
+                console.log('📄 [DOM] DOM уже готов');
+                window.updateLoadingStatus('🚀 Инициализация...', 10);
+                setTimeout(() => initSystem(), 500);
+            }
+            
+            console.log('✅ [INIT] Инициализатор готов');
+        })();
+    </script>
 </body>
 </html>
