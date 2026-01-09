@@ -22,6 +22,20 @@ const App = {
     async init() {
         console.log('🚀 [APP] Запуск приложения...');
         
+        // ✅ ПРОВЕРКА АВТОРИЗАЦИИ
+        if (!window.AuthModule || !window.AuthModule.currentUser) {
+            console.warn('⚠️ [APP] Пользователь не авторизован, ожидание...');
+            // Ждем авторизации
+            setTimeout(() => {
+                if (window.AuthModule && window.AuthModule.currentUser) {
+                    this.init();
+                } else {
+                    console.error('❌ [APP] Пользователь не авторизован');
+                }
+            }, 1000);
+            return;
+        }
+        
         // ✅ ПРОВЕРКА FIREBASE КОНФИГА
         if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
             console.error('❌ [APP] Firebase конфигурация не загружена!');
@@ -40,9 +54,8 @@ const App = {
             console.log('🔧 [APP] Определяем тип пользователя...');
             
             // Определяем тип пользователя
-            this.isTrial = window.AuthModule?.currentUser ? 
-                (window.AuthModule.currentUser.plan !== "PREMIUM" || window.AuthModule.isSubscriptionExpired(window.AuthModule.currentUser)) : 
-                true;
+            this.isTrial = window.AuthModule.currentUser.plan !== "PREMIUM" || 
+                          window.AuthModule.isSubscriptionExpired(window.AuthModule.currentUser);
             
             console.log(`${this.isTrial ? '🔒' : '🔓'} [APP] Пользователь: ${this.isTrial ? 'TRIAL' : 'PREMIUM'}`);
             
@@ -78,6 +91,10 @@ const App = {
             window.showErrorScreen(`Ошибка инициализации: ${error.message}`);
         }
     },
+    
+    // ... остальной код остается без изменений ...
+    
+
     
     /**
      * Обновление UI для типа пользователя
