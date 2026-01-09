@@ -3,9 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('🔧 Генерируем firebase-config.js из GitHub Secrets...\n');
+console.log('🔧 [GENERATE] Генерируем firebase-config.js...\n');
 
-// Получаем значения из переменных окружения
+// Получаем значения
 const config = {
   apiKey: process.env.FIREBASE_API_KEY,
   authDomain: process.env.FIREBASE_AUTH_DOMAIN,
@@ -17,26 +17,33 @@ const config = {
   measurementId: process.env.FIREBASE_MEASUREMENT_ID
 };
 
-// Проверяем, что все значения есть
-let missing = [];
-for (const [key, value] of Object.entries(config)) {
-  if (!value) {
-    missing.push(key);
-  }
-}
+// Проверяем все значения
+console.log('🔍 [VALIDATE] Проверяем все переменные окружения...');
+let hasErrors = false;
 
-if (missing.length > 0) {
-  console.error('❌ Отсутствуют секреты:', missing.join(', '));
+Object.entries(config).forEach(([key, value]) => {
+  if (!value) {
+    console.error(`❌ ${key} = ОТСУТСТВУЕТ`);
+    hasErrors = true;
+  } else {
+    const masked = value.length > 20 ? value.substring(0, 10) + '...' : value;
+    console.log(`✅ ${key} = ${masked}`);
+  }
+});
+
+if (hasErrors) {
+  console.error('\n❌ ОШИБКА: Не все переменные окружения установлены!');
+  console.error('Проверь GitHub Secrets: Settings → Secrets and variables → Actions');
   process.exit(1);
 }
 
-// Генерируем содержимое файла
+// Генерируем файл
 const fileContent = `// ====================================================
 // 🔥 FIREBASE CONFIG - АВТОМАТИЧЕСКИ СГЕНЕРИРОВАН
 // ⚠️ Этот файл создается CI/CD из GitHub Secrets
 // ====================================================
 
-console.log('🚀 Загрузка Firebase конфигурации...');
+console.log('🚀 [CONFIG] Загрузка Firebase конфигурации...');
 
 const firebaseConfig = {
   apiKey: "${config.apiKey}",
@@ -49,15 +56,15 @@ const firebaseConfig = {
   measurementId: "${config.measurementId}"
 };
 
-console.log('✅ Конфигурация Firebase готова:', firebaseConfig.projectId);
+console.log('✅ [CONFIG] Конфигурация готова:', firebaseConfig.projectId);
 
 // Сохраняем в глобальной области видимости
 if (typeof window !== 'undefined') {
   window.firebaseConfig = firebaseConfig;
-  console.log('✅ firebaseConfig сохранен в window');
+  console.log('✅ [CONFIG] firebaseConfig доступен в window');
 }
 
-// CommonJS экспорт (если используется в Node.js)
+// CommonJS экспорт
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = firebaseConfig;
 }
@@ -70,14 +77,15 @@ try {
   fs.writeFileSync(outputPath, fileContent, 'utf8');
   
   const stats = fs.statSync(outputPath);
-  console.log('✅ Файл создан успешно');
+  console.log('\n✅ [WRITE] Файл создан успешно');
   console.log('📂 Путь:', outputPath);
   console.log('📏 Размер:', stats.size, 'байт');
-  console.log('🏗️  Проект:', config.projectId);
-  console.log('');
-  console.log('✅ КОНФИГУРАЦИЯ FIREBASE ГОТОВА К ДЕПЛОЮ');
+  console.log('🏗️ Проект:', config.projectId);
+  console.log('\n✅ FIREBASE CONFIG ГОТОВ К ДЕПЛОЮ');
+  
+  process.exit(0);
   
 } catch (error) {
-  console.error('❌ Ошибка создания файла:', error.message);
+  console.error('\n❌ [WRITE] Ошибка записи файла:', error.message);
   process.exit(1);
 }
