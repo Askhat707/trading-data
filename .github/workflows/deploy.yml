@@ -132,7 +132,6 @@ jobs:
       - name: 📄 Create Support Files
         run: |
           touch .nojekyll
-          echo "askhat707.github.io" > CNAME
           echo "✅ Файлы созданы"
 
       - name: 📋 List Files
