@@ -72,39 +72,37 @@ jobs:
         run: |
           echo "🔧 Генерируем firebase-config.js..."
           
-          # Создаем конфиг с реальными значениями из Secrets
-          cat > firebase-config.js << 'EOF'
-// ====================================================
-// 🔥 FIREBASE CONFIG - GENERATED FROM GITHUB SECRETS
-// ⚠️ Этот файл создается автоматически GitHub Actions
-// ====================================================
-
-console.log('🚀 Загрузка Firebase конфигурации...');
-
-const firebaseConfig = {
-  apiKey: "${{ secrets.FIREBASE_API_KEY }}",
-  authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
-  databaseURL: "${{ secrets.FIREBASE_DATABASE_URL }}",
-  projectId: "${{ secrets.FIREBASE_PROJECT_ID }}",
-  storageBucket: "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
-  messagingSenderId: "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
-  appId: "${{ secrets.FIREBASE_APP_ID }}",
-  measurementId: "${{ secrets.FIREBASE_MEASUREMENT_ID }}"
-};
-
-console.log('✅ [CONFIG] Конфигурация готова:', firebaseConfig.projectId);
-
-// Сохраняем в глобальной области видимости
-if (typeof window !== 'undefined') {
-  window.firebaseConfig = firebaseConfig;
-  console.log('✅ [CONFIG] firebaseConfig доступен в window');
-}
-
-// CommonJS экспорт
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = firebaseConfig;
-}
-EOF
+          # Создаем конфиг с реальными значениями из Secrets с использованием простого метода
+          echo "// ====================================================" > firebase-config.js
+          echo "// 🔥 FIREBASE CONFIG - GENERATED FROM GITHUB SECRETS" >> firebase-config.js
+          echo "// ⚠️ Этот файл создается автоматически GitHub Actions" >> firebase-config.js
+          echo "// ====================================================" >> firebase-config.js
+          echo "" >> firebase-config.js
+          echo "console.log('🚀 Загрузка Firebase конфигурации...');" >> firebase-config.js
+          echo "" >> firebase-config.js
+          echo "const firebaseConfig = {" >> firebase-config.js
+          echo "  apiKey: \"$FIREBASE_API_KEY\"," >> firebase-config.js
+          echo "  authDomain: \"$FIREBASE_AUTH_DOMAIN\"," >> firebase-config.js
+          echo "  databaseURL: \"$FIREBASE_DATABASE_URL\"," >> firebase-config.js
+          echo "  projectId: \"$FIREBASE_PROJECT_ID\"," >> firebase-config.js
+          echo "  storageBucket: \"$FIREBASE_STORAGE_BUCKET\"," >> firebase-config.js
+          echo "  messagingSenderId: \"$FIREBASE_MESSAGING_SENDER_ID\"," >> firebase-config.js
+          echo "  appId: \"$FIREBASE_APP_ID\"," >> firebase-config.js
+          echo "  measurementId: \"$FIREBASE_MEASUREMENT_ID\"" >> firebase-config.js
+          echo "};" >> firebase-config.js
+          echo "" >> firebase-config.js
+          echo "console.log('✅ [CONFIG] Конфигурация готова:', firebaseConfig.projectId);" >> firebase-config.js
+          echo "" >> firebase-config.js
+          echo "// Сохраняем в глобальной области видимости" >> firebase-config.js
+          echo "if (typeof window !== 'undefined') {" >> firebase-config.js
+          echo "  window.firebaseConfig = firebaseConfig;" >> firebase-config.js
+          echo "  console.log('✅ [CONFIG] firebaseConfig доступен в window');" >> firebase-config.js
+          echo "}" >> firebase-config.js
+          echo "" >> firebase-config.js
+          echo "// CommonJS экспорт" >> firebase-config.js
+          echo "if (typeof module !== 'undefined' && module.exports) {" >> firebase-config.js
+          echo "  module.exports = firebaseConfig;" >> firebase-config.js
+          echo "}" >> firebase-config.js
           
           echo "✅ Конфиг создан"
           echo "📏 Размер файла:" $(wc -c < firebase-config.js) "байт"
