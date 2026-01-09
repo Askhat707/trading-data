@@ -16,6 +16,7 @@ concurrency:
 
 env:
   CACHE_CONTROL: "max-age=3600, must-revalidate"
+  BASE_PATH: "/trading-data/"
 
 jobs:
   build-and-deploy:
@@ -72,14 +73,21 @@ jobs:
       - name: 📄 Создание .nojekyll
         run: touch .nojekyll
 
+      - name: 🔧 Создание CNAME файла (если нужно)
+        run: |
+          echo "askhat707.github.io" > CNAME
+          echo "✅ CNAME файл создан"
+
       - name: 🔍 Проверка файлов
         run: |
           echo "📁 Проверяем файлы для деплоя:"
           [ -f "index.html" ] && echo "✅ index.html" || (echo "❌ index.html отсутствует" && exit 1)
           [ -f "firebase-config.js" ] && echo "✅ firebase-config.js" || (echo "❌ firebase-config.js отсутствует" && exit 1)
           [ -f "service-worker.js" ] && echo "✅ service-worker.js" || echo "⚠️ service-worker.js опционально"
+          [ -f "CNAME" ] && echo "✅ CNAME" || echo "⚠️ CNAME опционально"
           [ -d "js" ] && echo "✅ js/" || (echo "❌ js/ отсутствует" && exit 1)
           [ -d "css" ] && echo "✅ css/" || (echo "❌ css/ отсутствует" && exit 1)
+          [ -d "scripts" ] && echo "✅ scripts/" || echo "⚠️ scripts/ опционально"
 
       - name: 📦 Упаковка для GitHub Pages
         uses: actions/upload-pages-artifact@v3
