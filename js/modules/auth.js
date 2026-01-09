@@ -9,7 +9,7 @@ const AuthModule = {
         sessionTimeout: 30 * 24 * 60 * 60 * 1000, // 30 дней
         adminEmail: 'omaralinovaskar95@gmail.com',
         adminTelegram: '@ASKHAT_1985',
-        version: 'v6'  // Добавлено для соответствия правилам
+        version: 'v6'
     },
     
     currentUser: null,
@@ -45,7 +45,7 @@ const AuthModule = {
             }
             
             // Проверяем сохраненную сессию
-            await this.restoreSession();  // ← ИСПРАВЛЕНО: был checkSavedAuth
+            await this.restoreSession();
             
             // Инициализируем обработчики
             this.initAuthHandlers();
@@ -55,12 +55,14 @@ const AuthModule = {
             
         } catch (error) {
             console.error('❌ [AUTH] Ошибка автоинициализации:', error);
+            // Показываем окно аутентификации при ошибке
+            setTimeout(() => this.showAuthModal(), 500);
             return false;
         }
     },
     
     /**
-     * ИНИЦИАЛИЗАЦИЯ ОБРАБОТЧИКОВ AUTH - ДОБАВЛЕНО
+     * ИНИЦИАЛИЗАЦИЯ ОБРАБОТЧИКОВ AUTH
      */
     initAuthHandlers() {
         console.log('🔄 [AUTH] Инициализация обработчиков...');
@@ -79,13 +81,6 @@ const AuthModule = {
                 }
             });
             
-            // Обработчик ошибок аутентификации
-            auth.onIdTokenChanged((user) => {
-                if (user) {
-                    console.log('🔄 [AUTH] Токен обновлен:', user.email);
-                }
-            });
-            
             console.log('✅ [AUTH] Обработчики инициализированы');
         } catch (error) {
             console.error('❌ [AUTH] Ошибка инициализации обработчиков:', error);
@@ -93,12 +88,22 @@ const AuthModule = {
     },
     
     /**
-     * ВОССТАНОВЛЕНИЕ СЕССИИ
+     * ВОССТАНОВЛЕНИЕ СЕССИИ - ИСПРАВЛЕННАЯ
      */
     async restoreSession() {
         console.log('🔄 [AUTH] Восстановление сессии...');
         
         try {
+            // Проверяем активную сессию Firebase
+            const auth = firebase.auth();
+            const currentUser = auth.currentUser;
+            
+            if (currentUser) {
+                console.log('🔥 [AUTH] Активная сессия Firebase найдена:', currentUser.email);
+                await this.handleUserLogin(currentUser);
+                return true;
+            }
+            
             // Проверяем сохраненную сессию в localStorage
             const savedSession = localStorage.getItem(this.config.localStorageKey);
             
@@ -111,21 +116,15 @@ const AuthModule = {
                     console.log('📱 [AUTH] Найдена сохраненная сессия для:', sessionData.email);
                     
                     // Пытаемся войти с сохраненными данными
-                    await this.login(sessionData.email, sessionData.password, true);
-                    this.status.sessionRestored = true;
-                    return true;
+                    const success = await this.login(sessionData.email, sessionData.password, true);
+                    if (success) {
+                        this.status.sessionRestored = true;
+                        return true;
+                    }
                 } else {
                     console.log('⏰ [AUTH] Сессия истекла, очищаем...');
                     localStorage.removeItem(this.config.localStorageKey);
                 }
-            }
-            
-            // Проверяем активную сессию Firebase
-            const currentUser = firebase.auth().currentUser;
-            if (currentUser) {
-                console.log('🔥 [AUTH] Активная сессия Firebase найдена:', currentUser.email);
-                await this.handleUserLogin(currentUser);
-                return true;
             }
             
             console.log('⚠️ [AUTH] Активная сессия не найдена');
@@ -177,7 +176,7 @@ const AuthModule = {
     },
     
     /**
-     * ОБРАБОТКА УСПЕШНОГО ВХОДА - ОБНОВЛЕНО ДЛЯ V6
+     * ОБРАБОТКА УСПЕШНОГО ВХОДА
      */
     async handleUserLogin(firebaseUser) {
         console.log('👤 [AUTH] Обработка входа пользователя:', firebaseUser.email);
@@ -195,7 +194,7 @@ const AuthModule = {
                     ...snapshot.val(),
                     id: firebaseUser.uid,
                     email: firebaseUser.email,
-                    version: this.config.version  // Добавляем version
+                    version: this.config.version
                 };
                 
                 console.log('📊 [AUTH] Данные пользователя загружены:', userData.plan);
@@ -209,7 +208,7 @@ const AuthModule = {
                 }
                 
             } else {
-                // Новый пользователь - создаем запись СООТВЕТСТВУЮЩУЮ ПРАВИЛАМ V6
+                // Новый пользователь
                 userData = {
                     id: firebaseUser.uid,
                     email: firebaseUser.email,
@@ -218,11 +217,11 @@ const AuthModule = {
                     trialEnd: Date.now() + (this.config.trialDays * 24 * 60 * 60 * 1000),
                     premiumEnd: 0,
                     lastLogin: Date.now(),
-                    version: this.config.version  // ВАЖНО: добавляем version
+                    version: this.config.version
                 };
                 
                 await userRef.set(userData);
-                console.log('🎉 [AUTH] Создан новый пользователь с TRIAL доступом (v6)');
+                console.log('🎉 [AUTH] Создан новый пользователь с TRIAL доступом');
                 
                 // Показываем окно с приветствием для нового пользователя
                 setTimeout(() => {
@@ -233,7 +232,7 @@ const AuthModule = {
             // Обновляем время последнего входа
             await userRef.update({ 
                 lastLogin: Date.now(),
-                version: this.config.version  // Убедимся что version актуальна
+                version: this.config.version
             });
             
             // Сохраняем в модуле
@@ -245,6 +244,13 @@ const AuthModule = {
             
             // Обновляем UI
             this.updateUserUI();
+            
+            // Запускаем приложение, если оно загружено
+            setTimeout(() => {
+                if (window.app && typeof window.app.init === 'function' && !window.app.initialized) {
+                    window.app.init();
+                }
+            }, 500);
             
         } catch (error) {
             console.error('❌ [AUTH] Ошибка обработки входа:', error);
@@ -309,11 +315,11 @@ const AuthModule = {
                 password: password,
                 timestamp: Date.now(),
                 expires: Date.now() + this.config.sessionTimeout,
-                version: this.config.version  // Добавляем version
+                version: this.config.version
             };
             
             localStorage.setItem(this.config.localStorageKey, JSON.stringify(sessionData));
-            console.log('💾 [AUTH] Сессия сохранена в localStorage (v6)');
+            console.log('💾 [AUTH] Сессия сохранена в localStorage');
             
         } catch (error) {
             console.warn('⚠️ [AUTH] Не удалось сохранить сессию:', error);
@@ -337,16 +343,9 @@ const AuthModule = {
         if (mainContent) {
             mainContent.style.display = 'block';
             setTimeout(() => {
-                mainContent.classList.add('visible');
+                mainContent.style.opacity = '1';
             }, 50);
         }
-        
-        // Запускаем приложение
-        setTimeout(() => {
-            if (window.app && window.app.init) {
-                window.app.init();
-            }
-        }, 500);
     },
     
     /**
@@ -359,14 +358,13 @@ const AuthModule = {
         const mainContent = document.getElementById('main-content');
         if (mainContent) {
             mainContent.style.display = 'none';
-            mainContent.classList.remove('visible');
+            mainContent.style.opacity = '0';
         }
         
         // Показываем окно аутентификации
         const authModal = document.getElementById('auth-modal');
         if (authModal) {
             authModal.classList.remove('hidden');
-            authModal.style.display = 'flex';
         }
         
         // Заполняем email если есть сохраненный
@@ -418,29 +416,6 @@ const AuthModule = {
         if (logoutBtn) {
             logoutBtn.style.display = 'block';
         }
-        
-        // Обновляем информацию в модальном окне аутентификации
-        const userInfo = document.getElementById('user-info');
-        const userEmail = document.querySelector('.user-email');
-        const userPlan = document.querySelector('.user-plan');
-        
-        if (userInfo && userEmail && userPlan) {
-            userInfo.style.display = 'block';
-            userEmail.textContent = this.currentUser.email;
-            userPlan.textContent = this.currentUser.plan;
-            userPlan.className = this.currentUser.plan === 'PREMIUM' ? 'user-plan plan-premium' : 'user-plan plan-trial';
-        }
-        
-        // Обновляем форму входа
-        const authForm = document.getElementById('auth-form');
-        const loginBtn = document.getElementById('login-btn');
-        const logoutBtnModal = document.getElementById('logout-btn');
-        
-        if (authForm && loginBtn && logoutBtnModal) {
-            authForm.style.display = 'none';
-            loginBtn.style.display = 'none';
-            logoutBtnModal.style.display = 'block';
-        }
     },
     
     /**
@@ -449,31 +424,63 @@ const AuthModule = {
     showTrialWelcome(userData) {
         console.log('🎉 [AUTH] Показ приветствия для нового пользователя');
         
+        // Создаем модальное окно для триала
+        const modal = document.createElement('div');
+        modal.id = 'trial-welcome-modal';
+        modal.className = 'trial-modal-overlay show';
+        
         const daysLeft = this.getDaysLeft(userData);
         
-        // Обновляем данные в модальном окне
-        const adminEmail = document.getElementById('admin-email');
-        const trialDaysLeft = document.getElementById('trial-days-left');
-        const template = document.getElementById('trial-message-template');
-        
-        if (adminEmail) adminEmail.textContent = userData.email;
-        if (trialDaysLeft) trialDaysLeft.textContent = daysLeft;
-        
-        if (template) {
-            template.textContent = `
+        modal.innerHTML = `
+            <div class="trial-modal">
+                <button class="close-trial-modal" onclick="this.closest('.trial-modal-overlay').remove()">×</button>
+                <div class="trial-modal-header">
+                    <div class="trial-modal-title">🎉 ДОБРО ПОЖАЛОВАТЬ!</div>
+                    <div class="trial-modal-subtitle">Gold Options Pro v2 Professional Trading Terminal</div>
+                </div>
+                
+                <div class="trial-info-box">
+                    <div class="info-row">
+                        <span class="info-label">Ваш email:</span>
+                        <span class="info-value">${userData.email}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Текущий план:</span>
+                        <span class="info-value" style="color: var(--gold);">TRIAL</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Дней осталось:</span>
+                        <span class="info-value">${daysLeft}</span>
+                    </div>
+                </div>
+                
+                <div class="trial-template">
+                    <span class="template-label">📝 Шаблон сообщения для активации PREMIUM:</span>
+                    <div class="template-text" id="trial-message-template">
 Здравствуйте! Хочу активировать PREMIUM доступ к Gold Options Pro v2.
 
 Мой email: ${userData.email}
 Текущий план: TRIAL (осталось ${daysLeft} дней)
 Прошу предоставить реквизиты для оплаты.
-            `;
-        }
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="auth-button secondary" onclick="copyTemplate()" style="flex: 1;">
+                        📋 Копировать шаблон
+                    </button>
+                    <button class="auth-button" onclick="openTelegramForTrial()" style="flex: 1; background: var(--gradient-gold); color: #000;">
+                        📱 Открыть Telegram
+                    </button>
+                </div>
+                
+                <div class="trial-modal-footer">
+                    Для активации PREMIUM доступа напишите в Telegram: <strong>@ASKHAT_1985</strong>
+                </div>
+            </div>
+        `;
         
-        // Показываем модальное окно
-        const trialModal = document.getElementById('trial-modal');
-        if (trialModal) {
-            trialModal.classList.add('show');
-        }
+        document.body.appendChild(modal);
     },
     
     /**
