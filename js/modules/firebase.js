@@ -72,3 +72,5 @@ const FirebaseModule = {
 
 // ГЛОБАЛЬНЫЙ ЭКСПОРТ
 window.Firebase
+Module = FirebaseModule;
+console.log('✅ FirebaseModule загружен');
