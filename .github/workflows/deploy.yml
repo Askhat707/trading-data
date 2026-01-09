@@ -15,7 +15,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CACHE_CONTROL: "max-age=3600, must-revalidate"
   BASE_PATH: "/trading-data/"
 
 jobs:
@@ -34,7 +33,7 @@ jobs:
         with:
           node-version: '18'
 
-      - name: 🔧 Генерация firebase-config.js
+      - name: 🔐 Проверка GitHub Secrets
         env:
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -45,51 +44,42 @@ jobs:
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
         run: |
-          echo "🔧 Генерируем firebase-config.js из секретов..."
-          node scripts/generate-config.js
-          
-          if [ ! -f "firebase-config.js" ]; then
-            echo "❌ Ошибка: firebase-config.js не создан!"
-            exit 1
-          fi
-          
-          echo "✅ firebase-config.js создан успешно"
-          ls -lh firebase-config.js
+          echo "🔐 Проверяем все секреты..."
+          [ -z "$FIREBASE_API_KEY" ] && echo "❌ FIREBASE_API_KEY отсутствует" && exit 1
+          [ -z "$FIREBASE_AUTH_DOMAIN" ] && echo "❌ FIREBASE_AUTH_DOMAIN отсутствует" && exit 1
+          [ -z "$FIREBASE_DATABASE_URL" ] && echo "❌ FIREBASE_DATABASE_URL отсутствует" && exit 1
+          [ -z "$FIREBASE_PROJECT_ID" ] && echo "❌ FIREBASE_PROJECT_ID отсутствует" && exit 1
+          [ -z "$FIREBASE_STORAGE_BUCKET" ] && echo "❌ FIREBASE_STORAGE_BUCKET отсутствует" && exit 1
+          [ -z "$FIREBASE_MESSAGING_SENDER_ID" ] && echo "❌ FIREBASE_MESSAGING_SENDER_ID отсутствует" && exit 1
+          [ -z "$FIREBASE_APP_ID" ] && echo "❌ FIREBASE_APP_ID отсутствует" && exit 1
+          [ -z "$FIREBASE_MEASUREMENT_ID" ] && echo "❌ FIREBASE_MEASUREMENT_ID отсутствует" && exit 1
+          echo "✅ Все секреты присутствуют"
 
-      - name: 📝 Коммит конфига (если изменился)
+      - name: 🔧 Генерация firebase-config.js
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
+        run: node scripts/generate-config.js
+
+      - name: 📄 Создание служебных файлов
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          
-          if git diff --quiet firebase-config.js 2>/dev/null; then
-            echo "✅ firebase-config.js не изменился"
-          else
-            echo "📝 Коммитим firebase-config.js..."
-            git add firebase-config.js
-            git commit -m "🔒 Обновление firebase-config.js [skip ci]" || true
-            git push origin main || echo "⚠️ Push не требуется"
-          fi
-
-      - name: 📄 Создание .nojekyll
-        run: touch .nojekyll
-
-      - name: 🔧 Создание CNAME файла (если нужно)
-        run: |
+          touch .nojekyll
           echo "askhat707.github.io" > CNAME
-          echo "✅ CNAME файл создан"
 
-      - name: 🔍 Проверка файлов
+      - name: 🔍 Проверка структуры
         run: |
-          echo "📁 Проверяем файлы для деплоя:"
-          [ -f "index.html" ] && echo "✅ index.html" || (echo "❌ index.html отсутствует" && exit 1)
-          [ -f "firebase-config.js" ] && echo "✅ firebase-config.js" || (echo "❌ firebase-config.js отсутствует" && exit 1)
-          [ -f "service-worker.js" ] && echo "✅ service-worker.js" || echo "⚠️ service-worker.js опционально"
-          [ -f "CNAME" ] && echo "✅ CNAME" || echo "⚠️ CNAME опционально"
-          [ -d "js" ] && echo "✅ js/" || (echo "❌ js/ отсутствует" && exit 1)
-          [ -d "css" ] && echo "✅ css/" || (echo "❌ css/ отсутствует" && exit 1)
-          [ -d "scripts" ] && echo "✅ scripts/" || echo "⚠️ scripts/ опционально"
+          echo "✅ index.html" && test -f "index.html" || exit 1
+          echo "✅ firebase-config.js" && test -f "firebase-config.js" || exit 1
+          echo "✅ js/app.js" && test -f "js/app.js" || exit 1
+          echo "✅ css/base.css" && test -f "css/base.css" || exit 1
 
-      - name: 📦 Упаковка для GitHub Pages
+      - name: 📦 Упаковка артефакта
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
@@ -98,5 +88,3 @@ jobs:
       - name: 🚀 Деплой на GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-        with:
-          timeout: 600000
