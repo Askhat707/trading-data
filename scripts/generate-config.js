@@ -12,6 +12,7 @@ const outputPath = path.join(__dirname, '../firebase-config.js');
 // 2. Проверка наличия шаблона
 if (!fs.existsSync(templatePath)) {
   console.error('❌ ОШИБКА: Файл firebase-config.js.template не найден!');
+  console.error('Поиск по пути:', templatePath);
   process.exit(1);
 }
 
@@ -35,21 +36,38 @@ let missingKeys = false;
 
 Object.entries(secretsMap).forEach(([placeholder, value]) => {
   if (!value) {
-    console.warn(`⚠️ ПРЕДУПРЕЖДЕНИЕ: Секрет для ${placeholder} не найден в ENV!`);
+    console.error(`❌ ОШИБКА: Секрет для ${placeholder} не найден в ENV!`);
+    console.error(`   Значение: ${value}`);
     missingKeys = true;
   } else {
     // split().join() безопаснее replace() для спецсимволов
     configContent = configContent.split(placeholder).join(value);
+    console.log(`✅ Заменен ${placeholder.substring(0, 15)}...`);
   }
 });
+
+if (missingKeys) {
+  console.error('❌ КРИТИЧЕСКАЯ ОШИБКА: Не все секреты найдены!');
+  console.error('   Проверьте GitHub Secrets в настройках репозитория');
+  process.exit(1);
+}
 
 // 6. Сохранение
 fs.writeFileSync(outputPath, configContent, 'utf8');
 console.log('✅ УСПЕХ: Файл firebase-config.js создан.');
+console.log('   Путь:', outputPath);
+console.log('   Размер:', configContent.length, 'байт');
 
 // 7. Проверка валидности (базовая)
-if (configContent.includes('{{FIREBASE')) {
+if (configContent.includes('{{')) {
     console.error('❌ ОШИБКА: В файле остались незамененные шаблоны!');
+    console.error('   Содержание:', configContent.substring(0, 500));
     process.exit(1);
 }
+
+// 8. Дополнительная проверка - создаем тестовый файл
+const testPath = path.join(__dirname, '../config-test.txt');
+fs.writeFileSync(testPath, `Конфиг создан: ${new Date().toISOString()}\nСекреты заменены: ${!missingKeys}`);
+console.log('📝 Тестовый файл создан: config-test.txt');
+
 console.log('🚀 Готово к работе.');
