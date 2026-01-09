@@ -1,11 +1,12 @@
 // ============================================
-// 🔐 МОДУЛЬ АУТЕНТИФИКАЦИИ
+// 🔐 МОДУЛЬ АУТЕНТИФИКАЦИИ V2
 // ============================================
 
 const AuthModule = {
     config: {
         trialDays: 3,
-        localStorageKey: 'gold_options_auth_v7',
+        localStorageKey: 'gold_options_pro_session_v2',
+        sessionTimeout: 30 * 24 * 60 * 60 * 1000, // 30 дней
         adminEmail: 'omaralinovaskar95@gmail.com',
         adminTelegram: '@ASKHAT_1985'
     },
@@ -14,412 +15,636 @@ const AuthModule = {
     
     status: {
         initialized: false,
-        authChecked: false
-    },
-    
-    /**
-     * ПРОВЕРКА КОНФИГУРАЦИИ FIREBASE
-     */
-    checkFirebaseConfig() {
-        console.group('🔥 Проверка Firebase конфигурации');
-        
-        if (!window.firebaseConfig) {
-            console.error('❌ window.firebaseConfig не определен');
-            console.groupEnd();
-            return false;
-        }
-        
-        const requiredFields = [
-            'apiKey', 'authDomain', 'databaseURL', 
-            'projectId', 'storageBucket', 'messagingSenderId', 
-            'appId', 'measurementId'
-        ];
-        
-        let valid = true;
-        requiredFields.forEach(field => {
-            if (!window.firebaseConfig[field] || window.firebaseConfig[field].includes('{{')) {
-                console.error(`❌ Поле ${field} пусто или содержит плейсхолдер!`);
-                valid = false;
-            } else {
-                console.log(`✅ ${field}: OK`);
-            }
-        });
-        
-        if (!valid) {
-            console.error('❌ Конфигурация Firebase неполная!');
-            console.groupEnd();
-            return false;
-        }
-        
-        console.log('✅ Конфигурация Firebase загружена');
-        console.groupEnd();
-        return true;
+        authChecked: false,
+        sessionRestored: false
     },
     
     /**
      * АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
      */
     async autoInit() {
-        console.log('🚀 AuthModule.autoInit() запущен');
+        console.group('🚀 [AUTH] Автоматическая инициализация');
         
         try {
-            // Сначала скрываем loading
-            const loadingEl = document.getElementById('loading');
-            if (loadingEl) {
-                loadingEl.style.display = 'none';
-            }
-            
-            console.log('🔍 Проверяем загрузку конфига...');
-            
-            // Проверяем загрузился ли конфиг
+            // Проверяем конфиг Firebase
             if (!window.firebaseConfig || typeof window.firebaseConfig !== 'object') {
-                console.warn('⚠️ window.firebaseConfig не загружен');
-                this.showError('Firebase конфигурация не загружена. Проверьте консоль.');
-                this.showAuthModal();
-                return;
+                console.error('❌ [AUTH] Firebase конфигурация не загружена');
+                throw new Error('Firebase конфигурация не загружена');
             }
             
-            console.log('✅ Конфиг загружен:', window.firebaseConfig.projectId);
-        // Проверяем Firebase SDK
-        if (typeof firebase === 'undefined') {
-            console.error('❌ Firebase SDK не загружен');
-            this.showError('Firebase SDK не загружен');
-            this.showAuthModal();
-            return;
-        }
-        
-        // Инициализируем Firebase
-        // ✅ ПРАВИЛЬНО (замените строки 64-74):
-// Инициализируем Firebase через модуль
-if (!window.FirebaseModule.init()) {
-    console.error('❌ Не удалось инициализировать Firebase');
-    this.showError('Ошибка инициализации Firebase');
-    this.showAuthModal();
-    return;
-}
-        
-        // Показываем форму входа
-        this.showAuthModal();
-        
-        // Пытаемся восстановить сессию
-        const savedUser = localStorage.getItem(this.config.localStorageKey);
-        if (savedUser) {
-            try {
-                const userData = JSON.parse(savedUser);
-                console.log('📱 Восстановление сессии:', userData.email);
-                await this.login(userData.email, userData.password, true);
-                return;
-            } catch (e) {
-                console.warn('⚠️ Не удалось восстановить сессию:', e);
-                localStorage.removeItem(this.config.localStorageKey);
+            // Проверяем Firebase SDK
+            if (typeof firebase === 'undefined') {
+                console.error('❌ [AUTH] Firebase SDK не загружен');
+                throw new Error('Firebase SDK не загружен');
             }
+            
+            // Инициализируем Firebase
+            if (!window.FirebaseModule || !window.FirebaseModule.init()) {
+                console.error('❌ [AUTH] Не удалось инициализировать Firebase');
+                throw new Error('Не удалось инициализировать Firebase');
+            }
+            
+            console.log('✅ [AUTH] Firebase инициализирован');
+            
+            // Показываем окно аутентификации (скроем позже если есть сессия)
+            this.showAuthModal();
+            
+            // Подписываемся на изменения состояния аутентификации
+            firebase.auth().onAuthStateChanged(async (user) => {
+                console.log(`👤 [AUTH] Состояние аутентификации:`, user ? `вошел ${user.email}` : 'не вошел');
+                
+                if (user) {
+                    // Пользователь вошел
+                    await this.handleUserLogin(user);
+                } else {
+                    // Пользователь вышел или не авторизован
+                    this.handleUserLogout();
+                }
+            });
+            
+            // Пытаемся восстановить сессию
+            await this.restoreSession();
+            
+            this.status.initialized = true;
+            console.log('✅ [AUTH] Модуль аутентификации инициализирован');
+            
+        } catch (error) {
+            console.error('❌ [AUTH] Ошибка инициализации:', error);
+            this.showAuthModal();
         }
         
-    } catch (error) {
-        console.error('❌ Критическая ошибка в autoInit:', error);
+        console.groupEnd();
+    },
+    
+    /**
+     * ВОССТАНОВЛЕНИЕ СЕССИИ
+     */
+    async restoreSession() {
+        console.log('🔄 [AUTH] Восстановление сессии...');
+        
+        try {
+            // Проверяем сохраненную сессию в localStorage
+            const savedSession = localStorage.getItem(this.config.localStorageKey);
+            
+            if (savedSession) {
+                const sessionData = JSON.parse(savedSession);
+                const now = Date.now();
+                
+                // Проверяем не истекла ли сессия
+                if (sessionData.expires && sessionData.expires > now) {
+                    console.log('📱 [AUTH] Найдена сохраненная сессия для:', sessionData.email);
+                    
+                    // Пытаемся войти с сохраненными данными
+                    await this.login(sessionData.email, sessionData.password, true);
+                    this.status.sessionRestored = true;
+                    return true;
+                } else {
+                    console.log('⏰ [AUTH] Сессия истекла, очищаем...');
+                    localStorage.removeItem(this.config.localStorageKey);
+                }
+            }
+            
+            // Проверяем активную сессию Firebase
+            const currentUser = firebase.auth().currentUser;
+            if (currentUser) {
+                console.log('🔥 [AUTH] Активная сессия Firebase найдена:', currentUser.email);
+                await this.handleUserLogin(currentUser);
+                return true;
+            }
+            
+            console.log('⚠️ [AUTH] Активная сессия не найдена');
+            return false;
+            
+        } catch (error) {
+            console.error('❌ [AUTH] Ошибка восстановления сессии:', error);
+            return false;
+        }
+    },
+    
+    /**
+     * ВХОД ПОЛЬЗОВАТЕЛЯ
+     */
+    async login(email, password, silent = false) {
+        console.log(`🔐 [AUTH] Попытка входа: ${email}`);
+        
+        if (!silent) {
+            this.showAuthLoading('Вход в систему...');
+        }
+        
+        try {
+            const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+            
+            console.log('✅ [AUTH] Вход успешен:', userCredential.user.email);
+            
+            // Сохраняем сессию
+            this.saveSession(email, password);
+            
+            // Получаем/создаем данные пользователя
+            await this.handleUserLogin(userCredential.user);
+            
+            if (!silent) {
+                this.showAuthSuccess('Вход выполнен успешно!');
+            }
+            
+            return true;
+            
+        } catch (error) {
+            console.error('❌ [AUTH] Ошибка входа:', error);
+            
+            if (!silent) {
+                this.hideAuthLoading();
+                this.showAuthError(this.getAuthErrorMessage(error));
+            }
+            
+            return false;
+        }
+    },
+    
+    /**
+     * ОБРАБОТКА УСПЕШНОГО ВХОДА
+     */
+    async handleUserLogin(firebaseUser) {
+        console.log('👤 [AUTH] Обработка входа пользователя:', firebaseUser.email);
+        
+        try {
+            // Получаем данные пользователя из базы
+            const userRef = firebase.database().ref(`users/${firebaseUser.uid}`);
+            const snapshot = await userRef.once('value');
+            
+            let userData = null;
+            
+            if (snapshot.exists()) {
+                // Существующий пользователь
+                userData = {
+                    ...snapshot.val(),
+                    id: firebaseUser.uid,
+                    email: firebaseUser.email
+                };
+                
+                console.log('📊 [AUTH] Данные пользователя загружены:', userData.plan);
+                
+                // Проверяем не истекла ли подписка
+                if (this.isSubscriptionExpired(userData)) {
+                    console.warn('⚠️ [AUTH] Подписка пользователя истекла');
+                    userData.plan = 'TRIAL';
+                    userData.trialEnd = Date.now() + (this.config.trialDays * 24 * 60 * 60 * 1000);
+                    await userRef.update(userData);
+                }
+                
+            } else {
+                // Новый пользователь - создаем запись
+                userData = {
+                    id: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    plan: 'TRIAL',
+                    registered: Date.now(),
+                    trialEnd: Date.now() + (this.config.trialDays * 24 * 60 * 60 * 1000),
+                    premiumEnd: 0,
+                    lastLogin: Date.now()
+                };
+                
+                await userRef.set(userData);
+                console.log('🎉 [AUTH] Создан новый пользователь с TRIAL доступом');
+                
+                // Показываем окно с приветствием для нового пользователя
+                setTimeout(() => {
+                    this.showTrialWelcome(userData);
+                }, 1000);
+            }
+            
+            // Обновляем время последнего входа
+            await userRef.update({ lastLogin: Date.now() });
+            
+            // Сохраняем в модуле
+            this.currentUser = userData;
+            this.status.authChecked = true;
+            
+            // Показываем основной интерфейс
+            this.showMainInterface();
+            
+            // Обновляем UI
+            this.updateUserUI();
+            
+        } catch (error) {
+            console.error('❌ [AUTH] Ошибка обработки входа:', error);
+            this.showAuthError('Ошибка загрузки данных пользователя');
+        }
+    },
+    
+    /**
+     * ВЫХОД ПОЛЬЗОВАТЕЛЯ
+     */
+    async logout() {
+        console.log('🚪 [AUTH] Выход пользователя...');
+        
+        try {
+            await firebase.auth().signOut();
+            
+            // Очищаем сессию
+            localStorage.removeItem(this.config.localStorageKey);
+            
+            // Сбрасываем состояние
+            this.currentUser = null;
+            this.status.authChecked = false;
+            
+            // Очищаем приложение
+            if (window.app && window.app.cleanup) {
+                window.app.cleanup();
+            }
+            
+            // Показываем окно входа
+            this.showAuthModal();
+            
+            this.showNotification('Вы успешно вышли из системы', 'success');
+            
+            console.log('✅ [AUTH] Выход выполнен успешно');
+            
+        } catch (error) {
+            console.error('❌ [AUTH] Ошибка выхода:', error);
+            this.showNotification('Ошибка при выходе', 'error');
+        }
+    },
+    
+    /**
+     * ОБРАБОТКА ВЫХОДА ПОЛЬЗОВАТЕЛЯ
+     */
+    handleUserLogout() {
+        console.log('👋 [AUTH] Пользователь вышел');
+        
+        this.currentUser = null;
+        this.status.authChecked = false;
+        
+        // Показываем окно входа
         this.showAuthModal();
-    }
-},
-
-/**
- * ПОКАЗ ФОРМЫ АУТЕНТИФИКАЦИИ
- */
-showAuthModal() {
-    console.log('🔓 Показываем модальное окно аутентификации');
+    },
     
-    const authModal = document.getElementById('auth-modal');
-    if (authModal) {
-        authModal.classList.remove('hidden');
-        authModal.style.display = 'flex';
-        
-        setTimeout(() => {
-            authModal.style.opacity = '1';
-        }, 10);
-    }
-    
-    const mainContent = document.getElementById('main-content');
-    if (mainContent) {
-        mainContent.style.display = 'none';
-    }
-    
-    console.log('✅ Модальное окно показано');
-},
-
-/**
- * ПОКАЗ ГЛАВНОГО ИНТЕРФЕЙСА
- */
-showMainInterface() {
-    const authModal = document.getElementById('auth-modal');
-    if (authModal) {
-        authModal.classList.add('hidden');
-        setTimeout(() => {
-            authModal.style.display = 'none';
-        }, 500);
-    }
-    
-    const mainContent = document.getElementById('main-content');
-    if (mainContent) {
-        mainContent.style.display = 'block';
-        mainContent.classList.add('visible');
-    }
-    
-    this.updateUserUI();
-    
-    if (window.app && window.app.init) {
-        setTimeout(() => {
-            app.init();
-        }, 1000);
-    }
-},
-
-/**
- * ВХОД ПОЛЬЗОВАТЕЛЯ
- */
-async login(email, password, silent = false) {
-    if (!silent) {
-        this.showLoading('Вход в систему...');
-    }
-    
-    try {
-        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
-        
-        if (!silent) {
-            this.hideLoading();
-            this.showSuccess('Вход выполнен успешно!');
-        }
-        
-        // Сохраняем для автовхода
-        if (!silent) {
-            localStorage.setItem(this.config.localStorageKey, JSON.stringify({
+    /**
+     * СОХРАНЕНИЕ СЕССИИ
+     */
+    saveSession(email, password) {
+        try {
+            const sessionData = {
                 email: email,
                 password: password,
-                timestamp: Date.now()
-            }));
-        }
-        
-        // Получаем данные пользователя
-        const userRef = firebase.database().ref(`users/${userCredential.user.uid}`);
-        const snapshot = await userRef.once('value');
-        
-        if (snapshot.exists()) {
-            this.currentUser = {
-                ...snapshot.val(),
-                id: userCredential.user.uid,
-                email: userCredential.user.email
-            };
-        } else {
-            // Новый пользователь
-            this.currentUser = {
-                id: userCredential.user.uid,
-                email: userCredential.user.email,
-                plan: 'TRIAL',
-                registered: Date.now(),
-                trialEnd: Date.now() + (this.config.trialDays * 24 * 60 * 60 * 1000),
-                premiumEnd: 0
+                timestamp: Date.now(),
+                expires: Date.now() + this.config.sessionTimeout
             };
             
-            await userRef.set(this.currentUser);
+            localStorage.setItem(this.config.localStorageKey, JSON.stringify(sessionData));
+            console.log('💾 [AUTH] Сессия сохранена в localStorage');
+            
+        } catch (error) {
+            console.warn('⚠️ [AUTH] Не удалось сохранить сессию:', error);
+        }
+    },
+    
+    /**
+     * ПОКАЗ ГЛАВНОГО ИНТЕРФЕЙСА
+     */
+    showMainInterface() {
+        console.log('🖥️ [AUTH] Показ главного интерфейса');
+        
+        // Скрываем окно аутентификации
+        const authModal = document.getElementById('auth-modal');
+        if (authModal) {
+            authModal.classList.add('hidden');
         }
         
-        this.showMainInterface();
-        return true;
+        // Показываем основной контент
+        const mainContent = document.getElementById('main-content');
+        if (mainContent) {
+            mainContent.style.display = 'block';
+            setTimeout(() => {
+                mainContent.classList.add('visible');
+            }, 50);
+        }
         
-    } catch (error) {
-        console.error('❌ Ошибка входа:', error);
-        
-        if (!silent) {
-            this.hideLoading();
-            
-            let errorMessage = 'Ошибка входа';
-            switch (error.code) {
-                case 'auth/user-not-found':
-                    errorMessage = 'Пользователь не найден. Зарегистрируйтесь.';
-                    break;
-                case 'auth/wrong-password':
-                    errorMessage = 'Неверный пароль';
-                    break;
-                case 'auth/invalid-email':
-                    errorMessage = 'Неверный формат email';
-                    break;
-                case 'auth/user-disabled':
-                    errorMessage = 'Аккаунт отключен';
-                    break;
-                case 'auth/too-many-requests':
-                    errorMessage = 'Слишком много попыток';
-                    break;
+        // Запускаем приложение
+        setTimeout(() => {
+            if (window.app && window.app.init) {
+                window.app.init();
             }
+        }, 500);
+    },
+    
+    /**
+     * ПОКАЗ ОКНА АУТЕНТИФИКАЦИИ
+     */
+    showAuthModal() {
+        console.log('🔓 [AUTH] Показ окна аутентификации');
+        
+        // Скрываем основной контент
+        const mainContent = document.getElementById('main-content');
+        if (mainContent) {
+            mainContent.style.display = 'none';
+            mainContent.classList.remove('visible');
+        }
+        
+        // Показываем окно аутентификации
+        const authModal = document.getElementById('auth-modal');
+        if (authModal) {
+            authModal.classList.remove('hidden');
+            authModal.style.display = 'flex';
+        }
+        
+        // Заполняем email если есть сохраненный
+        const savedSession = localStorage.getItem(this.config.localStorageKey);
+        if (savedSession) {
+            try {
+                const sessionData = JSON.parse(savedSession);
+                const emailInput = document.getElementById('user-email');
+                if (emailInput) {
+                    emailInput.value = sessionData.email;
+                }
+            } catch (e) {
+                // Игнорируем ошибки
+            }
+        }
+    },
+    
+    /**
+     * ОБНОВЛЕНИЕ UI ПОЛЬЗОВАТЕЛЯ
+     */
+    updateUserUI() {
+        if (!this.currentUser) return;
+        
+        console.log('🎨 [AUTH] Обновление UI пользователя');
+        
+        // Обновляем шапку
+        const userDisplay = document.getElementById('user-display');
+        if (userDisplay) {
+            const email = this.currentUser.email;
+            const displayName = email.split('@')[0];
+            userDisplay.textContent = displayName;
             
-            this.showError(errorMessage);
+            const userBadge = userDisplay.closest('.user-badge');
+            if (userBadge) {
+                if (this.currentUser.plan === 'PREMIUM') {
+                    userBadge.classList.add('premium');
+                    userBadge.style.background = 'rgba(0, 230, 118, 0.1)';
+                    userBadge.innerHTML = `<span>👑</span> <span id="user-display">${displayName}</span>`;
+                } else {
+                    userBadge.classList.remove('premium');
+                    userBadge.style.background = '';
+                    userBadge.innerHTML = `<span>👤</span> <span id="user-display">${displayName}</span>`;
+                }
+            }
         }
         
-        return false;
-    }
-},
-
-/**
- * Проверка истекла ли подписка
- */
-isSubscriptionExpired(user) {
-    if (!user) return true;
-    
-    // Если пользователь PREMIUM
-    if (user.plan === 'PREMIUM') {
-        if (user.premiumEnd && user.premiumEnd > Date.now()) {
-            return false; // Подписка активна
-        }
-        return true; // Подписка истекла
-    }
-    
-    // Если пользователь TRIAL
-    if (user.trialEnd && user.trialEnd > Date.now()) {
-        return false; // Триал активен
-    }
-    
-    return true; // Триал истек
-},
-
-/**
- * Получить количество оставшихся дней
- */
-getDaysLeft(user = this.currentUser) {
-    if (!user) return 0;
-    
-    if (user.plan === 'PREMIUM' && user.premiumEnd) {
-        const days = Math.ceil((user.premiumEnd - Date.now()) / (1000 * 60 * 60 * 24));
-        return Math.max(0, days);
-    }
-    
-    if (user.trialEnd) {
-        const days = Math.ceil((user.trialEnd - Date.now()) / (1000 * 60 * 60 * 24));
-        return Math.max(0, days);
-    }
-    
-    return 0;
-},
-    
-/**
- * ВЫХОД ПОЛЬЗОВАТЕЛЯ
- */
-async logout() {
-    try {
-        await firebase.auth().signOut();
-        localStorage.removeItem(this.config.localStorageKey);
-        this.currentUser = null;
-        
-        if (window.app && window.app.cleanup) {
-            app.cleanup();
+        // Показываем кнопку выхода
+        const logoutBtn = document.getElementById('header-logout');
+        if (logoutBtn) {
+            logoutBtn.style.display = 'block';
         }
         
-        this.showAuthModal();
-        this.showSuccess('Выход выполнен успешно');
+        // Обновляем информацию в модальном окне аутентификации
+        const userInfo = document.getElementById('user-info');
+        const userEmail = document.querySelector('.user-email');
+        const userPlan = document.querySelector('.user-plan');
         
-    } catch (error) {
-        console.error('❌ Ошибка выхода:', error);
-        this.showError('Ошибка при выходе');
-    }
-},
-
-/**
- * ОБНОВЛЕНИЕ UI ПОЛЬЗОВАТЕЛЯ
- */
-updateUserUI() {
-    if (!this.currentUser) return;
+        if (userInfo && userEmail && userPlan) {
+            userInfo.style.display = 'block';
+            userEmail.textContent = this.currentUser.email;
+            userPlan.textContent = this.currentUser.plan;
+            userPlan.className = this.currentUser.plan === 'PREMIUM' ? 'user-plan plan-premium' : 'user-plan plan-trial';
+        }
+        
+        // Обновляем форму входа
+        const authForm = document.getElementById('auth-form');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtnModal = document.getElementById('logout-btn');
+        
+        if (authForm && loginBtn && logoutBtnModal) {
+            authForm.style.display = 'none';
+            loginBtn.style.display = 'none';
+            logoutBtnModal.style.display = 'block';
+        }
+    },
     
-    const userEmail = document.getElementById('user-email');
-    if (userEmail) {
-        userEmail.textContent = this.currentUser.email;
-    }
-},
+    /**
+     * ПОКАЗ ПРИВЕТСТВЕННОГО ОКНА ДЛЯ TRIAL
+     */
+    showTrialWelcome(userData) {
+        console.log('🎉 [AUTH] Показ приветствия для нового пользователя');
+        
+        const daysLeft = this.getDaysLeft(userData);
+        
+        // Обновляем данные в модальном окне
+        const adminEmail = document.getElementById('admin-email');
+        const trialDaysLeft = document.getElementById('trial-days-left');
+        const template = document.getElementById('trial-message-template');
+        
+        if (adminEmail) adminEmail.textContent = userData.email;
+        if (trialDaysLeft) trialDaysLeft.textContent = daysLeft;
+        
+        if (template) {
+            template.textContent = `
+Здравствуйте! Хочу активировать PREMIUM доступ к Gold Options Pro v2.
 
-/**
- * ПОКАЗ ЗАГРУЗКИ
- */
-showLoading(message = 'Загрузка...') {
-    const loading = document.getElementById('loading');
-    if (loading) {
-        loading.style.display = 'flex';
-        loading.innerHTML = `
-            <div style="text-align: center;">
-                <div style="font-size: 3rem; margin-bottom: 20px; color: #FFD700;">⏳</div>
-                <div style="color: #FFD700; font-size: 1.5rem; font-weight: 800; margin-bottom: 20px;">
-                    ${message}
-                </div>
+Мой email: ${userData.email}
+Текущий план: TRIAL (осталось ${daysLeft} дней)
+Прошу предоставить реквизиты для оплаты.
+            `;
+        }
+        
+        // Показываем модальное окно
+        const trialModal = document.getElementById('trial-modal');
+        if (trialModal) {
+            trialModal.classList.add('show');
+        }
+    },
+    
+    /**
+     * ПРОВЕРКА ИСТЕКЛА ЛИ ПОДПИСКА
+     */
+    isSubscriptionExpired(user) {
+        if (!user) return true;
+        
+        if (user.plan === 'PREMIUM') {
+            return !user.premiumEnd || user.premiumEnd < Date.now();
+        } else {
+            return !user.trialEnd || user.trialEnd < Date.now();
+        }
+    },
+    
+    /**
+     * ПОЛУЧЕНИЕ ОСТАВШИХСЯ ДНЕЙ
+     */
+    getDaysLeft(user = this.currentUser) {
+        if (!user) return 0;
+        
+        let endDate = 0;
+        
+        if (user.plan === 'PREMIUM') {
+            endDate = user.premiumEnd;
+        } else {
+            endDate = user.trialEnd;
+        }
+        
+        if (!endDate) return 0;
+        
+        const now = Date.now();
+        if (endDate <= now) return 0;
+        
+        const daysLeft = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
+        return Math.max(0, daysLeft);
+    },
+    
+    /**
+     * ПОКАЗ ЗАГРУЗКИ АУТЕНТИФИКАЦИИ
+     */
+    showAuthLoading(message) {
+        const loginBtn = document.getElementById('login-btn');
+        if (loginBtn) {
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = `<span>⏳</span> ${message}`;
+        }
+    },
+    
+    /**
+     * СКРЫТИЕ ЗАГРУЗКИ АУТЕНТИФИКАЦИИ
+     */
+    hideAuthLoading() {
+        const loginBtn = document.getElementById('login-btn');
+        if (loginBtn) {
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = `ВОЙТИ В СИСТЕМУ`;
+        }
+    },
+    
+    /**
+     * ПОКАЗ ОШИБКИ АУТЕНТИФИКАЦИИ
+     */
+    showAuthError(message) {
+        const errorEl = document.getElementById('auth-error');
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+            
+            setTimeout(() => {
+                errorEl.classList.remove('show');
+            }, 5000);
+        }
+    },
+    
+    /**
+     * ПОКАЗ УСПЕХА АУТЕНТИФИКАЦИИ
+     */
+    showAuthSuccess(message) {
+        this.showNotification(message, 'success');
+    },
+    
+    /**
+     * ПОЛУЧЕНИЕ СООБЩЕНИЯ ОБ ОШИБКЕ
+     */
+    getAuthErrorMessage(error) {
+        switch (error.code) {
+            case 'auth/user-not-found':
+                return 'Пользователь не найден';
+            case 'auth/wrong-password':
+                return 'Неверный пароль';
+            case 'auth/invalid-email':
+                return 'Неверный формат email';
+            case 'auth/user-disabled':
+                return 'Аккаунт отключен';
+            case 'auth/too-many-requests':
+                return 'Слишком много попыток. Попробуйте позже';
+            case 'auth/network-request-failed':
+                return 'Ошибка сети. Проверьте подключение';
+            default:
+                return 'Ошибка входа. Проверьте данные';
+        }
+    },
+    
+    /**
+     * ПОКАЗ УВЕДОМЛЕНИЯ
+     */
+    showNotification(message, type = 'info') {
+        console.log(`📢 [NOTIFY] ${type}: ${message}`);
+        
+        const colors = {
+            success: '#00E676',
+            error: '#FF1744',
+            warning: '#FFD700',
+            info: '#2196F3'
+        };
+        
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed; top: 20px; right: 20px;
+            background: rgba(20, 20, 20, 0.95); color: white;
+            padding: 15px 25px; border-radius: 10px;
+            border-left: 4px solid ${colors[type]};
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5); z-index: 10000;
+            max-width: 400px; font-weight: 600;
+            animation: slideIn 0.3s ease;
+        `;
+        
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div>${icons[type]}</div>
+                <div>${message}</div>
             </div>
         `;
-    }
-},
-
-/**
- * СКРЫТИЕ ЗАГРУЗКИ
- */
-hideLoading() {
-    const loading = document.getElementById('loading');
-    if (loading) {
-        loading.style.display = 'none';
-    }
-},
-
-/**
- * ПОКАЗ УСПЕХА
- */
-showSuccess(message) {
-    this.showNotification(message, 'success');
-},
-
-/**
- * ПОКАЗ ОШИБКИ
- */
-showError(message) {
-    this.showNotification(message, 'error');
-},
-
-/**
- * ПОКАЗ УВЕДОМЛЕНИЯ
- */
-showNotification(message, type = 'info') {
-    const colors = {
-        success: '#00E676',
-        error: '#FF1744',
-        warning: '#FFD700',
-        info: '#2196F3'
-    };
-    
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed; top: 20px; right: 20px;
-        background: rgba(20, 20, 20, 0.95); color: white;
-        padding: 15px 25px; border-radius: 10px;
-        border-left: 4px solid ${colors[type]};
-        box-shadow: 0 5px 20px rgba(0,0,0,0.5); z-index: 10000;
-        max-width: 400px; font-weight: 600;
-        animation: slideIn 0.3s ease;
-    `;
-    
-    const icons = {
-        success: '✅',
-        error: '❌',
-        warning: '⚠️',
-        info: 'ℹ️'
-    };
-    
-    notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <div>${icons[type]}</div>
-            <div>${message}</div>
-        </div>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
+        
+        document.body.appendChild(notification);
+        
         setTimeout(() => {
-            if (notification.parentElement) {
-                document.body.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
-}
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
+        
+        // Добавляем стили анимации
+        if (!document.querySelector('#notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = `
+                @keyframes slideIn { 
+                    from { transform: translateX(100%); opacity: 0; } 
+                    to { transform: translateX(0); opacity: 1; } 
+                }
+                @keyframes slideOut { 
+                    from { transform: translateX(0); opacity: 1; } 
+                    to { transform: translateX(100%); opacity: 0; } 
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
 };
+
+// Глобальные функции для вызова из HTML
+window.handleLogin = async function(event) {
+    event.preventDefault();
+    
+    const email = document.getElementById('user-email').value;
+    const password = document.getElementById('user-password').value;
+    
+    if (!email || !password) {
+        AuthModule.showAuthError('Заполните все поля');
+        return false;
+    }
+    
+    await AuthModule.login(email, password);
+    return false;
+};
+
+window.handleLogout = function() {
+    AuthModule.logout();
+};
+
 // Экспорт
 window.AuthModule = AuthModule;
+
+console.log('✅ [AUTH] Модуль аутентификации загружен');
