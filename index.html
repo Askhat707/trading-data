@@ -405,102 +405,88 @@
             }
             
             // Основная функция инициализации
-            async function initializeSystem() {
-                console.group('🚀 [INIT] Запуск инициализации...');
-                
-                try {
-                    // Шаг 1: Загрузка конфига
-                    window.updateLoadingStatus('📦 Загрузка конфигурации...', 20);
-                    await loadFirebaseConfig();
-                    
-                    // Шаг 2: Инициализация Firebase
-                    window.updateLoadingStatus('🔥 Инициализация Firebase...', 40);
-                    await initializeFirebase();
-                    
-                    // Шаг 3: Проверка модулей
-                    window.updateLoadingStatus('🔧 Проверка модулей...', 60);
-                    
-                    if (!window.FirebaseModule) {
-                        throw new Error('FirebaseModule не найден');
-                    }
-                    
-                    if (!window.AuthModule) {
-                        throw new Error('AuthModule не найден');
-                    }
-                    
-                    // Инициализируем FirebaseModule
-                    if (!window.FirebaseModule.init()) {
-                        throw new Error('Не удалось инициализировать FirebaseModule');
-                    }
-                    
-                    // Шаг 4: Инициализация Auth с persistence
-                    window.updateLoadingStatus('🔐 Инициализация аутентификации...', 80);
-                    
-                    // Настраиваем persistence ДО инициализации
-                    if (firebase.auth) {
-                        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-                        console.log('✅ [AUTH] Persistence установлен в LOCAL');
-                    }
-                    
-                    // Инициализируем AuthModule
-                    await window.AuthModule.autoInit();
-                    
-                    // Шаг 5: Регистрация Service Worker
-                    window.updateLoadingStatus('⚙️ Регистрация Service Worker...', 90);
-                    if ('serviceWorker' in navigator) {
-                        try {
-                            const registration = await navigator.serviceWorker.register('/trading-data/service-worker.js', {
-                                scope: '/trading-data/'
-                            });
-                            console.log('✅ [SW] Service Worker зарегистрирован:', registration.scope);
-                        } catch (swError) {
-                            console.warn('⚠️ [SW] Ошибка регистрации:', swError);
-                        }
-                    }
-                    
-                    // Шаг 6: Запуск основного приложения
-                    window.updateLoadingStatus('🚀 Запуск приложения...', 95);
-                    
-                    if (!window.app || typeof window.app.init !== 'function') {
-                        throw new Error('Основное приложение не найдено');
-                    }
-                    
-                    await window.app.init();
-                    
-                    // Шаг 7: Завершение инициализации
-                    window.updateLoadingStatus('✅ Система готова!', 100);
-                    
-                    // Плавное скрытие лоадера и показ основного контента
-                    setTimeout(() => {
-                        const loading = document.getElementById('loading');
-                        if (loading) {
-                            loading.style.opacity = '0';
-                            loading.style.pointerEvents = 'none';
-                            setTimeout(() => {
-                                loading.style.display = 'none';
-                            }, 500);
-                        }
-                        
-                        const mainContent = document.getElementById('main-content');
-                        if (mainContent) {
-                            mainContent.style.display = 'block';
-                            setTimeout(() => {
-                                mainContent.style.opacity = '1';
-                            }, 50);
-                        }
-                    }, 500);
-                    
-                    window.appState.initialized = true;
-                    console.log('✅ [INIT] Система полностью инициализирована');
-                    
-                } catch (error) {
-                    console.error('❌ [INIT] Ошибка инициализации:', error);
-                    window.appState.error = error.message;
-                    window.showErrorScreen(error.message || 'Неизвестная ошибка инициализации');
-                }
-                
-                console.groupEnd();
+async function initializeSystem() {
+    console.group('🚀 [INIT] Запуск инициализации...');
+    
+    try {
+        // Шаг 1: Загрузка конфига
+        window.updateLoadingStatus('📦 Загрузка конфигурации...', 20);
+        await loadFirebaseConfig();
+        
+        // Шаг 2: Инициализация Firebase
+        window.updateLoadingStatus('🔥 Инициализация Firebase...', 40);
+        await initializeFirebase();
+        
+        // Шаг 3: Проверка модулей
+        window.updateLoadingStatus('🔧 Проверка модулей...', 60);
+        
+        if (!window.FirebaseModule) {
+            throw new Error('FirebaseModule не найден');
+        }
+        
+        if (!window.AuthModule) {
+            throw new Error('AuthModule не найден');
+        }
+        
+        // Инициализируем FirebaseModule
+        if (!window.FirebaseModule.init()) {
+            throw new Error('Не удалось инициализировать FirebaseModule');
+        }
+        
+        // Шаг 4: Инициализация Auth с persistence
+        window.updateLoadingStatus('🔐 Инициализация аутентификации...', 80);
+        
+        // Настраиваем persistence ДО инициализации
+        if (firebase.auth) {
+            await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+            console.log('✅ [AUTH] Persistence установлен в LOCAL');
+        }
+        
+        // Инициализируем AuthModule
+        await window.AuthModule.autoInit();
+        
+        // Шаг 5: Регистрация Service Worker
+        window.updateLoadingStatus('⚙️ Регистрация Service Worker...', 90);
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.register('/trading-data/service-worker.js', {
+                    scope: '/trading-data/'
+                });
+                console.log('✅ [SW] Service Worker зарегистрирован:', registration.scope);
+            } catch (swError) {
+                console.warn('⚠️ [SW] Ошибка регистрации:', swError);
             }
+        }
+        
+        // Шаг 6: Завершение инициализации
+        window.updateLoadingStatus('✅ Система готова!', 100);
+        
+        // Плавное скрытие лоадера
+        setTimeout(() => {
+            const loading = document.getElementById('loading');
+            if (loading) {
+                loading.style.opacity = '0';
+                loading.style.pointerEvents = 'none';
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                }, 500);
+            }
+            
+            // Автоматически запустится app.init() при успешной авторизации через AuthModule.handleUserLogin()
+            
+        }, 500);
+        
+        window.appState.initialized = true;
+        console.log('✅ [INIT] Система полностью инициализирована');
+        
+    } catch (error) {
+        console.error('❌ [INIT] Ошибка инициализации:', error);
+        window.appState.error = error.message;
+        window.showErrorScreen(error.message || 'Неизвестная ошибка инициализации');
+    }
+    
+    console.groupEnd();
+}
             
             // Функция запуска инициализации
             function startInitialization() {
