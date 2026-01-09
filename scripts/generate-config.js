@@ -1,116 +1,55 @@
 #!/usr/bin/env node
 
-/**
- * Скрипт для генерации firebase-config.js из шаблона и GitHub Secrets
- * Использует переменные окружения (из GitHub Actions или локальные)
- */
-
 const fs = require('fs');
 const path = require('path');
 
-console.log('🔧 ГЕНЕРАЦИЯ firebase-config.js');
-console.log('================================\n');
+console.log('🔧 ЗАПУСК: Генерация firebase-config.js');
 
-// Пути
+// 1. Определение путей
 const templatePath = path.join(__dirname, '../firebase-config.js.template');
 const outputPath = path.join(__dirname, '../firebase-config.js');
 
-// Проверяем шаблон
+// 2. Проверка наличия шаблона
 if (!fs.existsSync(templatePath)) {
-  console.error('❌ ОШИБКА: firebase-config.js.template не найден!');
+  console.error('❌ ОШИБКА: Файл firebase-config.js.template не найден!');
   process.exit(1);
 }
 
-console.log('📄 Загружаю шаблон...');
-let template = fs.readFileSync(templatePath, 'utf8');
+// 3. Чтение шаблона
+let configContent = fs.readFileSync(templatePath, 'utf8');
 
-// Требуемые переменные
-const requiredVars = [
-  'FIREBASE_API_KEY',
-  'FIREBASE_AUTH_DOMAIN',
-  'FIREBASE_DATABASE_URL',
-  'FIREBASE_PROJECT_ID',
-  'FIREBASE_STORAGE_BUCKET',
-  'FIREBASE_MESSAGING_SENDER_ID',
-  'FIREBASE_APP_ID',
-  'FIREBASE_MEASUREMENT_ID'
-];
+// 4. Список секретов (ключ в шаблоне -> переменная окружения)
+const secretsMap = {
+  '{{FIREBASE_API_KEY}}': process.env.FIREBASE_API_KEY,
+  '{{FIREBASE_AUTH_DOMAIN}}': process.env.FIREBASE_AUTH_DOMAIN,
+  '{{FIREBASE_DATABASE_URL}}': process.env.FIREBASE_DATABASE_URL,
+  '{{FIREBASE_PROJECT_ID}}': process.env.FIREBASE_PROJECT_ID,
+  '{{FIREBASE_STORAGE_BUCKET}}': process.env.FIREBASE_STORAGE_BUCKET,
+  '{{FIREBASE_MESSAGING_SENDER_ID}}': process.env.FIREBASE_MESSAGING_SENDER_ID,
+  '{{FIREBASE_APP_ID}}': process.env.FIREBASE_APP_ID,
+  '{{FIREBASE_MEASUREMENT_ID}}': process.env.FIREBASE_MEASUREMENT_ID
+};
 
-console.log('\n🔍 Проверка переменных окружения:');
-console.log('-'.repeat(40));
+// 5. Безопасная замена
+let missingKeys = false;
 
-let allVarsExist = true;
-const replacements = {};
-
-requiredVars.forEach(varName => {
-  const value = process.env[varName];
-  
+Object.entries(secretsMap).forEach(([placeholder, value]) => {
   if (!value) {
-    console.error(`❌ ${varName}: ОТСУТСТВУЕТ`);
-    allVarsExist = false;
+    console.warn(`⚠️ ПРЕДУПРЕЖДЕНИЕ: Секрет для ${placeholder} не найден в ENV!`);
+    missingKeys = true;
   } else {
-    // Маскируем для логов
-    const masked = value.substring(0, 8) + '...' + value.substring(value.length - 4);
-    console.log(`✅ ${varName}: ${masked}`);
-    replacements[`{{${varName}}}`] = value;
+    // split().join() безопаснее replace() для спецсимволов
+    configContent = configContent.split(placeholder).join(value);
   }
 });
 
-if (!allVarsExist) {
-  console.error('\n❌ НЕ ВСЕ ПЕРЕМЕННЫЕ НАЙДЕНЫ!');
-  console.error('Проверьте GitHub Secrets в Settings → Secrets and variables → Actions');
-  process.exit(1);
-}
+// 6. Сохранение
+fs.writeFileSync(outputPath, configContent, 'utf8');
+console.log('✅ УСПЕХ: Файл firebase-config.js создан.');
 
-console.log('\n🔄 Замена переменных в шаблоне...');
-let config = template;
-
-Object.entries(replacements).forEach(([placeholder, value]) => {
-  config = config.replace(new RegExp(placeholder, 'g'), value);
-});
-
-// Сохраняем
-fs.writeFileSync(outputPath, config, 'utf8');
-console.log('✅ Файл создан: firebase-config.js');
-
-// Проверяем
-console.log('\n🔍 Финальная проверка:');
-console.log('-'.repeat(40));
-
-const generated = fs.readFileSync(outputPath, 'utf8');
-
-// Проверка 1: Нет плейсхолдеров
-if (generated.includes('{{')) {
-  console.error('❌ В файле остались плейсхолдеры!');
-  process.exit(1);
-}
-console.log('✅ Плейсхолдеры заменены');
-
-// Проверка 2: Ключевые слова есть
-const keywords = ['firebaseConfig', 'apiKey', 'projectId', 'databaseURL'];
-keywords.forEach(word => {
-  if (!generated.includes(word)) {
-    console.error(`❌ Отсутствует ключевое слово: ${word}`);
+// 7. Проверка валидности (базовая)
+if (configContent.includes('{{FIREBASE')) {
+    console.error('❌ ОШИБКА: В файле остались незамененные шаблоны!');
     process.exit(1);
-  }
-});
-console.log('✅ Найдены все ключевые слова');
-
-// Проверка 3: Не пустые значения
-if (generated.includes('""') || generated.includes("''")) {
-  console.error('❌ В файле пустые значения!');
-  process.exit(1);
 }
-console.log('✅ Нет пустых значений');
-
-console.log('\n================================');
-console.log('🎉 КОНФИГУРАЦИЯ ГОТОВА!');
-console.log('================================\n');
-
-console.log('📋 Первые 15 строк firebase-config.js:');
-console.log('-'.repeat(40));
-console.log(generated.split('\n').slice(0, 15).join('\n'));
-console.log('...\n');
-
-console.log('✅ Файл firebase-config.js успешно сгенерирован');
-console.log('🚀 Готово к деплою на GitHub Pages');
+console.log('🚀 Готово к работе.');
