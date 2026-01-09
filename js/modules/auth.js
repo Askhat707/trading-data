@@ -1,5 +1,5 @@
 // ============================================
-// 🔐 МОДУЛЬ АУТЕНТИФИКАЦИИ V2
+// 🔐 МОДУЛЬ АУТЕНТИФИКАЦИИ V2 - ИСПРАВЛЕННЫЙ
 // ============================================
 
 const AuthModule = {
@@ -8,7 +8,8 @@ const AuthModule = {
         localStorageKey: 'gold_options_pro_session_v2',
         sessionTimeout: 30 * 24 * 60 * 60 * 1000, // 30 дней
         adminEmail: 'omaralinovaskar95@gmail.com',
-        adminTelegram: '@ASKHAT_1985'
+        adminTelegram: '@ASKHAT_1985',
+        version: 'v6'  // Добавлено для соответствия правилам
     },
     
     currentUser: null,
@@ -20,7 +21,7 @@ const AuthModule = {
     },
     
     /**
-     * АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
+     * АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ - ИСПРАВЛЕНО
      */
     async autoInit() {
         try {
@@ -44,7 +45,7 @@ const AuthModule = {
             }
             
             // Проверяем сохраненную сессию
-            await this.checkSavedAuth();
+            await this.restoreSession();  // ← ИСПРАВЛЕНО: был checkSavedAuth
             
             // Инициализируем обработчики
             this.initAuthHandlers();
@@ -55,6 +56,39 @@ const AuthModule = {
         } catch (error) {
             console.error('❌ [AUTH] Ошибка автоинициализации:', error);
             return false;
+        }
+    },
+    
+    /**
+     * ИНИЦИАЛИЗАЦИЯ ОБРАБОТЧИКОВ AUTH - ДОБАВЛЕНО
+     */
+    initAuthHandlers() {
+        console.log('🔄 [AUTH] Инициализация обработчиков...');
+        
+        try {
+            const auth = firebase.auth();
+            
+            // Обработчик изменения состояния аутентификации
+            auth.onAuthStateChanged((user) => {
+                console.log('👤 [AUTH] Состояние изменилось:', user ? user.email : 'null');
+                
+                if (user) {
+                    this.handleUserLogin(user);
+                } else {
+                    this.handleUserLogout();
+                }
+            });
+            
+            // Обработчик ошибок аутентификации
+            auth.onIdTokenChanged((user) => {
+                if (user) {
+                    console.log('🔄 [AUTH] Токен обновлен:', user.email);
+                }
+            });
+            
+            console.log('✅ [AUTH] Обработчики инициализированы');
+        } catch (error) {
+            console.error('❌ [AUTH] Ошибка инициализации обработчиков:', error);
         }
     },
     
@@ -143,7 +177,7 @@ const AuthModule = {
     },
     
     /**
-     * ОБРАБОТКА УСПЕШНОГО ВХОДА
+     * ОБРАБОТКА УСПЕШНОГО ВХОДА - ОБНОВЛЕНО ДЛЯ V6
      */
     async handleUserLogin(firebaseUser) {
         console.log('👤 [AUTH] Обработка входа пользователя:', firebaseUser.email);
@@ -160,7 +194,8 @@ const AuthModule = {
                 userData = {
                     ...snapshot.val(),
                     id: firebaseUser.uid,
-                    email: firebaseUser.email
+                    email: firebaseUser.email,
+                    version: this.config.version  // Добавляем version
                 };
                 
                 console.log('📊 [AUTH] Данные пользователя загружены:', userData.plan);
@@ -174,7 +209,7 @@ const AuthModule = {
                 }
                 
             } else {
-                // Новый пользователь - создаем запись
+                // Новый пользователь - создаем запись СООТВЕТСТВУЮЩУЮ ПРАВИЛАМ V6
                 userData = {
                     id: firebaseUser.uid,
                     email: firebaseUser.email,
@@ -182,11 +217,12 @@ const AuthModule = {
                     registered: Date.now(),
                     trialEnd: Date.now() + (this.config.trialDays * 24 * 60 * 60 * 1000),
                     premiumEnd: 0,
-                    lastLogin: Date.now()
+                    lastLogin: Date.now(),
+                    version: this.config.version  // ВАЖНО: добавляем version
                 };
                 
                 await userRef.set(userData);
-                console.log('🎉 [AUTH] Создан новый пользователь с TRIAL доступом');
+                console.log('🎉 [AUTH] Создан новый пользователь с TRIAL доступом (v6)');
                 
                 // Показываем окно с приветствием для нового пользователя
                 setTimeout(() => {
@@ -195,7 +231,10 @@ const AuthModule = {
             }
             
             // Обновляем время последнего входа
-            await userRef.update({ lastLogin: Date.now() });
+            await userRef.update({ 
+                lastLogin: Date.now(),
+                version: this.config.version  // Убедимся что version актуальна
+            });
             
             // Сохраняем в модуле
             this.currentUser = userData;
@@ -269,11 +308,12 @@ const AuthModule = {
                 email: email,
                 password: password,
                 timestamp: Date.now(),
-                expires: Date.now() + this.config.sessionTimeout
+                expires: Date.now() + this.config.sessionTimeout,
+                version: this.config.version  // Добавляем version
             };
             
             localStorage.setItem(this.config.localStorageKey, JSON.stringify(sessionData));
-            console.log('💾 [AUTH] Сессия сохранена в localStorage');
+            console.log('💾 [AUTH] Сессия сохранена в localStorage (v6)');
             
         } catch (error) {
             console.warn('⚠️ [AUTH] Не удалось сохранить сессию:', error);
@@ -629,4 +669,4 @@ window.handleLogout = function() {
 // Экспорт
 window.AuthModule = AuthModule;
 
-console.log('✅ [AUTH] Модуль аутентификации загружен');
+console.log('✅ [AUTH] Модуль аутентификации загружен (исправленная версия v6)');
