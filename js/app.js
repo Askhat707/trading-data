@@ -941,29 +941,26 @@ async updateData() {
    /**
  * Очистка приложения
  */
-cleanup() {
-    console.log('🧹 Очистка приложения...');
-    
-    // Останавливаем все интервалы
-    if (this.priceInterval) clearInterval(this.priceInterval);
-    if (this.analyticsInterval) clearInterval(this.analyticsInterval);
-    if (this.dataInterval) clearInterval(this.dataInterval);
-    
-    // Очищаем графики
-    if (window.ChartsModule) {
-        ChartsModule.destroyAllCharts();
-    }
-    
-    // Очищаем кэш
-    if (window.CacheService) {
-        CacheService.clear();
-    }
-    
-    this.initialized = false;
-    console.log('✅ Приложение очищено');
-
-} // Убираем запятую (если это последний метод)
-}; // <--- ДОБАВЛЯЕМ ЭТУ СТРОКУ (закрываем объект App)
+// ✅ ПРАВИЛЬНО:
+    cleanup() {
+        console.log('🧹 Очистка приложения...');
+        
+        if (this.priceInterval) clearInterval(this.priceInterval);
+        if (this.analyticsInterval) clearInterval(this.analyticsInterval);
+        if (this.dataInterval) clearInterval(this.dataInterval);
+        
+        if (window.ChartsModule) {
+            ChartsModule.destroyAllCharts();
+        }
+        
+        if (window.CacheService) {
+            CacheService.clear();
+        }
+        
+        this.initialized = false;
+        console.log('✅ Приложение очищено');
+    } // <--- Только одна скобка здесь!
+}; // <--- Закрываем объект App
 
 // Экспорт
 if (typeof module !== 'undefined' && module.exports) {
