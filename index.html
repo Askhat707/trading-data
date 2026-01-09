@@ -14,11 +14,11 @@
     <title>🏆 Gold Options Pro v2 - Professional Trading Terminal</title>
     
     <!-- СТИЛИ -->
-    <link rel="stylesheet" href="./css/base.css">
-    <link rel="stylesheet" href="./css/components/cards.css">
-    <link rel="stylesheet" href="./css/components/modal.css">
-    <link rel="stylesheet" href="./css/components/table.css">
-    <link rel="stylesheet" href="./css/pages/terminal.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components/cards.css">
+    <link rel="stylesheet" href="css/components/modal.css">
+    <link rel="stylesheet" href="css/components/table.css">
+    <link rel="stylesheet" href="css/pages/terminal.css">
     
     <!-- FIREBASE SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
@@ -27,10 +27,10 @@
 
 </head>
 <body>
-    <!-- 🔥 ДИНАМИЧЕСКАЯ ЗАГРУЗКА FIREBASE CONFIG БЕЗ КЭША -->
+    <!-- 🔥 ДИНАМИЧЕСКАЯ ЗАГРУЗКА FIREBASE CONFIG -->
     <script>
         (function() {
-            console.log('🚀 ЗАПУСК СИСТЕМЫ АВТООБНОВЛЕНИЯ КЭША...');
+            console.log('🚀 ЗАПУСК СИСТЕМЫ...');
             
             // Глобальные флаги состояния
             window.appLoaded = false;
@@ -38,42 +38,14 @@
             window.configLoaded = false;
             window.authRestored = false;
             
-            // 1. ОЧИСТКА КЭША ПЕРЕД ЗАГРУЗКОЙ
-            function clearCachesOnStart() {
-                console.log('🧹 Автоочистка кэша при старте...');
-                
-                // Очищаем sessionStorage (кроме метки очистки)
-                const itemsToKeep = ['cacheCleaned', 'sessionId'];
-                for (let i = 0; i < sessionStorage.length; i++) {
-                    const key = sessionStorage.key(i);
-                    if (!itemsToKeep.includes(key)) {
-                        sessionStorage.removeItem(key);
-                    }
-                }
-                
-                // Помечаем что очистка выполнена
-                sessionStorage.setItem('cacheCleaned', Date.now().toString());
-                
-                // Удаляем кэш firebase-config.js если есть
-                if ('caches' in window) {
-                    caches.open('gold-options-pro-v8').then(cache => {
-                        cache.delete('firebase-config.js').catch(() => {});
-                    });
-                }
-                
-                console.log('✅ Кэши очищены');
-                return true;
-            }
-            
-            // 2. ПРИНУДИТЕЛЬНАЯ ЗАГРУЗКА FIREBASE-CONFIG.JS
-            function forceLoadFirebaseConfig() {
+            // 1. ЗАГРУЗКА КОНФИГУРАЦИИ FIREBASE
+            function loadFirebaseConfig() {
                 return new Promise((resolve, reject) => {
-                    console.log('🔥 Принудительная загрузка конфига...');
+                    console.log('🔥 Загрузка конфигурации...');
                     
                     // Создаем уникальный URL для обхода кэша
                     const timestamp = Date.now();
-                    const uniqueParam = `nocache=${timestamp}&version=v${timestamp}`;
-                    const configUrl = `firebase-config.js?${uniqueParam}`;
+                    const configUrl = `firebase-config.js?v=${timestamp}`;
                     
                     // Создаем элемент script
                     const script = document.createElement('script');
@@ -84,38 +56,25 @@
                     
                     // Обработчики
                     script.onload = function() {
-                        console.log('✅ firebase-config.js загружен (принудительно)');
+                        console.log('✅ firebase-config.js загружен');
                         
-                        // Проверяем что конфиг действительно загрузился
                         if (typeof window.firebaseConfig !== 'undefined') {
-                            console.log('📊 Конфигурация доступна:', {
-                                projectId: window.firebaseConfig.projectId,
-                                authDomain: window.firebaseConfig.authDomain
-                            });
-                            
+                            console.log('📊 Конфигурация доступна:', window.firebaseConfig.projectId);
                             window.configLoaded = true;
                             resolve(true);
                         } else {
-                            console.error('❌ Конфиг загружен, но window.firebaseConfig не определен');
+                            console.error('❌ window.firebaseConfig не определен после загрузки');
                             reject(new Error('window.firebaseConfig не определен'));
                         }
                     };
                     
                     script.onerror = function(error) {
                         console.error('❌ КРИТИЧЕСКАЯ ОШИБКА: Не удалось загрузить firebase-config.js', error);
-                        
-                        // Показываем пользовательскую ошибку
-                        showConfigError();
                         reject(error);
                     };
                     
-                    // Вставляем ПЕРВЫМ в head
-                    const firstScript = document.head.getElementsByTagName('script')[0];
-                    if (firstScript) {
-                        document.head.insertBefore(script, firstScript);
-                    } else {
-                        document.head.appendChild(script);
-                    }
+                    // Вставляем в head
+                    document.head.appendChild(script);
                     
                     // Таймаут на случай зависания
                     setTimeout(() => {
@@ -128,129 +87,7 @@
                 });
             }
             
-            // 3. ПОКАЗ ОШИБКИ КОНФИГА
-            function showConfigError() {
-                const loadingEl = document.getElementById('loading');
-                if (!loadingEl) return;
-                
-                loadingEl.innerHTML = `
-                    <div style="text-align: center; max-width: 700px; padding: 40px;">
-                        <div style="font-size: 4rem; color: #ff4444; margin-bottom: 20px;">🔥</div>
-                        <h2 style="color: #ff4444; margin-bottom: 15px; font-size: 1.8rem;">
-                            КРИТИЧЕСКАЯ ОШИБКА: Конфигурация не загружена
-                        </h2>
-                        
-                        <div style="background: rgba(255,68,68,0.1); padding: 25px; border-radius: 12px; 
-                            margin: 25px 0; text-align: left; color: #ccc; font-size: 0.95rem;">
-                            <p style="margin: 0 0 15px 0;"><strong>Проблема:</strong> firebase-config.js не загружен</p>
-                            
-                            <p style="margin: 15px 0 10px 0;"><strong>🔍 Диагностика:</strong></p>
-                            <ol style="margin: 10px 0 20px 20px;">
-                                <li>Проверьте что GitHub Actions выполнился успешно</li>
-                                <li>Убедитесь что файл существует: 
-                                    <a href="firebase-config.js" target="_blank" style="color: #FFD700; text-decoration: underline;">
-                                        firebase-config.js
-                                    </a>
-                                </li>
-                                <li>Проверьте консоль браузера (F12) для деталей</li>
-                            </ol>
-                            
-                            <p style="margin: 15px 0 10px 0;"><strong>🚀 Решения:</strong></p>
-                            <ul style="margin: 10px 0 20px 20px;">
-                                <li>Нажмите кнопку ниже для принудительной очистки</li>
-                                <li>Или проверьте логи GitHub Actions</li>
-                            </ul>
-                        </div>
-                        
-                        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 30px;">
-                            <button onclick="forceHardReload()" style="padding: 14px 28px; 
-                                background: linear-gradient(135deg, #FFD700, #D4AF37); color: #000; border: none; 
-                                border-radius: 10px; cursor: pointer; font-weight: 800; font-size: 1rem; 
-                                display: flex; align-items: center; justify-content: center; gap: 10px;">
-                                <span>🔄</span> Принудительная перезагрузка с очисткой кэша
-                            </button>
-                            
-                            <button onclick="window.open('https://github.com/askhat707/trading-data/actions', '_blank')" 
-                                style="padding: 12px 24px; background: rgba(33, 150, 243, 0.2); 
-                                color: #2196F3; border: 1px solid #2196F3; border-radius: 8px; 
-                                cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                <span>📊</span> Проверить GitHub Actions
-                            </button>
-                            
-                            <button onclick="window.open('https://github.com/askhat707/trading-data/settings/secrets/actions', '_blank')" 
-                                style="padding: 12px 24px; background: rgba(76, 175, 80, 0.2); 
-                                color: #4CAF50; border: 1px solid #4CAF50; border-radius: 8px; 
-                                cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                <span>🔐</span> Проверить GitHub Secrets
-                            </button>
-                            
-                            <button onclick="testConfigUrl()" 
-                                style="padding: 10px 20px; background: rgba(255, 193, 7, 0.2); 
-                                color: #FFC107; border: 1px solid #FFC107; border-radius: 8px; 
-                                cursor: pointer; font-size: 0.9rem;">
-                                🔍 Проверить URL конфига
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            // 4. ГЛОБАЛЬНЫЕ ФУНКЦИИ ДЛЯ РУЧНОГО УПРАВЛЕНИЯ
-            window.forceHardReload = function() {
-                console.log('💥 ЗАПУСК ПРИНУДИТЕЛЬНОЙ ПЕРЕЗАГРУЗКИ...');
-                
-                // 1. Очищаем ВСЕ хранилища
-                try {
-                    localStorage.clear();
-                    sessionStorage.clear();
-                    
-                    // Сохраняем только данные авторизации если есть
-                    const authData = localStorage.getItem('gold_options_auth_v7');
-                    if (authData) {
-                        localStorage.setItem('gold_options_auth_v7', authData);
-                    }
-                } catch (e) {}
-                
-                // 2. Удаляем ВСЕ service workers
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(registrations => {
-                        registrations.forEach(registration => {
-                            registration.unregister();
-                        });
-                    });
-                }
-                
-                // 3. Очищаем ВСЕ кэши
-                if ('caches' in window) {
-                    caches.keys().then(cacheNames => {
-                        cacheNames.forEach(cacheName => {
-                            caches.delete(cacheName);
-                        });
-                    });
-                }
-                
-                // 4. Перезагружаем с уникальным параметром
-                const reloadUrl = window.location.origin + window.location.pathname + '?force=' + Date.now();
-                console.log('Перезагрузка по URL:', reloadUrl);
-                window.location.href = reloadUrl;
-            };
-            
-            window.testConfigUrl = function() {
-                const url = 'firebase-config.js?' + Date.now();
-                fetch(url)
-                    .then(response => {
-                        if (response.ok) {
-                            alert('✅ Конфиг доступен по URL\n' + url);
-                        } else {
-                            alert('❌ Конфиг НЕ доступен\nСтатус: ' + response.status);
-                        }
-                    })
-                    .catch(error => {
-                        alert('❌ Ошибка запроса: ' + error.message);
-                    });
-            };
-            
-            // 5. ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА ЗАГРУЗКИ
+            // 2. ОБНОВЛЕНИЕ СТАТУСА ЗАГРУЗКИ
             window.updateLoadingStatus = function(message, progress) {
                 const statusEl = document.getElementById('loading-status');
                 const barEl = document.getElementById('loading-bar');
@@ -262,192 +99,94 @@
                 }
             };
             
-            // 6. ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ
-            async function initializeApplicationSystem() {
-                console.group('🚀 СИСТЕМНАЯ ИНИЦИАЛИЗАЦИЯ');
+            // 3. ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ
+            async function initSystem() {
+                console.group('🚀 ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ');
                 
                 try {
-                    // Шаг 1: Очистка кэша
-                    updateLoadingStatus('🧹 Очистка кэша...', 10);
-                    clearCachesOnStart();
-                    
-                    // Шаг 2: Загрузка конфига Firebase
+                    // Шаг 1: Загружаем конфиг
                     updateLoadingStatus('🔥 Загрузка конфигурации Firebase...', 30);
-                    await forceLoadFirebaseConfig();
+                    await loadFirebaseConfig();
                     
-                    // Шаг 3: Проверка Firebase SDK
+                    // Шаг 2: Проверяем Firebase SDK
                     updateLoadingStatus('🔧 Проверка Firebase SDK...', 50);
                     if (typeof firebase === 'undefined') {
                         throw new Error('Firebase SDK не загружен');
                     }
                     window.firebaseLoaded = true;
                     
-                    // Шаг 4: Регистрация Service Worker (в фоне)
-                    updateLoadingStatus('⚙️ Настройка Service Worker...', 60);
-                    registerServiceWorker();
-                    
-                    // Шаг 5: Запуск основного приложения
-                    updateLoadingStatus('🚀 Запуск приложения...', 80);
-                    startMainApplication();
-                    
-                } catch (error) {
-                    console.error('❌ Ошибка инициализации системы:', error);
-                    updateLoadingStatus('❌ Ошибка инициализации', 100);
-                    
-                    setTimeout(() => {
-                        showConfigError();
-                    }, 1000);
-                }
-                
-                console.groupEnd();
-            }
-            
-            // 7. РЕГИСТРАЦИЯ SERVICE WORKER
-            function registerServiceWorker() {
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('./service-worker.js')
-                        .then(function(registration) {
-                            console.log('✅ Service Worker зарегистрирован:', registration.scope);
-                            
-                            // Принудительное обновление SW
-                            registration.update();
-                        })
-                        .catch(function(error) {
-                            console.warn('⚠️ Service Worker ошибка:', error);
-                        });
-                }
-            }
-            
-            // 8. ЗАПУСК ОСНОВНОГО ПРИЛОЖЕНИЯ
-            function startMainApplication() {
-                console.log('🎬 Запуск основного приложения...');
-                
-                // Проверяем зависимости
-                if (checkAllDependencies()) {
-                    console.log('✅ Все зависимости готовы');
-                    updateLoadingStatus('✅ Система готова!', 100);
-                    
-                    // Запускаем инициализацию приложения
-                    setTimeout(() => {
-                        initializeApplication();
-                    }, 1000);
-                } else {
-                    console.error('❌ Не все зависимости загружены');
-                    setTimeout(() => {
-                        startMainApplication();
-                    }, 2000);
-                }
-            }
-            
-            // 9. ПРОВЕРКА ВСЕХ ЗАВИСИМОСТЕЙ
-            window.checkAllDependencies = function() {
-                console.group('🔍 Проверка зависимостей');
-                
-                let allGood = true;
-                
-                // 1. Проверяем firebase-config.js
-                if (typeof window.firebaseConfig === 'undefined') {
-                    console.error('❌ window.firebaseConfig не загружен');
-                    allGood = false;
-                } else {
-                    console.log('✅ window.firebaseConfig загружен');
-                    console.log('   Проект:', window.firebaseConfig.projectId);
-                    window.configLoaded = true;
-                }
-                
-                // 2. Проверяем Firebase SDK
-                if (typeof firebase === 'undefined') {
-                    console.error('❌ Firebase SDK не загружен');
-                    allGood = false;
-                } else {
-                    console.log('✅ Firebase SDK загружен');
-                    window.firebaseLoaded = true;
-                }
-                
-                console.groupEnd();
-                return allGood;
-            };
-            
-            // 10. ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
-            window.initializeApplication = function() {
-                console.group('🚀 Инициализация приложения');
-                
-                try {
-                    // Инициализируем Firebase
-                    if (window.FirebaseModule && typeof FirebaseModule.init === 'function') {
-                        console.log('🔥 Инициализация Firebase...');
-                        FirebaseModule.init();
+                    // Шаг 3: Регистрируем Service Worker
+                    updateLoadingStatus('⚙️ Регистрация Service Worker...', 70);
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.register('service-worker.js')
+                            .then(reg => console.log('✅ Service Worker зарегистрирован:', reg.scope))
+                            .catch(err => console.warn('⚠️ Service Worker ошибка:', err));
                     }
                     
-                    // Запускаем модуль аутентификации
-                    setTimeout(() => {
-                        console.log('🔐 Запуск модуля аутентификации...');
-                        
-                        if (window.AuthModule && typeof AuthModule.autoInit === 'function') {
-                            AuthModule.autoInit();
-                            window.appLoaded = true;
-                            
-                            // Скрываем лоадер с анимацией
-                            setTimeout(() => {
-                                const loadingEl = document.getElementById('loading');
-                                if (loadingEl) {
-                                    loadingEl.style.opacity = '0';
-                                    loadingEl.style.transition = 'opacity 0.5s ease';
-                                    setTimeout(() => {
-                                        loadingEl.style.display = 'none';
-                                    }, 500);
-                                }
-                            }, 500);
-                        } else {
-                            throw new Error('AuthModule не доступен');
-                        }
-                    }, 1000);
+                    // Шаг 4: Запускаем приложение
+                    updateLoadingStatus('🚀 Запуск приложения...', 90);
+                    startApp();
                     
                 } catch (error) {
                     console.error('❌ Ошибка инициализации:', error);
-                    showErrorScreen(error.message);
+                    showError(error.message);
                 }
                 
                 console.groupEnd();
-            };
+            }
             
-            // 11. ФУНКЦИЯ ПОКАЗА ОШИБКИ
-            window.showErrorScreen = function(message) {
-                const loadingEl = document.getElementById('loading');
-                if (loadingEl) {
-                    loadingEl.innerHTML = `
-                        <div style="text-align: center; padding: 40px; max-width: 600px;">
-                            <div style="font-size: 4rem; color: #ff4444; margin-bottom: 20px;">💥</div>
-                            <h2 style="color: #ff4444; margin-bottom: 15px; font-size: 1.8rem;">
-                                Ошибка загрузки приложения
-                            </h2>
-                            <div style="background: rgba(255,68,68,0.1); padding: 20px; border-radius: 10px; 
-                                margin: 20px 0; text-align: left; color: #ccc; font-size: 0.95rem;">
-                                <p style="margin: 0 0 10px 0;"><strong>Сообщение ошибки:</strong></p>
-                                <pre style="margin: 0; padding: 15px; background: rgba(0,0,0,0.3); 
-                                    border-radius: 6px; overflow: auto; font-size: 0.85rem;">${message}</pre>
-                            </div>
+            // 4. ЗАПУСК ПРИЛОЖЕНИЯ
+            function startApp() {
+                console.log('🎬 Запуск основного приложения...');
+                
+                setTimeout(() => {
+                    // Инициализируем Firebase Module
+                    if (window.FirebaseModule) {
+                        FirebaseModule.init();
+                    }
+                    
+                    // Запускаем Auth Module
+                    setTimeout(() => {
+                        if (window.AuthModule) {
+                            AuthModule.autoInit();
+                            window.appLoaded = true;
                             
-                            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 30px;">
-                                <button onclick="forceHardReload()" style="padding: 12px 24px; 
-                                    background: linear-gradient(135deg, #FFD700, #D4AF37); color: #000; border: none; 
-                                    border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 1rem;">
-                                    🔄 Принудительная перезагрузка
-                                </button>
-                                
-                                <button onclick="window.open('https://t.me/ASKHAT_1985', '_blank')" 
-                                    style="padding: 12px 24px; background: rgba(33, 150, 243, 0.2); 
-                                    color: #2196F3; border: 1px solid #2196F3; border-radius: 8px; 
-                                    cursor: pointer; font-weight: 600;">
-                                    📞 Техническая поддержка
-                                </button>
+                            // Скрываем лоадер
+                            updateLoadingStatus('✅ Готово!', 100);
+                            setTimeout(() => {
+                                const loading = document.getElementById('loading');
+                                if (loading) {
+                                    loading.style.opacity = '0';
+                                    loading.style.transition = 'opacity 0.5s';
+                                    setTimeout(() => loading.style.display = 'none', 500);
+                                }
+                            }, 500);
+                        }
+                    }, 1000);
+                }, 500);
+            }
+            
+            // 5. ПОКАЗ ОШИБКИ
+            function showError(message) {
+                const loading = document.getElementById('loading');
+                if (loading) {
+                    loading.innerHTML = `
+                        <div style="text-align: center; max-width: 600px; padding: 40px;">
+                            <div style="font-size: 4rem; color: #ff4444; margin-bottom: 20px;">🔥</div>
+                            <h2 style="color: #ff4444; margin-bottom: 15px;">КРИТИЧЕСКАЯ ОШИБКА</h2>
+                            <div style="background: rgba(255,68,68,0.1); padding: 20px; border-radius: 10px; margin: 20px 0;">
+                                <p style="color: #ccc; margin: 0;">${message}</p>
                             </div>
+                            <button onclick="location.reload(true)" style="padding: 12px 24px; background: #FFD700; 
+                                color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: 800;">
+                                🔄 Перезагрузить
+                            </button>
                         </div>
                     `;
                 }
-            };
+            }
             
-            // 12. ФУНКЦИИ ДЛЯ ФОРМЫ АУТЕНТИФИКАЦИИ
+            // 6. ФУНКЦИИ ДЛЯ ФОРМЫ АУТЕНТИФИКАЦИИ
             window.handleLogin = function(event) {
                 if (event) event.preventDefault();
                 
@@ -476,26 +215,25 @@
                 }
             };
             
-            // 13. ЗАПУСК СИСТЕМЫ ПРИ ЗАГРУЗКЕ DOM
+            // 7. ЗАПУСК СИСТЕМЫ ПРИ ЗАГРУЗКЕ DOM
             document.addEventListener('DOMContentLoaded', function() {
                 console.log('📄 DOM загружен, запускаем систему...');
-                updateLoadingStatus('🚀 Инициализация системы...', 5);
+                updateLoadingStatus('🚀 Инициализация...', 10);
                 
-                // Запускаем с небольшой задержкой
                 setTimeout(() => {
-                    initializeApplicationSystem();
+                    initSystem();
                 }, 500);
             });
             
-            // 14. СТРАХОВКА - ЗАПУСК ЧЕРЕЗ 8 СЕКУНД ЕСЛИ НЕ ЗАПУСТИЛОСЬ
+            // 8. СТРАХОВКА - ЗАПУСК ЧЕРЕЗ 8 СЕКУНД
             setTimeout(function() {
                 if (!window.appLoaded) {
                     console.warn('⚠️ Система не запустилась автоматически, запускаю вручную...');
-                    initializeApplicationSystem();
+                    initSystem();
                 }
             }, 8000);
             
-            console.log('✅ Система автообновления кэша инициализирована');
+            console.log('✅ Система инициализирована');
         })();
     </script>
 
@@ -911,9 +649,7 @@
                             <span>🔧 SYSTEM TOOLS</span>
                         </div>
                         <div class="control-row">
-                            <button class="btn" onclick="forceHardReload()">🔄 Force Reload</button>
                             <button class="btn" onclick="CacheControl.clearAllCaches()">🧹 Clear Cache</button>
-                            <button class="btn" onclick="testConfigUrl()">🔍 Test Config</button>
                             <button class="btn" onclick="window.location.reload(true)">🔄 Reload Page</button>
                         </div>
                     </div>
@@ -925,16 +661,16 @@
     <!-- Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
-    <!-- НАШИ МОДУЛИ (ЗАГРУЖАЮТСЯ ПОСЛЕ КОНФИГА) -->
-    <script src="./js/constants.js"></script>
-    <script src="./js/services/cache.js"></script>
-    <script src="./js/utils/helpers.js"></script>
-    <script src="./js/utils/cache-control.js"></script>
-    <script src="./js/modules/firebase.js"></script>
-    <script src="./js/modules/auth.js"></script>
-    <script src="./js/services/api.js"></script>
-    <script src="./js/modules/charts.js"></script>
-    <script src="./js/app.js"></script>
+    <!-- НАШИ МОДУЛИ -->
+    <script src="js/constants.js"></script>
+    <script src="js/services/cache.js"></script>
+    <script src="js/utils/helpers.js"></script>
+    <script src="js/utils/cache-control.js"></script>
+    <script src="js/modules/firebase.js"></script>
+    <script src="js/modules/auth.js"></script>
+    <script src="js/services/api.js"></script>
+    <script src="js/modules/charts.js"></script>
+    <script src="js/app.js"></script>
 
     <!-- ТРИАЛ МОДАЛЬНОЕ ОКНО -->
     <div id="trial-modal" class="trial-modal-overlay">
@@ -985,58 +721,5 @@
             </div>
         </div>
     </div>
-
-    <!-- СКРИПТ АВТООБНОВЛЕНИЯ СТРАНИЦЫ -->
-    <script>
-        // АВТООБНОВЛЕНИЕ СТРАНИЦЫ КАЖДЫЕ 5 МИНУТ
-        setInterval(() => {
-            console.log('🔄 Автообновление страницы...');
-            
-            // Только если пользователь активно пользуется страницей
-            if (!document.hidden) {
-                // Обновляем только данные, не всю страницу
-                if (window.app && window.app.updateData) {
-                    app.updateData();
-                    app.updateAnalytics();
-                }
-            }
-        }, 5 * 60 * 1000); // 5 минут
-        
-        // ПРОВЕРКА ОНЛАЙН СТАТУСА
-        window.addEventListener('online', () => {
-            console.log('✅ Соединение восстановлено');
-            if (window.app && window.app.showNotification) {
-                app.showNotification('Соединение восстановлено', 'success');
-            }
-        });
-        
-        window.addEventListener('offline', () => {
-            console.warn('⚠️ Потеряно соединение с интернетом');
-            if (window.app && window.app.showNotification) {
-                app.showNotification('Потеряно соединение с интернетом', 'warning');
-            }
-        });
-        
-        // ПРЕДОТВРАЩЕНИЕ ПОВТОРНОЙ ОТПРАВКИ ФОРМ
-        document.addEventListener('DOMContentLoaded', () => {
-            const forms = document.querySelectorAll('form');
-            forms.forEach(form => {
-                form.addEventListener('submit', (e) => {
-                    const submitBtn = form.querySelector('button[type="submit"]');
-                    if (submitBtn) {
-                        submitBtn.disabled = true;
-                        submitBtn.innerHTML = 'ОБРАБОТКА...';
-                        
-                        setTimeout(() => {
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = 'ВОЙТИ В СИСТЕМУ';
-                        }, 3000);
-                    }
-                });
-            });
-        });
-        
-        console.log('✅ Все системы инициализированы и готовы к работе');
-    </script>
 </body>
 </html>
