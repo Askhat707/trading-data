@@ -54,10 +54,15 @@
         
         const timestamp = Date.now();
         
-        // 🔥 ОТНОСИТЕЛЬНЫЙ ПУТЬ - самый надежный для GitHub Pages!
-        const configUrl = './firebase-config.js?nocache=' + timestamp;
+        // 🔥 УНИВЕРСАЛЬНЫЙ ПУТЬ - работает на GitHub Pages и локально
+        const basePath = window.location.pathname.includes('/trading-data/') 
+            ? '/trading-data/' 
+            : '/';
+        const configUrl = basePath + 'firebase-config.js?nocache=' + timestamp;
         
         console.log('📡 [CONFIG] URL конфига:', configUrl);
+        console.log('📍 [CONFIG] Текущий путь:', window.location.pathname);
+        console.log('📡 [CONFIG] Полный URL:', window.location.href);
         
         const script = document.createElement('script');
         script.id = 'firebase-config-loader';
@@ -74,26 +79,56 @@
             
             if (typeof window.firebaseConfig !== 'undefined' && window.firebaseConfig.apiKey) {
                 console.log('📊 [CONFIG] Конфигурация готова:', window.firebaseConfig.projectId);
+                console.log('🏗️ [CONFIG] Auth Domain:', window.firebaseConfig.authDomain);
+                console.log('💾 [CONFIG] Database:', window.firebaseConfig.databaseURL);
                 window.appState.configLoaded = true;
                 resolve(true);
             } else {
-                console.error('❌ [CONFIG] firebaseConfig не определен');
+                console.error('❌ [CONFIG] firebaseConfig не определен или не имеет apiKey');
+                console.error('❌ [CONFIG] window.firebaseConfig:', window.firebaseConfig);
                 reject(new Error('firebaseConfig не определен после загрузки'));
             }
         };
         
         script.onerror = function(error) {
             console.error('❌ [CONFIG] Ошибка загрузки:', error);
+            console.error('❌ [CONFIG] URL который пытались загрузить:', configUrl);
+            console.error('❌ [CONFIG] Текущий location:', window.location.href);
+            console.error('❌ [CONFIG] Base элемент:', document.querySelector('base')?.href);
+            
+            // Попробуем альтернативный путь
+            if (configUrl.includes('/trading-data/')) {
+                console.log('🔄 [CONFIG] Пробуем альтернативный путь: ./firebase-config.js');
+                const altScript = document.createElement('script');
+                altScript.src = './firebase-config.js?nocache=' + timestamp;
+                altScript.onload = function() {
+                    if (typeof window.firebaseConfig !== 'undefined') {
+                        console.log('✅ [CONFIG] Загружено через альтернативный путь');
+                        resolve(true);
+                    } else {
+                        reject(new Error('Не удалось загрузить firebase-config.js через альтернативный путь'));
+                    }
+                };
+                altScript.onerror = function(e) {
+                    console.error('❌ [CONFIG] Альтернативный путь тоже не сработал:', e);
+                    reject(new Error('Не удалось загрузить firebase-config.js (404)'));
+                };
+                document.head.appendChild(altScript);
+                return;
+            }
+            
             clearTimeout(timeoutId);
             reject(new Error('Не удалось загрузить firebase-config.js (404)'));
         };
         
         timeoutId = setTimeout(() => {
             console.error('⏱️ [CONFIG] Таймаут загрузки (15 сек)');
+            console.error('⏱️ [CONFIG] URL:', configUrl);
             script.remove();
             reject(new Error('Таймаут загрузки конфига'));
         }, 15000);
         
+        console.log('📤 [CONFIG] Добавляем script в head...');
         document.head.appendChild(script);
     });
 }
