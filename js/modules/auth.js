@@ -89,19 +89,14 @@ const AuthModule = {
         }
         
         // Инициализируем Firebase
-        try {
-            if (!firebase.apps.length) {
-                firebase.initializeApp(window.firebaseConfig);
-                console.log('✅ Firebase инициализирован');
-            } else {
-                console.log('✅ Firebase уже инициализирован');
-            }
-        } catch (error) {
-            console.error('❌ Ошибка инициализации Firebase:', error);
-            this.showError(`Ошибка Firebase: ${error.message}`);
-            this.showAuthModal();
-            return;
-        }
+        // ✅ ПРАВИЛЬНО (замените строки 64-74):
+// Инициализируем Firebase через модуль
+if (!window.FirebaseModule.init()) {
+    console.error('❌ Не удалось инициализировать Firebase');
+    this.showError('Ошибка инициализации Firebase');
+    this.showAuthModal();
+    return;
+}
         
         // Показываем форму входа
         this.showAuthModal();
