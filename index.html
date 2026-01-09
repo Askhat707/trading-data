@@ -48,56 +48,55 @@
                 userLogged: false
             };
             
-            // ============================================
-            // 📥 ЗАГРУЗКА КОНФИГА FIREBASE
-            // ============================================
             function loadFirebaseConfig() {
-                return new Promise((resolve, reject) => {
-                    console.log('🔥 [CONFIG] Загрузка firebase-config.js...');
-                    
-                    const timestamp = Date.now();
-                    const configUrl = '/trading-data/firebase-config.js?v=' + timestamp;
-                    
-                    console.log('📡 [CONFIG] URL конфига:', configUrl);
-                    
-                    const script = document.createElement('script');
-                    script.id = 'firebase-config-loader';
-                    script.src = configUrl;
-                    script.async = false;
-                    script.type = 'text/javascript';
-                    script.crossOrigin = 'anonymous';
-                    
-                    let timeoutId = null;
-                    
-                    script.onload = function() {
-                        console.log('✅ [CONFIG] firebase-config.js загружен');
-                        clearTimeout(timeoutId);
-                        
-                        if (typeof window.firebaseConfig !== 'undefined' && window.firebaseConfig.apiKey) {
-                            console.log('📊 [CONFIG] Конфигурация готова:', window.firebaseConfig.projectId);
-                            window.appState.configLoaded = true;
-                            resolve(true);
-                        } else {
-                            console.error('❌ [CONFIG] firebaseConfig не определен');
-                            reject(new Error('firebaseConfig не определен'));
-                        }
-                    };
-                    
-                    script.onerror = function(error) {
-                        console.error('❌ [CONFIG] Ошибка загрузки:', error);
-                        clearTimeout(timeoutId);
-                        reject(new Error('Не удалось загрузить firebase-config.js'));
-                    };
-                    
-                    timeoutId = setTimeout(() => {
-                        console.error('⏱️ [CONFIG] Таймаут загрузки (15 сек)');
-                        script.remove();
-                        reject(new Error('Таймаут'));
-                    }, 15000);
-                    
-                    document.head.appendChild(script);
-                });
+    return new Promise((resolve, reject) => {
+        console.log('🔥 [CONFIG] Загрузка firebase-config.js...');
+        
+        const timestamp = Date.now();
+        
+        // 🔥 ОТНОСИТЕЛЬНЫЙ ПУТЬ - самый надежный для GitHub Pages!
+        const configUrl = './firebase-config.js?nocache=' + timestamp;
+        
+        console.log('📡 [CONFIG] URL конфига:', configUrl);
+        
+        const script = document.createElement('script');
+        script.id = 'firebase-config-loader';
+        script.src = configUrl;
+        script.async = false;
+        script.type = 'text/javascript';
+        script.crossOrigin = 'anonymous';
+        
+        let timeoutId = null;
+        
+        script.onload = function() {
+            console.log('✅ [CONFIG] firebase-config.js загружен');
+            clearTimeout(timeoutId);
+            
+            if (typeof window.firebaseConfig !== 'undefined' && window.firebaseConfig.apiKey) {
+                console.log('📊 [CONFIG] Конфигурация готова:', window.firebaseConfig.projectId);
+                window.appState.configLoaded = true;
+                resolve(true);
+            } else {
+                console.error('❌ [CONFIG] firebaseConfig не определен');
+                reject(new Error('firebaseConfig не определен после загрузки'));
             }
+        };
+        
+        script.onerror = function(error) {
+            console.error('❌ [CONFIG] Ошибка загрузки:', error);
+            clearTimeout(timeoutId);
+            reject(new Error('Не удалось загрузить firebase-config.js (404)'));
+        };
+        
+        timeoutId = setTimeout(() => {
+            console.error('⏱️ [CONFIG] Таймаут загрузки (15 сек)');
+            script.remove();
+            reject(new Error('Таймаут загрузки конфига'));
+        }, 15000);
+        
+        document.head.appendChild(script);
+    });
+}
             
             // ============================================
             // 🔄 ОБНОВЛЕНИЕ СТАТУСА ЗАГРУЗКИ
