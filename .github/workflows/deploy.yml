@@ -54,7 +54,6 @@ jobs:
           
           echo "✅ Все 8 секретов присутствуют!"
 
-      # --- НАЧАЛО ВСТАВКИ ВАШЕГО КОДА ---
       - name: 🧹 Clear GitHub Pages Cache
         run: |
           echo "🧹 [CACHE] Очищаем кэш GitHub Pages..."
@@ -70,8 +69,67 @@ jobs:
           FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
-        run: node scripts/generate-config.js
-      # --- КОНЕЦ ВСТАВКИ ВАШЕГО КОДА ---
+        run: |
+          echo "🔧 Генерируем firebase-config.js..."
+          
+          # Создаем конфиг с реальными значениями из Secrets
+          cat > firebase-config.js << 'EOF'
+// ====================================================
+// 🔥 FIREBASE CONFIG - GENERATED FROM GITHUB SECRETS
+// ⚠️ Этот файл создается автоматически GitHub Actions
+// ====================================================
+
+console.log('🚀 Загрузка Firebase конфигурации...');
+
+const firebaseConfig = {
+  apiKey: "${{ secrets.FIREBASE_API_KEY }}",
+  authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
+  databaseURL: "${{ secrets.FIREBASE_DATABASE_URL }}",
+  projectId: "${{ secrets.FIREBASE_PROJECT_ID }}",
+  storageBucket: "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
+  messagingSenderId: "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
+  appId: "${{ secrets.FIREBASE_APP_ID }}",
+  measurementId: "${{ secrets.FIREBASE_MEASUREMENT_ID }}"
+};
+
+console.log('✅ [CONFIG] Конфигурация готова:', firebaseConfig.projectId);
+
+// Сохраняем в глобальной области видимости
+if (typeof window !== 'undefined') {
+  window.firebaseConfig = firebaseConfig;
+  console.log('✅ [CONFIG] firebaseConfig доступен в window');
+}
+
+// CommonJS экспорт
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = firebaseConfig;
+}
+EOF
+          
+          echo "✅ Конфиг создан"
+          echo "📏 Размер файла:" $(wc -c < firebase-config.js) "байт"
+          echo "🔍 Проверка конфига..."
+          
+          # Проверяем, что нет плейсхолдеров
+          if grep -q "{{" firebase-config.js; then
+            echo "❌ ОШИБКА: В конфиге остались плейсхолдеры!"
+            cat firebase-config.js
+            exit 1
+          fi
+          
+          if grep -q "FIREBASE_API_KEY" firebase-config.js; then
+            echo "❌ ОШИБКА: Переменные не подставлены!"
+            cat firebase-config.js
+            exit 1
+          fi
+          
+          echo "✅ Конфиг проверен - все переменные подставлены"
+          
+          # Удаляем шаблонный файл, чтобы не было путаницы
+          if [ -f "firebase-config.js.template" ]; then
+            echo "🗑️ Удаляем шаблонный файл..."
+            rm firebase-config.js.template
+          fi
 
       - name: 📄 Create Support Files
         run: |
@@ -89,6 +147,12 @@ jobs:
           test -f "firebase-config.js" && echo "  ✅ firebase-config.js" || echo "  ❌ firebase-config.js"
           test -f "js/app.js" && echo "  ✅ js/app.js" || echo "  ❌ js/app.js"
           test -f "css/base.css" && echo "  ✅ css/base.css" || echo "  ❌ css/base.css"
+          echo ""
+          echo "🔍 Проверка firebase-config.js:"
+          if [ -f "firebase-config.js" ]; then
+            echo "Первые 10 строк:"
+            head -10 firebase-config.js
+          fi
 
       - name: 📦 Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
