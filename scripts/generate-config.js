@@ -3,22 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('🔧 Начинаем генерацию firebase-config.js...');
-
-// Пути
-const templatePath = path.join(__dirname, '../firebase-config.js.template');
-const outputPath = path.join(__dirname, '../firebase-config.js');
-
-// Проверяем шаблон
-if (!fs.existsSync(templatePath)) {
-  console.error('❌ Шаблон не найден:', templatePath);
-  console.error('Текущая директория:', __dirname);
-  process.exit(1);
-}
-
-// Читаем шаблон
-const template = fs.readFileSync(templatePath, 'utf8');
-console.log('📄 Шаблон загружен');
+console.log('🔧 Генерируем firebase-config.js из GitHub Secrets...\n');
 
 // Получаем значения из переменных окружения
 const config = {
@@ -41,30 +26,58 @@ for (const [key, value] of Object.entries(config)) {
 }
 
 if (missing.length > 0) {
-  console.error('❌ Отсутствуют значения для:', missing.join(', '));
-  console.error('Проверьте GitHub Secrets в настройках репозитория');
+  console.error('❌ Отсутствуют секреты:', missing.join(', '));
   process.exit(1);
 }
 
-// Заменяем плейсхолдеры
-let result = template;
-result = result.replace('{{FIREBASE_API_KEY}}', config.apiKey);
-result = result.replace('{{FIREBASE_AUTH_DOMAIN}}', config.authDomain);
-result = result.replace('{{FIREBASE_DATABASE_URL}}', config.databaseURL);
-result = result.replace('{{FIREBASE_PROJECT_ID}}', config.projectId);
-result = result.replace('{{FIREBASE_STORAGE_BUCKET}}', config.storageBucket);
-result = result.replace('{{FIREBASE_MESSAGING_SENDER_ID}}', config.messagingSenderId);
-result = result.replace('{{FIREBASE_APP_ID}}', config.appId);
-result = result.replace('{{FIREBASE_MEASUREMENT_ID}}', config.measurementId);
+// Генерируем содержимое файла
+const fileContent = `// ====================================================
+// 🔥 FIREBASE CONFIG - АВТОМАТИЧЕСКИ СГЕНЕРИРОВАН
+// ⚠️ Этот файл создается CI/CD из GitHub Secrets
+// ====================================================
 
-// Проверяем, что все заменено
-if (result.includes('{{')) {
-  console.error('❌ Не все плейсхолдеры заменены!');
-  process.exit(1);
+console.log('🚀 Загрузка Firebase конфигурации...');
+
+const firebaseConfig = {
+  apiKey: "${config.apiKey}",
+  authDomain: "${config.authDomain}",
+  databaseURL: "${config.databaseURL}",
+  projectId: "${config.projectId}",
+  storageBucket: "${config.storageBucket}",
+  messagingSenderId: "${config.messagingSenderId}",
+  appId: "${config.appId}",
+  measurementId: "${config.measurementId}"
+};
+
+console.log('✅ Конфигурация Firebase готова:', firebaseConfig.projectId);
+
+// Сохраняем в глобальной области видимости
+if (typeof window !== 'undefined') {
+  window.firebaseConfig = firebaseConfig;
+  console.log('✅ firebaseConfig сохранен в window');
 }
 
-// Сохраняем
-fs.writeFileSync(outputPath, result, 'utf8');
-console.log('✅ Файл создан:', outputPath);
-console.log('📏 Размер:', result.length, 'байт');
-console.log('🏗️  Проект:', config.projectId);
+// CommonJS экспорт (если используется в Node.js)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = firebaseConfig;
+}
+`;
+
+// Записываем файл
+const outputPath = path.join(__dirname, '..', 'firebase-config.js');
+
+try {
+  fs.writeFileSync(outputPath, fileContent, 'utf8');
+  
+  const stats = fs.statSync(outputPath);
+  console.log('✅ Файл создан успешно');
+  console.log('📂 Путь:', outputPath);
+  console.log('📏 Размер:', stats.size, 'байт');
+  console.log('🏗️  Проект:', config.projectId);
+  console.log('');
+  console.log('✅ КОНФИГУРАЦИЯ FIREBASE ГОТОВА К ДЕПЛОЮ');
+  
+} catch (error) {
+  console.error('❌ Ошибка создания файла:', error.message);
+  process.exit(1);
+}
