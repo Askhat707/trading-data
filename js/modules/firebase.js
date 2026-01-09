@@ -3,62 +3,45 @@
 // ============================================
 
 const FirebaseModule = {
+    initialized: false,
+    
     /**
-     * ИНИЦИАЛИЗАЦИЯ FIREBASE
+     * БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ FIREBASE
      */
     init() {
         try {
             // Проверяем конфигурацию
             if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
-                console.error('❌ Firebase конфигурация не найдена!');
-                console.error('window.firebaseConfig:', window.firebaseConfig);
+                console.warn('⚠️ [FIREBASE] Конфигурация не загружена, ожидание...');
                 return false;
             }
             
             // Проверяем Firebase SDK
             if (typeof firebase === 'undefined') {
-                console.error('❌ Firebase SDK не загружен');
+                console.error('❌ [FIREBASE] Firebase SDK не загружен');
                 return false;
             }
             
-            // Проверяем, не инициализирован ли уже Firebase
-            if (firebase.apps.length === 0) {
-                firebase.initializeApp(window.firebaseConfig);
-                console.log('✅ Firebase инициализирован впервые');
-                console.log('📊 Проект:', window.firebaseConfig.projectId);
-            } else {
-                console.log('✅ Firebase уже инициализирован');
+            // Если уже инициализирован
+            if (this.initialized) {
+                console.log('✅ [FIREBASE] Уже инициализирован');
+                return true;
             }
             
+            // Инициализируем приложение
+            if (firebase.apps.length === 0) {
+                firebase.initializeApp(window.firebaseConfig);
+                console.log('✅ [FIREBASE] Приложение инициализировано впервые');
+            } else {
+                console.log('✅ [FIREBASE] Приложение уже было инициализировано');
+            }
+            
+            this.initialized = true;
             return true;
             
         } catch (error) {
-            console.error('❌ Ошибка инициализации Firebase:', error);
+            console.error('❌ [FIREBASE] Ошибка инициализации:', error);
             return false;
-        }
-    },
-    
-    /**
-     * ПОЛУЧЕНИЕ ССЫЛКИ НА DATABASE
-     */
-    getDatabase() {
-        try {
-            return firebase.database();
-        } catch (error) {
-            console.error('❌ Ошибка получения database:', error);
-            return null;
-        }
-    },
-    
-    /**
-     * ПОЛУЧЕНИЕ ССЫЛКИ НА AUTH
-     */
-    getAuth() {
-        try {
-            return firebase.auth();
-        } catch (error) {
-            console.error('❌ Ошибка получения auth:', error);
-            return null;
         }
     },
     
@@ -66,11 +49,52 @@ const FirebaseModule = {
      * ПРОВЕРКА ИНИЦИАЛИЗАЦИИ
      */
     isInitialized() {
-        return firebase && firebase.apps.length > 0;
+        return this.initialized && firebase && firebase.apps.length > 0;
+    },
+    
+    /**
+     * ПОЛУЧЕНИЕ DATABASE С ПРОВЕРКОЙ
+     */
+    getDatabase() {
+        if (!this.isInitialized()) {
+            console.warn('⚠️ [FIREBASE] Не инициализирован перед использованием getDatabase');
+            return null;
+        }
+        
+        try {
+            return firebase.database();
+        } catch (error) {
+            console.error('❌ [FIREBASE] Ошибка получения database:', error);
+            return null;
+        }
+    },
+    
+    /**
+     * ПОЛУЧЕНИЕ AUTH С ПРОВЕРКОЙ
+     */
+    getAuth() {
+        if (!this.isInitialized()) {
+            console.warn('⚠️ [FIREBASE] Не инициализирован перед использованием getAuth');
+            return null;
+        }
+        
+        try {
+            return firebase.auth();
+        } catch (error) {
+            console.error('❌ [FIREBASE] Ошибка получения auth:', error);
+            return null;
+        }
+    },
+    
+    /**
+     * ПЕРЕИНИЦИАЛИЗАЦИЯ
+     */
+    reinitialize() {
+        this.initialized = false;
+        return this.init();
     }
 };
 
-// ГЛОБАЛЬНЫЙ ЭКСПОРТ
-window.Firebase
-Module = FirebaseModule;
-console.log('✅ FirebaseModule загружен');
+// Глобальный экспорт
+window.FirebaseModule = FirebaseModule;
+console.log('✅ [FIREBASE] Модуль загружен');
