@@ -3,71 +3,68 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('🔧 ЗАПУСК: Генерация firebase-config.js');
+console.log('🔧 Начинаем генерацию firebase-config.js...');
 
-// 1. Определение путей
+// Пути
 const templatePath = path.join(__dirname, '../firebase-config.js.template');
 const outputPath = path.join(__dirname, '../firebase-config.js');
 
-// 2. Проверка наличия шаблона
+// Проверяем шаблон
 if (!fs.existsSync(templatePath)) {
-  console.error('❌ ОШИБКА: Файл firebase-config.js.template не найден!');
-  console.error('Поиск по пути:', templatePath);
+  console.error('❌ Шаблон не найден:', templatePath);
+  console.error('Текущая директория:', __dirname);
   process.exit(1);
 }
 
-// 3. Чтение шаблона
-let configContent = fs.readFileSync(templatePath, 'utf8');
+// Читаем шаблон
+const template = fs.readFileSync(templatePath, 'utf8');
+console.log('📄 Шаблон загружен');
 
-// 4. Список секретов (ключ в шаблоне -> переменная окружения)
-const secretsMap = {
-  '{{FIREBASE_API_KEY}}': process.env.FIREBASE_API_KEY,
-  '{{FIREBASE_AUTH_DOMAIN}}': process.env.FIREBASE_AUTH_DOMAIN,
-  '{{FIREBASE_DATABASE_URL}}': process.env.FIREBASE_DATABASE_URL,
-  '{{FIREBASE_PROJECT_ID}}': process.env.FIREBASE_PROJECT_ID,
-  '{{FIREBASE_STORAGE_BUCKET}}': process.env.FIREBASE_STORAGE_BUCKET,
-  '{{FIREBASE_MESSAGING_SENDER_ID}}': process.env.FIREBASE_MESSAGING_SENDER_ID,
-  '{{FIREBASE_APP_ID}}': process.env.FIREBASE_APP_ID,
-  '{{FIREBASE_MEASUREMENT_ID}}': process.env.FIREBASE_MEASUREMENT_ID
+// Получаем значения из переменных окружения
+const config = {
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.FIREBASE_DATABASE_URL,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID,
+  measurementId: process.env.FIREBASE_MEASUREMENT_ID
 };
 
-// 5. Безопасная замена
-let missingKeys = false;
-
-Object.entries(secretsMap).forEach(([placeholder, value]) => {
+// Проверяем, что все значения есть
+let missing = [];
+for (const [key, value] of Object.entries(config)) {
   if (!value) {
-    console.error(`❌ ОШИБКА: Секрет для ${placeholder} не найден в ENV!`);
-    console.error(`   Значение: ${value}`);
-    missingKeys = true;
-  } else {
-    // split().join() безопаснее replace() для спецсимволов
-    configContent = configContent.split(placeholder).join(value);
-    console.log(`✅ Заменен ${placeholder.substring(0, 15)}...`);
+    missing.push(key);
   }
-});
+}
 
-if (missingKeys) {
-  console.error('❌ КРИТИЧЕСКАЯ ОШИБКА: Не все секреты найдены!');
-  console.error('   Проверьте GitHub Secrets в настройках репозитория');
+if (missing.length > 0) {
+  console.error('❌ Отсутствуют значения для:', missing.join(', '));
+  console.error('Проверьте GitHub Secrets в настройках репозитория');
   process.exit(1);
 }
 
-// 6. Сохранение
-fs.writeFileSync(outputPath, configContent, 'utf8');
-console.log('✅ УСПЕХ: Файл firebase-config.js создан.');
-console.log('   Путь:', outputPath);
-console.log('   Размер:', configContent.length, 'байт');
+// Заменяем плейсхолдеры
+let result = template;
+result = result.replace('{{FIREBASE_API_KEY}}', config.apiKey);
+result = result.replace('{{FIREBASE_AUTH_DOMAIN}}', config.authDomain);
+result = result.replace('{{FIREBASE_DATABASE_URL}}', config.databaseURL);
+result = result.replace('{{FIREBASE_PROJECT_ID}}', config.projectId);
+result = result.replace('{{FIREBASE_STORAGE_BUCKET}}', config.storageBucket);
+result = result.replace('{{FIREBASE_MESSAGING_SENDER_ID}}', config.messagingSenderId);
+result = result.replace('{{FIREBASE_APP_ID}}', config.appId);
+result = result.replace('{{FIREBASE_MEASUREMENT_ID}}', config.measurementId);
 
-// 7. Проверка валидности (базовая)
-if (configContent.includes('{{')) {
-    console.error('❌ ОШИБКА: В файле остались незамененные шаблоны!');
-    console.error('   Содержание:', configContent.substring(0, 500));
-    process.exit(1);
+// Проверяем, что все заменено
+if (result.includes('{{')) {
+  console.error('❌ Не все плейсхолдеры заменены!');
+  process.exit(1);
 }
 
-// 8. Дополнительная проверка - создаем тестовый файл
-const testPath = path.join(__dirname, '../config-test.txt');
-fs.writeFileSync(testPath, `Конфиг создан: ${new Date().toISOString()}\nСекреты заменены: ${!missingKeys}`);
-console.log('📝 Тестовый файл создан: config-test.txt');
-
-console.log('🚀 Готово к работе.');
+// Сохраняем
+fs.writeFileSync(outputPath, result, 'utf8');
+console.log('✅ Файл создан:', outputPath);
+console.log('📏 Размер:', result.length, 'байт');
+console.log('🏗️  Проект:', config.projectId);
