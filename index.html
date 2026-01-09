@@ -11,7 +11,6 @@
     <!-- 🔥 КЭШИРОВАНИЕ -->
     <meta http-equiv="Cache-Control" content="public, max-age=3600, must-revalidate">
     <meta http-equiv="Pragma" content="public">
-    <meta http-equiv="Expires" content="3600">
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
     <title>🏆 Gold Options Pro v2 - Professional Trading Terminal</title>
@@ -57,21 +56,14 @@
                     console.log('🔥 [CONFIG] Загрузка firebase-config.js...');
                     
                     const timestamp = Date.now();
+                    const configUrl = '/trading-data/firebase-config.js?v=' + timestamp;
                     
-                    // 🔥 ИСПРАВЛЕННЫЙ ПУТЬ - абсолютный путь для GitHub Pages
-                    const basePath = window.location.pathname.includes('/trading-data/') 
-                        ? '/trading-data/' 
-                        : '/';
-                    
-                    const configUrl = `${basePath}firebase-config.js?v=${timestamp}&bust=${Math.random()}`;
-                    
-                    console.log('📡 [CONFIG] Загружаем конфиг по адресу:', configUrl);
+                    console.log('📡 [CONFIG] URL конфига:', configUrl);
                     
                     const script = document.createElement('script');
                     script.id = 'firebase-config-loader';
                     script.src = configUrl;
                     script.async = false;
-                    script.defer = false;
                     script.type = 'text/javascript';
                     script.crossOrigin = 'anonymous';
                     
@@ -79,39 +71,28 @@
                     
                     script.onload = function() {
                         console.log('✅ [CONFIG] firebase-config.js загружен');
-                        
                         clearTimeout(timeoutId);
                         
                         if (typeof window.firebaseConfig !== 'undefined' && window.firebaseConfig.apiKey) {
-                            console.log('📊 [CONFIG] Конфигурация доступна:', window.firebaseConfig.projectId);
+                            console.log('📊 [CONFIG] Конфигурация готова:', window.firebaseConfig.projectId);
                             window.appState.configLoaded = true;
                             resolve(true);
                         } else {
-                            console.error('❌ [CONFIG] window.firebaseConfig не определен после загрузки');
-                            reject(new Error('window.firebaseConfig не определен'));
+                            console.error('❌ [CONFIG] firebaseConfig не определен');
+                            reject(new Error('firebaseConfig не определен'));
                         }
                     };
                     
                     script.onerror = function(error) {
-                        console.error('❌ [CONFIG] Ошибка загрузки firebase-config.js:', error);
+                        console.error('❌ [CONFIG] Ошибка загрузки:', error);
                         clearTimeout(timeoutId);
-                        
-                        // 🔥 РЕЗЕРВНЫЙ ВАРИАНТ - попробовать относительный путь
-                        console.log('🔄 [CONFIG] Пробуем относительный путь...');
-                        const fallbackScript = document.createElement('script');
-                        fallbackScript.src = './firebase-config.js?v=' + Date.now();
-                        fallbackScript.onload = script.onload;
-                        fallbackScript.onerror = function(e) {
-                            console.error('❌ [CONFIG] Ошибка загрузки по относительному пути:', e);
-                            reject(new Error('Не удалось загрузить firebase-config.js'));
-                        };
-                        document.head.appendChild(fallbackScript);
+                        reject(new Error('Не удалось загрузить firebase-config.js'));
                     };
                     
                     timeoutId = setTimeout(() => {
-                        console.error('⏱️ [CONFIG] Таймаут загрузки конфига');
+                        console.error('⏱️ [CONFIG] Таймаут загрузки (15 сек)');
                         script.remove();
-                        reject(new Error('Таймаут загрузки конфига'));
+                        reject(new Error('Таймаут'));
                     }, 15000);
                     
                     document.head.appendChild(script);
@@ -130,7 +111,6 @@
                 if (statusEl) statusEl.textContent = message;
                 if (barEl && progress !== undefined) {
                     barEl.style.width = progress + '%';
-                    barEl.style.transition = 'width 0.3s ease';
                 }
             };
             
@@ -167,14 +147,9 @@
                     // Шаг 4: Регистрируем Service Worker
                     window.updateLoadingStatus('⚙️ Регистрация Service Worker...', 70);
                     if ('serviceWorker' in navigator) {
-                        // 🔥 ИСПРАВЛЕННЫЙ ПУТЬ ДЛЯ SERVICE WORKER
-                        const swPath = window.location.pathname.includes('/trading-data/')
-                            ? '/trading-data/service-worker.js'
-                            : './service-worker.js';
-                            
-                        navigator.serviceWorker.register(swPath, { scope: './' })
+                        navigator.serviceWorker.register('/trading-data/service-worker.js', { scope: '/trading-data/' })
                             .then(reg => {
-                                console.log('✅ [SW] Service Worker зарегистрирован:', reg.scope);
+                                console.log('✅ [SW] Service Worker зарегистрирован');
                             })
                             .catch(err => {
                                 console.warn('⚠️ [SW] Service Worker ошибка:', err);
@@ -187,10 +162,10 @@
                         throw new Error('AuthModule не загружен');
                     }
                     
-                    // Инициализируем Auth
                     await window.AuthModule.autoInit();
                     
                     console.log('✅ [INIT] Все системы инициализированы');
+                    window.appState.initialized = true;
                     
                 } catch (error) {
                     console.error('❌ [INIT] Ошибка инициализации:', error);
@@ -215,23 +190,9 @@
                                     <strong style="color: #ff8888;">${message}</strong>
                                 </p>
                             </div>
-                            <div style="color: #888; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.6;">
-                                <p>Возможные причины:</p>
-                                <ul style="text-align: left; display: inline-block;">
-                                    <li>Firebase конфигурация не загружена</li>
-                                    <li>Проблемы с интернет соединением</li>
-                                    <li>Браузер блокирует скрипты</li>
-                                    <li>Ошибка на сервере</li>
-                                    <li>Неправильный путь к файлу: ${window.location.href}</li>
-                                </ul>
-                            </div>
                             <button onclick="location.reload(true)" style="padding: 12px 24px; background: #FFD700; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 1rem;">
                                 🔄 Перезагрузить страницу
                             </button>
-                            <div style="margin-top: 20px; font-size: 0.8rem; color: #666;">
-                                Текущий URL: ${window.location.href}<br>
-                                Путь: ${window.location.pathname}
-                            </div>
                         </div>
                     `;
                     loading.style.display = 'flex';
@@ -243,39 +204,22 @@
             // ============================================
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', function() {
-                    console.log('📄 [DOM] DOM загружен, запускаем инициализацию...');
+                    console.log('📄 [DOM] DOM загружен');
                     window.updateLoadingStatus('🚀 Инициализация...', 10);
-                    
-                    setTimeout(() => {
-                        initSystem();
-                    }, 500);
+                    setTimeout(() => initSystem(), 500);
                 });
             } else {
-                // DOM уже загружен
-                console.log('📄 [DOM] DOM уже готов, запускаем инициализацию...');
+                console.log('📄 [DOM] DOM уже готов');
                 window.updateLoadingStatus('🚀 Инициализация...', 10);
-                
-                setTimeout(() => {
-                    initSystem();
-                }, 500);
+                setTimeout(() => initSystem(), 500);
             }
             
-            // ============================================
-            // ⏰ СТРАХОВКА - ЗАПУСК ЧЕРЕЗ 15 СЕКУНД
-            // ============================================
-            setTimeout(function() {
-                if (!window.appState.initialized && !window.appState.configLoaded) {
-                    console.warn('⚠️ [INIT] Система не запустилась автоматически, пытаемся вручную...');
-                    initSystem();
-                }
-            }, 15000);
-            
-            console.log('✅ [INIT] Инициализатор готов к работе');
+            console.log('✅ [INIT] Инициализатор готов');
         })();
     </script>
 
     <!-- ЛОАДЕР -->
-    <div id="loading">
+    <div id="loading" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #050505; display: flex; justify-content: center; align-items: center; z-index: 9999;">
         <div style="text-align: center; max-width: 400px; padding: 30px;">
             <div style="font-size: 4rem; margin-bottom: 20px; color: #FFD700;">⚡</div>
             <div style="color: #FFD700; font-size: 2rem; font-weight: 800; margin-bottom: 20px; letter-spacing: 2px;">
@@ -285,7 +229,7 @@
                 Инициализация профессионального терминала...
             </div>
             <div style="width: 300px; height: 4px; background: rgba(255,215,0,0.2); border-radius: 2px; overflow: hidden; margin: 0 auto 30px;">
-                <div id="loading-bar" style="height: 100%; background: linear-gradient(90deg, #FFD700, #FFD700); width: 5%; transition: width 0.3s ease;"></div>
+                <div id="loading-bar" style="height: 100%; background: #FFD700; width: 5%; transition: width 0.3s ease;"></div>
             </div>
             <div id="loading-status" style="color: #666; font-size: 0.85rem;">
                 🚀 Запуск системы...
@@ -302,11 +246,6 @@
             </div>
             
             <div id="auth-error" class="auth-error"></div>
-            
-            <div id="user-info" class="user-info" style="display: none;">
-                <div class="user-email">user@example.com</div>
-                <div class="user-plan plan-trial">TRIAL</div>
-            </div>
             
             <form id="auth-form" class="auth-form" onsubmit="return handleLogin(event);">
                 <div class="form-group">
@@ -364,7 +303,6 @@
 
         <!-- ОСНОВНОЙ КОНТЕЙНЕР -->
         <div class="container">
-            <!-- ЗАГОЛОВОК -->
             <h1 class="main-title">GOLD OPTIONS ANALYTICS TERMINAL</h1>
             
             <!-- СТАТУС ПАНЕЛЬ -->
@@ -385,24 +323,19 @@
                     <div class="data-box">
                         <div class="data-label">EXPECTED MOVE</div>
                         <div class="data-value" id="em">±$---</div>
-                        <div style="font-size:0.8rem; color:#888; margin-top:5px;" id="em-range">--</div>
                     </div>
                     <div class="data-box">
                         <div class="data-label">ZERO GAMMA</div>
                         <div class="data-value" id="zg">$---</div>
-                        <div style="font-size:0.8rem; color:#888; margin-top:5px;" id="zg-pos">--</div>
                     </div>
                     <div class="data-box">
                         <div class="data-label">CALL/PUT RATIO</div>
                         <div class="data-value" id="cp-ratio">--</div>
-                        <div style="font-size:0.8rem; color:#888; margin-top:5px;" id="sentiment">--</div>
                     </div>
                 </div>
                 
                 <div style="text-align: center; margin-top: 20px; color: #666; font-size: 0.85rem;">
-                    Last Updated: <span id="updated">--:--:--</span> | 
-                    DTE: <span id="current-dte-display">--</span> | 
-                    Data Version: <span id="data-version">v6</span>
+                    Last Updated: <span id="updated">--:--:--</span>
                 </div>
             </div>
 
@@ -427,9 +360,7 @@
             <div class="bottom-control-panel">
                 <div class="bottom-control-grid">
                     <div class="bottom-control-section">
-                        <div class="bottom-control-title">
-                            <span>📅 EXPIRATION SELECTION</span>
-                        </div>
+                        <div class="bottom-control-title">📅 EXPIRATION SELECTION</div>
                         <div class="control-row">
                             <div id="dte-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;">
                                 <span style="color: #666;">Loading expirations...</span>
@@ -438,27 +369,17 @@
                     </div>
                     
                     <div class="bottom-control-section">
-                        <div class="bottom-control-title">
-                            <span>⚙️ DISPLAY SETTINGS</span>
-                        </div>
+                        <div class="bottom-control-title">⚙️ DISPLAY SETTINGS</div>
                         <div class="control-row">
                             <div class="control-group">
                                 <span class="control-label">Show Premiums:</span>
                                 <button id="btn-prem" class="btn" onclick="app.togglePremium()">OFF</button>
                             </div>
-                            <div class="control-group">
-                                <span class="control-label">Forward Adj:</span>
-                                <input type="number" id="forward-adj" class="inp" value="0" step="0.5" 
-                                       onchange="app.applyForwardAdjustment()">
-                                <button class="btn" onclick="app.applyForwardAdjustment()">Apply</button>
-                            </div>
                         </div>
                     </div>
                     
                     <div class="bottom-control-section">
-                        <div class="bottom-control-title">
-                            <span>🔧 SYSTEM TOOLS</span>
-                        </div>
+                        <div class="bottom-control-title">🔧 SYSTEM TOOLS</div>
                         <div class="control-row">
                             <button class="btn" onclick="CacheControl.clearAllCaches()">🧹 Clear Cache</button>
                             <button class="btn" onclick="window.location.reload(true)">🔄 Reload Page</button>
@@ -473,7 +394,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
     <!-- НАШИ МОДУЛИ -->
-    <!-- 🔥 ИСПРАВЛЕННЫЕ ПУТИ ДЛЯ JS ФАЙЛОВ -->
     <script src="js/constants.js"></script>
     <script src="js/services/cache.js"></script>
     <script src="js/utils/helpers.js"></script>
@@ -483,55 +403,5 @@
     <script src="js/services/api.js"></script>
     <script src="js/modules/charts.js"></script>
     <script src="js/app.js"></script>
-
-    <!-- ТРИАЛ МОДАЛЬНОЕ ОКНО -->
-    <div id="trial-modal" class="trial-modal-overlay">
-        <div class="trial-modal">
-            <button class="close-trial-modal" onclick="hideTrialModal()">×</button>
-            <div class="trial-modal-header">
-                <div class="trial-modal-title">🎉 ДОБРО ПОЖАЛОВАТЬ В TRIAL</div>
-                <div class="trial-modal-subtitle">Получите полный доступ ко всем функциям</div>
-            </div>
-            
-            <div class="trial-info-box">
-                <div class="info-row">
-                    <span class="info-label">Ваш email:</span>
-                    <span class="info-value" id="admin-email">user@example.com</span>
-                    <button class="copy-btn" onclick="copyAdminEmail()">📋</button>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Администратор:</span>
-                    <span class="info-value" id="admin-telegram">@ASKHAT_1985</span>
-                    <button class="copy-btn" onclick="copyTelegram()">📋</button>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Дней осталось:</span>
-                    <span class="info-value" id="trial-days-left">3</span>
-                </div>
-            </div>
-            
-            <div class="trial-template">
-                <span class="template-label">📱 Шаблон для связи с администратором:</span>
-                <div class="template-text" id="trial-message-template">
-Здравствуйте! Хочу активировать PREMIUM доступ к Gold Options Pro v2.
-
-Мой email: user@example.com
-Текущий план: TRIAL (осталось 3 дней)
-Прошу предоставить реквизиты для оплаты.
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 10px; margin: 20px 0;">
-                <button class="copy-btn" onclick="copyTemplate()">📋 Копировать шаблон</button>
-                <button class="copy-btn" onclick="openTelegramForTrial()">📲 Открыть Telegram</button>
-            </div>
-            
-            <div class="trial-modal-footer">
-                <button class="auth-button" onclick="showPaymentModal()" style="width: 100%;">
-                    💎 АКТИВИРОВАТЬ PREMIUM
-                </button>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
