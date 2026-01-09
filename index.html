@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     
+    <!-- 🔥 БАЗОВЫЙ ПУТЬ ДЛЯ GITHUB PAGES -->
+    <base href="/trading-data/">
+    
     <!-- 🔥 КЭШИРОВАНИЕ -->
     <meta http-equiv="Cache-Control" content="public, max-age=3600, must-revalidate">
     <meta http-equiv="Pragma" content="public">
@@ -54,7 +57,15 @@
                     console.log('🔥 [CONFIG] Загрузка firebase-config.js...');
                     
                     const timestamp = Date.now();
-                    const configUrl = `firebase-config.js?v=${timestamp}&bust=${Math.random()}`;
+                    
+                    // 🔥 ИСПРАВЛЕННЫЙ ПУТЬ - абсолютный путь для GitHub Pages
+                    const basePath = window.location.pathname.includes('/trading-data/') 
+                        ? '/trading-data/' 
+                        : '/';
+                    
+                    const configUrl = `${basePath}firebase-config.js?v=${timestamp}&bust=${Math.random()}`;
+                    
+                    console.log('📡 [CONFIG] Загружаем конфиг по адресу:', configUrl);
                     
                     const script = document.createElement('script');
                     script.id = 'firebase-config-loader';
@@ -84,14 +95,24 @@
                     script.onerror = function(error) {
                         console.error('❌ [CONFIG] Ошибка загрузки firebase-config.js:', error);
                         clearTimeout(timeoutId);
-                        reject(new Error('Не удалось загрузить firebase-config.js'));
+                        
+                        // 🔥 РЕЗЕРВНЫЙ ВАРИАНТ - попробовать относительный путь
+                        console.log('🔄 [CONFIG] Пробуем относительный путь...');
+                        const fallbackScript = document.createElement('script');
+                        fallbackScript.src = './firebase-config.js?v=' + Date.now();
+                        fallbackScript.onload = script.onload;
+                        fallbackScript.onerror = function(e) {
+                            console.error('❌ [CONFIG] Ошибка загрузки по относительному пути:', e);
+                            reject(new Error('Не удалось загрузить firebase-config.js'));
+                        };
+                        document.head.appendChild(fallbackScript);
                     };
                     
                     timeoutId = setTimeout(() => {
                         console.error('⏱️ [CONFIG] Таймаут загрузки конфига');
                         script.remove();
                         reject(new Error('Таймаут загрузки конфига'));
-                    }, 15000); // 15 секунд таймаут
+                    }, 15000);
                     
                     document.head.appendChild(script);
                 });
@@ -146,7 +167,12 @@
                     // Шаг 4: Регистрируем Service Worker
                     window.updateLoadingStatus('⚙️ Регистрация Service Worker...', 70);
                     if ('serviceWorker' in navigator) {
-                        navigator.serviceWorker.register('service-worker.js', { scope: './' })
+                        // 🔥 ИСПРАВЛЕННЫЙ ПУТЬ ДЛЯ SERVICE WORKER
+                        const swPath = window.location.pathname.includes('/trading-data/')
+                            ? '/trading-data/service-worker.js'
+                            : './service-worker.js';
+                            
+                        navigator.serviceWorker.register(swPath, { scope: './' })
                             .then(reg => {
                                 console.log('✅ [SW] Service Worker зарегистрирован:', reg.scope);
                             })
@@ -196,11 +222,16 @@
                                     <li>Проблемы с интернет соединением</li>
                                     <li>Браузер блокирует скрипты</li>
                                     <li>Ошибка на сервере</li>
+                                    <li>Неправильный путь к файлу: ${window.location.href}</li>
                                 </ul>
                             </div>
                             <button onclick="location.reload(true)" style="padding: 12px 24px; background: #FFD700; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 1rem;">
                                 🔄 Перезагрузить страницу
                             </button>
+                            <div style="margin-top: 20px; font-size: 0.8rem; color: #666;">
+                                Текущий URL: ${window.location.href}<br>
+                                Путь: ${window.location.pathname}
+                            </div>
                         </div>
                     `;
                     loading.style.display = 'flex';
@@ -442,6 +473,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
     <!-- НАШИ МОДУЛИ -->
+    <!-- 🔥 ИСПРАВЛЕННЫЕ ПУТИ ДЛЯ JS ФАЙЛОВ -->
     <script src="js/constants.js"></script>
     <script src="js/services/cache.js"></script>
     <script src="js/utils/helpers.js"></script>
