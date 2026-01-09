@@ -15,9 +15,64 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate:
+    name: 🔍 Проверка секретов
+    runs-on: ubuntu-latest
+    outputs:
+      secrets_valid: ${{ steps.check-secrets.outputs.valid }}
+    
+    steps:
+      - name: 📥 Загрузка репозитория
+        uses: actions/checkout@v4
+
+      - name: 🔍 Проверка наличия всех секретов
+        id: check-secrets
+        run: |
+          echo "Проверяем наличие GitHub Secrets..."
+          
+          # Список обязательных секретов
+          required_secrets=(
+            "FIREBASE_API_KEY"
+            "FIREBASE_AUTH_DOMAIN"
+            "FIREBASE_DATABASE_URL"
+            "FIREBASE_PROJECT_ID"
+            "FIREBASE_STORAGE_BUCKET"
+            "FIREBASE_MESSAGING_SENDER_ID"
+            "FIREBASE_APP_ID"
+            "FIREBASE_MEASUREMENT_ID"
+          )
+          
+          missing_secrets=""
+          for secret in "${required_secrets[@]}"; do
+            if [ -z "${!secret}" ]; then
+              echo "❌ Отсутствует: $secret"
+              missing_secrets="$missing_secrets $secret"
+            else
+              # Проверяем не пустое ли значение
+              secret_value="${!secret}"
+              if [[ "$secret_value" == "***" || -z "$secret_value" ]]; then
+                echo "❌ Пустое значение: $secret"
+                missing_secrets="$missing_secrets $secret"
+              else
+                echo "✅ $secret: OK"
+              fi
+            fi
+          done
+          
+          if [ -n "$missing_secrets" ]; then
+            echo "valid=false" >> $GITHUB_OUTPUT
+            echo "::error::Отсутствуют секреты:$missing_secrets"
+            exit 1
+          else
+            echo "valid=true" >> $GITHUB_OUTPUT
+            echo "✅ Все секреты присутствуют"
+          fi
+
   build:
     name: ⚙️ Build & Generate Config
     runs-on: ubuntu-latest
+    needs: validate
+    if: needs.validate.outputs.secrets_valid == 'true'
     
     steps:
       - name: 📥 Загрузка репозитория
@@ -27,6 +82,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+
+      - name: 📋 Показать структуру файлов
+        run: |
+          echo "📁 Структура проекта:"
+          find . -name "*.js" -o -name "*.yml" -o -name "*.template" | sort
+          echo ""
+          echo "📄 Проверяем шаблон:"
+          if [ -f "firebase-config.js.template" ]; then
+            echo "✅ Шаблон существует"
+            head -5 firebase-config.js.template
+          else
+            echo "❌ Шаблон не найден!"
+            find . -name "*.template"
+          fi
 
       - name: 🔧 Генерация firebase-config.js из Secrets
         env:
@@ -39,20 +108,70 @@ jobs:
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
         run: |
+          echo "🚀 Запускаем генерацию конфига..."
+          echo "Текущая директория: $(pwd)"
+          echo "Содержимое scripts/:"
+          ls -la scripts/
+          
+          # Запускаем генерацию
           node scripts/generate-config.js
+          
+          echo "✅ Генерация завершена"
+          echo ""
+          echo "📋 Проверяем результат:"
+          if [ -f "firebase-config.js" ]; then
+            echo "✅ Файл firebase-config.js создан"
+            echo "Размер: $(wc -c < firebase-config.js) байт"
+            echo ""
+            echo "🔍 Первые 10 строк файла:"
+            head -10 firebase-config.js
+            echo ""
+            echo "🔍 Проверяем, что нет плейсхолдеров:"
+            if grep -q "{{" firebase-config.js; then
+              echo "❌ В файле есть незамененные плейсхолдеры!"
+              grep -n "{{" firebase-config.js
+              exit 1
+            else
+              echo "✅ Плейсхолдеры успешно заменены"
+            fi
+          else
+            echo "❌ ФАЙЛ firebase-config.js НЕ СОЗДАН!"
+            echo "Содержимое текущей директории:"
+            ls -la
+            exit 1
+          fi
 
       - name: 📄 Создание .nojekyll
         run: touch .nojekyll
+
+      - name: 📋 Финальная проверка файлов
+        run: |
+          echo "📁 Файлы для деплоя:"
+          ls -la
+          echo ""
+          echo "📄 Важные файлы:"
+          ls -la firebase-config.js firebase-config.js.template index.html
+          echo ""
+          echo "🔍 Проверяем конфиг:"
+          if [ -f "firebase-config.js" ]; then
+            echo "✅ firebase-config.js существует"
+            echo "Первая строка: $(head -1 firebase-config.js)"
+          else
+            echo "❌ КРИТИЧЕСКАЯ ОШИБКА: firebase-config.js отсутствует!"
+            exit 1
+          fi
 
       - name: 📦 Упаковка артефакта
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
+          retention-days: 1
 
   deploy:
     name: 🚀 Деплой на GitHub Pages
     runs-on: ubuntu-latest
     needs: build
+    if: needs.build.result == 'success'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
