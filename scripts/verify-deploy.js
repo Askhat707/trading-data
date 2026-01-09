@@ -19,7 +19,6 @@ console.log('-'.repeat(40));
 const requiredFiles = [
     { path: 'index.html', critical: true },
     { path: 'firebase-config.js', critical: true },
-    { path: 'firebase-config.js.template', critical: true },
     { path: 'js/app.js', critical: true },
     { path: 'js/constants.js', critical: true },
     { path: 'js/modules/auth.js', critical: true },
@@ -29,7 +28,6 @@ const requiredFiles = [
     { path: 'css/base.css', critical: true },
     { path: 'service-worker.js', critical: true },
     { path: '.github/workflows/deploy.yml', critical: true },
-    { path: 'scripts/verify-deploy.js', critical: false }
 ];
 
 let allFilesExist = true;
@@ -50,31 +48,37 @@ requiredFiles.forEach(item => {
             if (item.path === 'firebase-config.js') {
                 const content = fs.readFileSync(filePath, 'utf8');
                 
-                if (content.includes('{{')) {
+                // Проверяем наличие плейсхолдеров
+                const hasPlaceholders = content.includes('{{') || content.includes('}}');
+                const hasSecretVariables = content.includes('FIREBASE_API_KEY') || 
+                                       content.includes('secrets.FIREBASE');
+                
+                if (hasPlaceholders) {
                     console.error(`   ❌ КРИТИЧЕСКАЯ ОШИБКА: ${item.path} содержит плейсхолдеры {{}}`);
+                    console.error(`   Первые 500 символов:`, content.substring(0, 500));
                     criticalErrors.push(`${item.path} содержит плейсхолдеры`);
                 }
                 
-                if (content.includes('FIREBASE_') && !content.includes('firebaseConfig')) {
+                if (hasSecretVariables) {
                     console.error(`   ❌ КРИТИЧЕСКАЯ ОШИБКА: ${item.path} содержит переменные FIREBASE_*`);
+                    console.error(`   Это значит, что GitHub Secrets не подставились`);
                     criticalErrors.push(`${item.path} содержит переменные FIREBASE_*`);
                 }
                 
-                // Проверяем структуру объекта
+                // Проверяем структуру
                 if (!content.includes('const firebaseConfig = {')) {
                     console.error(`   ❌ КРИТИЧЕСКАЯ ОШИБКА: ${item.path} не содержит firebaseConfig`);
                     criticalErrors.push(`${item.path} не содержит firebaseConfig`);
                 }
-            }
-            
-            if (item.path === 'firebase-config.js.template') {
-                const content = fs.readFileSync(filePath, 'utf8');
-                const placeholders = (content.match(/\{\{.*?\}\}/g) || []);
                 
-                if (placeholders.length < 8) {
-                    console.warn(`   ⚠️  ВНИМАНИЕ: ${item.path} содержит только ${placeholders.length} плейсхолдеров`);
-                } else {
-                    console.log(`   📋 Шаблон содержит ${placeholders.length} плейсхолдеров`);
+                // Проверяем наличие реальных значений
+                if (!content.includes('apiKey: "AIza') && !content.includes('apiKey: "AIza')) {
+                    console.warn(`   ⚠️  API ключ может быть в неверном формате. Ожидается "AIza..."`);
+                }
+                
+                if (content.includes('projectId: ""')) {
+                    console.error(`   ❌ projectId пустой!`);
+                    criticalErrors.push(`projectId пустой в ${item.path}`);
                 }
             }
             
@@ -155,11 +159,10 @@ if (fs.existsSync(workflowPath)) {
         const checks = [
             { name: 'Название workflow', test: /name:/, required: true },
             { name: 'Триггер на push', test: /on:\s*\n\s*push:/, required: true },
-            { name: 'Триггер workflow_dispatch', test: /workflow_dispatch:/, required: false },
             { name: 'Переменные окружения', test: /env:/, required: true },
-            { name: 'Job validate-secrets', test: /validate-secrets:/, required: true },
-            { name: 'Job generate-config', test: /generate-config:/, required: true },
-            { name: 'Job deploy', test: /deploy:/, required: true }
+            { name: 'Проверка секретов', test: /Validate Secrets/, required: true },
+            { name: 'Генерация конфига', test: /Generate Firebase Config/, required: true },
+            { name: 'Деплой на Pages', test: /deploy-pages/, required: true }
         ];
         
         checks.forEach(check => {
@@ -170,6 +173,12 @@ if (fs.existsSync(workflowPath)) {
                 criticalErrors.push(`В workflow отсутствует: ${check.name}`);
             }
         });
+        
+        // Проверяем, что используется cat для генерации конфига, а не старый скрипт
+        if (!workflowContent.includes('cat > firebase-config.js')) {
+            console.warn('⚠️  В workflow используется старый метод генерации конфига');
+            console.warn('   Рекомендуется использовать метод с cat для прямой подстановки');
+        }
         
         console.log('✅ Файл workflow найден и проверен');
         
@@ -193,19 +202,17 @@ if (criticalErrors.length === 0) {
     console.log('🚀 ГОТОВО К ДЕПЛОЮ!');
     console.log('');
     console.log('📋 ИНСТРУКЦИЯ:');
-    console.log('1. Закоммитьте изменения: git add . && git commit -m "fix: Firebase config generation"');
-    console.log('2. Запушьте в репозиторий: git push origin main');
-    console.log('3. Или запустите workflow вручную в GitHub Actions:');
-    console.log('   - Перейдите в репозитории в раздел Actions');
-    console.log('   - Выберите "Deploy Trading Data Terminal"');
-    console.log('   - Нажмите "Run workflow" → "Run workflow"');
+    console.log('1. git add .');
+    console.log('2. git commit -m "fix: Исправление генерации firebase-config.js"');
+    console.log('3. git push origin main');
     console.log('');
     console.log('🌐 После деплоя сайт будет доступен по адресу:');
     console.log('   https://askhat707.github.io/trading-data/');
     console.log('');
     console.log('🔍 ДЛЯ ОТЛАДКИ:');
-    console.log('   - Проверьте логи в GitHub Actions после запуска workflow');
-    console.log('   - Откройте консоль браузера на странице приложения (F12)');
+    console.log('   - Откройте https://askhat707.github.io/trading-data/firebase-config.js');
+    console.log('   - Должны увидеть реальные значения Firebase, а не плейсхолдеры');
+    console.log('   - Откройте консоль браузера (F12) на странице приложения');
     console.log('   - Должны появиться сообщения о загрузке Firebase конфигурации');
 } else {
     console.error('❌ ОБНАРУЖЕНЫ КРИТИЧЕСКИЕ ОШИБКИ:');
@@ -216,9 +223,9 @@ if (criticalErrors.length === 0) {
     console.log('🔧 НЕОБХОДИМО ИСПРАВИТЬ ОШИБКИ ПЕРЕД ДЕПЛОЕМ');
     console.log('');
     console.log('💡 РЕКОМЕНДАЦИИ:');
-    console.log('1. Убедитесь что все секреты добавлены в GitHub Secrets');
-    console.log('2. Проверьте что файл firebase-config.js.template существует');
-    console.log('3. Убедитесь что workflow файл deploy.yml корректен');
+    console.log('1. Убедитесь что все 8 секретов добавлены в GitHub Secrets');
+    console.log('2. Удалите старый firebase-config.js.template файл');
+    console.log('3. Проверьте что workflow файл deploy.yml корректен');
     
     process.exit(1);
 }
