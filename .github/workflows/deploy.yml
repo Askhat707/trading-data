@@ -14,13 +14,7 @@ concurrency:
   group: "pages"
   cancel-in-progress: true
 
-env:
-  NODE_VERSION: '18'
-
 jobs:
-  # ========================================================
-  # 1. СБОРКА И ГЕНЕРАЦИЯ КОНФИГА
-  # ========================================================
   build:
     name: ⚙️ Build & Generate Config
     runs-on: ubuntu-latest
@@ -32,10 +26,9 @@ jobs:
       - name: 🟢 Установка Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '18'
 
-      # МЫ ИСПОЛЬЗУЕМ ВАШ СКРИПТ NODE.JS - ЭТО НАДЕЖНЕЕ, ЧЕМ BASH
-      - name: 🔧 Генерация firebase-config.js
+      - name: 🔧 Генерация firebase-config.js из Secrets
         env:
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -46,41 +39,25 @@ jobs:
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
         run: |
-          echo "🚀 Запуск скрипта генерации..."
-          
-          # Запускаем ваш скрипт генерации (он безопаснее обрабатывает секреты)
           node scripts/generate-config.js
-          
-          # Проверка результата
-          if [ -f "firebase-config.js" ]; then
-            echo "✅ Файл firebase-config.js успешно создан!"
-          else
-            echo "❌ КРИТИЧЕСКАЯ ОШИБКА: Файл не создан!"
-            exit 1
-          fi
 
-      - name: 📄 Создание .nojekyll (для корректной работы путей)
+      - name: 📄 Создание .nojekyll
         run: touch .nojekyll
 
-      # САМЫЙ ВАЖНЫЙ ШАГ: Упаковываем ВСЕ файлы (включая созданный конфиг) в архив для деплоя
-      # Это заменяет необходимость "восстанавливать" конфиг во втором шаге
       - name: 📦 Упаковка артефакта
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
-  # ========================================================
-  # 2. ДЕПЛОЙ (Берет готовый архив из шага 1)
-  # ========================================================
   deploy:
     name: 🚀 Деплой на GitHub Pages
     runs-on: ubuntu-latest
-    needs: build # Ждем окончания сборки
+    needs: build
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
-      - name: 🚀 Деплой на GitHub Pages
+      - name: 🚀 Деплой
         id: deployment
         uses: actions/deploy-pages@v4
