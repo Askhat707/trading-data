@@ -8,9 +8,11 @@
     <!-- 🔥 БАЗОВЫЙ ПУТЬ ДЛЯ GITHUB PAGES -->
     <base href="/trading-data/">
     
-    <!-- 🔥 КЭШИРОВАНИЕ -->
+    <!-- 🔥 КЭШИРОВАНИЕ И МЕТА-ТЕГИ -->
     <meta http-equiv="Cache-Control" content="public, max-age=3600, must-revalidate">
     <meta http-equiv="Pragma" content="public">
+    <meta name="description" content="Gold Options Pro v2 - Professional Trading Terminal for CME Gold Options analytics">
+    <meta name="keywords" content="trading, options, gold, CME, analytics, terminal, firebase">
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
     <title>🏆 Gold Options Pro v2 - Professional Trading Terminal</title>
@@ -29,7 +31,7 @@
 </head>
 <body>
     <!-- ЛОАДЕР -->
-    <div id="loading" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #050505; display: flex; justify-content: center; align-items: center; z-index: 9999;">
+    <div id="loading" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #050505; display: flex; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.5s ease;">
         <div style="text-align: center; max-width: 400px; padding: 30px;">
             <div style="font-size: 4rem; margin-bottom: 20px; color: #FFD700;">⚡</div>
             <div style="color: #FFD700; font-size: 2rem; font-weight: 800; margin-bottom: 20px; letter-spacing: 2px;">
@@ -84,8 +86,8 @@
         </div>
     </div>
 
-    <!-- ОСНОВНОЙ КОНТЕНТ -->
-    <div id="main-content">
+    <!-- ОСНОВНОЙ КОНТЕНТ (скрыт пока не загрузится) -->
+    <div id="main-content" style="display: none; opacity: 0; transition: opacity 0.5s ease;">
         <!-- ШАПКА ТЕРМИНАЛА -->
         <header>
             <div class="logo">
@@ -101,7 +103,7 @@
             </nav>
             
             <div class="user-menu">
-                <div class="user-badge">
+                <div class="user-badge" id="user-badge">
                     <span>👤</span>
                     <span id="user-display">Гость</span>
                 </div>
@@ -193,6 +195,7 @@
                         <div class="control-row">
                             <button class="btn" onclick="CacheControl.clearAllCaches()">🧹 Clear Cache</button>
                             <button class="btn" onclick="window.location.reload(true)">🔄 Reload Page</button>
+                            <button class="btn" onclick="clearServiceWorkerAndReload()">🗑️ Clear SW</button>
                         </div>
                     </div>
                 </div>
@@ -203,7 +206,7 @@
     <!-- Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
-    <!-- 🔥 ВАЖНО: ЗАГРУЖАЕМ ВСЕ МОДУЛИ В ПРАВИЛЬНОМ ПОРЯДКЕ ПЕРЕД ИНИЦИАЛИЗАЦИЕЙ -->
+    <!-- 🔥 НАШИ МОДУЛИ В ПРАВИЛЬНОМ ПОРЯДКЕ -->
     <script src="js/constants.js"></script>
     <script src="js/services/cache.js"></script>
     <script src="js/utils/helpers.js"></script>
@@ -212,180 +215,312 @@
     <script src="js/modules/auth.js"></script>
     <script src="js/services/api.js"></script>
     <script src="js/modules/charts.js"></script>
+    <script src="js/modules/mt5.js"></script>
     <script src="js/app.js"></script>
 
-    <!-- 🔥 ДИНАМИЧЕСКАЯ ЗАГРУЗКА FIREBASE CONFIG И ИНИЦИАЛИЗАЦИЯ -->
+    <!-- 🔥 ОСНОВНОЙ СКРИПТ ИНИЦИАЛИЗАЦИИ -->
     <script>
+        // Глобальные функции для очистки кэша
+        window.clearServiceWorkerAndReload = function() {
+            console.log('🧹 Очистка Service Worker и кэша...');
+            
+            // Удаляем все Service Workers
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    registrations.forEach(registration => {
+                        console.log('🗑️ Удаляем Service Worker:', registration.scope);
+                        registration.unregister();
+                    });
+                });
+            }
+            
+            // Очищаем кэши браузера
+            if ('caches' in window) {
+                caches.keys().then(cacheNames => {
+                    cacheNames.forEach(cacheName => {
+                        console.log('🗑️ Удаляем кэш:', cacheName);
+                        caches.delete(cacheName);
+                    });
+                });
+            }
+            
+            // Очищаем localStorage (кроме авторизации)
+            const keepKeys = ['gold_options_auth_v7'];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (!keepKeys.includes(key)) {
+                    localStorage.removeItem(key);
+                }
+            }
+            
+            // Очищаем sessionStorage
+            sessionStorage.clear();
+            
+            // Принудительная перезагрузка
+            setTimeout(() => {
+                location.reload(true);
+            }, 1000);
+        };
+        
+        window.updateLoadingStatus = function(message, progress) {
+            const statusEl = document.getElementById('loading-status');
+            const barEl = document.getElementById('loading-bar');
+            
+            console.log(`📊 [LOADING] ${message} (${progress}%)`);
+            
+            if (statusEl) statusEl.textContent = message;
+            if (barEl && progress !== undefined) {
+                barEl.style.width = Math.min(progress, 100) + '%';
+            }
+        };
+        
+        window.showErrorScreen = function(message) {
+            const loading = document.getElementById('loading');
+            if (!loading) return;
+            
+            loading.innerHTML = `
+                <div style="text-align: center; max-width: 600px; padding: 40px;">
+                    <div style="font-size: 4rem; color: #ff4444; margin-bottom: 20px;">🔥</div>
+                    <h2 style="color: #ff4444; margin-bottom: 15px;">КРИТИЧЕСКАЯ ОШИБКА</h2>
+                    <div style="background: rgba(255,68,68,0.1); padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #ff4444;">
+                        <p style="color: #ccc; margin: 0; line-height: 1.6; font-size: 1rem;">
+                            <strong style="color: #ff8888;">${message}</strong>
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px;">
+                        <button onclick="location.reload(true)" 
+                                style="padding: 12px 24px; background: #FFD700; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 1rem;">
+                            🔄 Перезагрузить страницу
+                        </button>
+                        <button onclick="clearServiceWorkerAndReload()" 
+                                style="padding: 12px 24px; background: #333; color: #fff; border: 1px solid #666; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 1rem;">
+                            🧹 Очистить кэш и перезагрузить
+                        </button>
+                    </div>
+                </div>
+            `;
+            loading.style.display = 'flex';
+            loading.style.opacity = '1';
+        };
+
         (function() {
             'use strict';
             
-            console.log('🚀 [INIT] Запуск системы инициализации...');
+            console.log('🚀 [MAIN] Инициализация системы...');
             
-            // ============================================
-            // 🔐 СОСТОЯНИЕ ПРИЛОЖЕНИЯ
-            // ============================================
+            // Глобальное состояние приложения
             window.appState = {
                 initialized: false,
-                firebaseLoaded: false,
                 configLoaded: false,
-                authRestored: false,
-                authChecked: false,
-                userLogged: false
+                firebaseInitialized: false,
+                authInitialized: false,
+                error: null
             };
             
+            // Функция загрузки конфигурации Firebase
             function loadFirebaseConfig() {
                 return new Promise((resolve, reject) => {
                     console.log('🔥 [CONFIG] Загрузка firebase-config.js...');
                     
-                    const timestamp = Date.now();
-                    const basePath = window.location.pathname.includes('/trading-data/') 
-                        ? '/trading-data/' 
-                        : '/';
-                    const configUrl = basePath + 'firebase-config.js?nocache=' + timestamp;
+                    // Определяем базовый путь
+                    const isGitHubPages = window.location.hostname.includes('github.io');
+                    const basePath = isGitHubPages ? '/trading-data/' : '/';
                     
-                    console.log('📡 [CONFIG] URL конфига:', configUrl);
+                    // Добавляем параметр для предотвращения кэширования
+                    const timestamp = Date.now();
+                    const configUrl = basePath + 'firebase-config.js?t=' + timestamp;
+                    
+                    console.log('📡 [CONFIG] URL:', configUrl);
                     
                     const script = document.createElement('script');
                     script.id = 'firebase-config-loader';
                     script.src = configUrl;
                     script.async = false;
-                    script.type = 'text/javascript';
                     
-                    let timeoutId = null;
+                    // Таймаут 15 секунд
+                    const timeoutId = setTimeout(() => {
+                        reject(new Error('Таймаут загрузки конфига (15 секунд)'));
+                        script.remove();
+                    }, 15000);
                     
                     script.onload = function() {
-                        console.log('✅ [CONFIG] firebase-config.js загружен');
                         clearTimeout(timeoutId);
+                        console.log('✅ [CONFIG] Скрипт загружен');
                         
-                        if (typeof window.firebaseConfig !== 'undefined' && window.firebaseConfig.apiKey) {
-                            console.log('📊 [CONFIG] Конфигурация готова:', window.firebaseConfig.projectId);
-                            window.appState.configLoaded = true;
-                            resolve(true);
-                        } else {
-                            console.error('❌ [CONFIG] firebaseConfig не определен');
-                            reject(new Error('firebaseConfig не определен'));
-                        }
+                        // Даем время на выполнение скрипта
+                        setTimeout(() => {
+                            if (window.firebaseConfig && window.firebaseConfig.apiKey) {
+                                console.log('✅ [CONFIG] Конфиг готов:', window.firebaseConfig.projectId);
+                                window.appState.configLoaded = true;
+                                resolve(true);
+                            } else {
+                                reject(new Error('Конфиг не содержит apiKey'));
+                            }
+                        }, 100);
                     };
                     
                     script.onerror = function(error) {
-                        console.error('❌ [CONFIG] Ошибка загрузки:', configUrl);
                         clearTimeout(timeoutId);
-                        reject(new Error('Не удалось загрузить firebase-config.js'));
+                        console.error('❌ [CONFIG] Ошибка загрузки:', error);
+                        reject(new Error(`Не удалось загрузить ${configUrl}`));
                     };
-                    
-                    timeoutId = setTimeout(() => {
-                        console.error('⏱️ [CONFIG] Таймаут загрузки (15 сек)');
-                        script.remove();
-                        reject(new Error('Таймаут загрузки конфига'));
-                    }, 15000);
                     
                     document.head.appendChild(script);
                 });
             }
             
-            window.updateLoadingStatus = function(message, progress) {
-                const statusEl = document.getElementById('loading-status');
-                const barEl = document.getElementById('loading-bar');
-                
-                console.log(`📊 [LOADING] ${message} (${progress}%)`);
-                
-                if (statusEl) statusEl.textContent = message;
-                if (barEl && progress !== undefined) {
-                    barEl.style.width = progress + '%';
-                }
-            };
+            // Функция инициализации Firebase
+            function initializeFirebase() {
+                return new Promise((resolve, reject) => {
+                    console.log('🔥 [FIREBASE] Инициализация...');
+                    
+                    // Проверяем конфиг
+                    if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
+                        reject(new Error('Firebase конфиг не загружен'));
+                        return;
+                    }
+                    
+                    // Проверяем Firebase SDK
+                    if (typeof firebase === 'undefined') {
+                        reject(new Error('Firebase SDK не загружен'));
+                        return;
+                    }
+                    
+                    try {
+                        // Инициализируем Firebase
+                        if (firebase.apps.length === 0) {
+                            firebase.initializeApp(window.firebaseConfig);
+                            console.log('✅ [FIREBASE] Приложение инициализировано');
+                        } else {
+                            console.log('✅ [FIREBASE] Приложение уже инициализировано');
+                        }
+                        
+                        window.appState.firebaseInitialized = true;
+                        resolve(true);
+                    } catch (error) {
+                        console.error('❌ [FIREBASE] Ошибка инициализации:', error);
+                        reject(error);
+                    }
+                });
+            }
             
-            async function initSystem() {
-                console.group('🚀 [INIT] ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ');
+            // Основная функция инициализации
+            async function initializeSystem() {
+                console.group('🚀 [INIT] Запуск инициализации...');
                 
                 try {
-                    // Шаг 1: Загружаем конфиг
-                    window.updateLoadingStatus('🔥 Загрузка конфигурации Firebase...', 25);
+                    // Шаг 1: Загрузка конфига
+                    window.updateLoadingStatus('📦 Загрузка конфигурации...', 20);
                     await loadFirebaseConfig();
                     
-                    // Шаг 2: Проверяем Firebase SDK
-                    window.updateLoadingStatus('🔧 Проверка Firebase SDK...', 40);
-                    if (typeof firebase === 'undefined') {
-                        throw new Error('Firebase SDK не загружен');
-                    }
-                    window.appState.firebaseLoaded = true;
-                    console.log('✅ [INIT] Firebase SDK готов');
+                    // Шаг 2: Инициализация Firebase
+                    window.updateLoadingStatus('🔥 Инициализация Firebase...', 40);
+                    await initializeFirebase();
                     
-                    // Шаг 3: Проверяем что FirebaseModule загружен
+                    // Шаг 3: Проверка модулей
+                    window.updateLoadingStatus('🔧 Проверка модулей...', 60);
+                    
                     if (!window.FirebaseModule) {
-                        throw new Error('FirebaseModule не загружен');
-                    }
-                    console.log('✅ [INIT] FirebaseModule найден');
-                    
-                    // Шаг 4: Инициализируем Firebase
-                    window.updateLoadingStatus('🔌 Инициализация Firebase...', 55);
-                    if (!window.FirebaseModule.init()) {
-                        throw new Error('Не удалось инициализировать Firebase');
-                    }
-                    console.log('✅ [INIT] Firebase инициализирован');
-                    
-                    // Шаг 5: Регистрируем Service Worker
-                    window.updateLoadingStatus('⚙️ Регистрация Service Worker...', 70);
-                    if ('serviceWorker' in navigator) {
-                        navigator.serviceWorker.register('/trading-data/service-worker.js', { scope: '/trading-data/' })
-                            .then(reg => console.log('✅ [SW] Service Worker зарегистрирован'))
-                            .catch(err => console.warn('⚠️ [SW] Service Worker ошибка:', err));
+                        throw new Error('FirebaseModule не найден');
                     }
                     
-                    // Шаг 6: Запускаем Auth и приложение
-                    window.updateLoadingStatus('🔐 Инициализация аутентификации...', 85);
                     if (!window.AuthModule) {
-                        throw new Error('AuthModule не загружен');
+                        throw new Error('AuthModule не найден');
                     }
                     
+                    // Инициализируем FirebaseModule
+                    if (!window.FirebaseModule.init()) {
+                        throw new Error('Не удалось инициализировать FirebaseModule');
+                    }
+                    
+                    // Шаг 4: Инициализация Auth с persistence
+                    window.updateLoadingStatus('🔐 Инициализация аутентификации...', 80);
+                    
+                    // Настраиваем persistence ДО инициализации
+                    if (firebase.auth) {
+                        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                        console.log('✅ [AUTH] Persistence установлен в LOCAL');
+                    }
+                    
+                    // Инициализируем AuthModule
                     await window.AuthModule.autoInit();
                     
-                    console.log('✅ [INIT] Все системы инициализированы');
+                    // Шаг 5: Регистрация Service Worker
+                    window.updateLoadingStatus('⚙️ Регистрация Service Worker...', 90);
+                    if ('serviceWorker' in navigator) {
+                        try {
+                            const registration = await navigator.serviceWorker.register('/trading-data/service-worker.js', {
+                                scope: '/trading-data/'
+                            });
+                            console.log('✅ [SW] Service Worker зарегистрирован:', registration.scope);
+                        } catch (swError) {
+                            console.warn('⚠️ [SW] Ошибка регистрации:', swError);
+                        }
+                    }
+                    
+                    // Шаг 6: Запуск основного приложения
+                    window.updateLoadingStatus('🚀 Запуск приложения...', 95);
+                    
+                    if (!window.app || typeof window.app.init !== 'function') {
+                        throw new Error('Основное приложение не найдено');
+                    }
+                    
+                    await window.app.init();
+                    
+                    // Шаг 7: Завершение инициализации
+                    window.updateLoadingStatus('✅ Система готова!', 100);
+                    
+                    // Плавное скрытие лоадера и показ основного контента
+                    setTimeout(() => {
+                        const loading = document.getElementById('loading');
+                        if (loading) {
+                            loading.style.opacity = '0';
+                            loading.style.pointerEvents = 'none';
+                            setTimeout(() => {
+                                loading.style.display = 'none';
+                            }, 500);
+                        }
+                        
+                        const mainContent = document.getElementById('main-content');
+                        if (mainContent) {
+                            mainContent.style.display = 'block';
+                            setTimeout(() => {
+                                mainContent.style.opacity = '1';
+                            }, 50);
+                        }
+                    }, 500);
+                    
                     window.appState.initialized = true;
+                    console.log('✅ [INIT] Система полностью инициализирована');
                     
                 } catch (error) {
                     console.error('❌ [INIT] Ошибка инициализации:', error);
-                    window.showErrorScreen(error.message);
+                    window.appState.error = error.message;
+                    window.showErrorScreen(error.message || 'Неизвестная ошибка инициализации');
                 }
                 
                 console.groupEnd();
             }
             
-            window.showErrorScreen = function(message) {
-                const loading = document.getElementById('loading');
-                if (loading) {
-                    loading.innerHTML = `
-                        <div style="text-align: center; max-width: 600px; padding: 40px;">
-                            <div style="font-size: 4rem; color: #ff4444; margin-bottom: 20px;">🔥</div>
-                            <h2 style="color: #ff4444; margin-bottom: 15px;">КРИТИЧЕСКАЯ ОШИБКА</h2>
-                            <div style="background: rgba(255,68,68,0.1); padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #ff4444;">
-                                <p style="color: #ccc; margin: 0; line-height: 1.6; font-size: 1rem;">
-                                    <strong style="color: #ff8888;">${message}</strong>
-                                </p>
-                            </div>
-                            <button onclick="location.reload(true)" style="padding: 12px 24px; background: #FFD700; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 1rem;">
-                                🔄 Перезагрузить страницу
-                            </button>
-                        </div>
-                    `;
-                    loading.style.display = 'flex';
+            // Функция запуска инициализации
+            function startInitialization() {
+                console.log('🚀 [MAIN] Запуск системы...');
+                
+                // Ждем полной загрузки DOM
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => {
+                        console.log('📄 [DOM] DOMContentLoaded');
+                        setTimeout(() => initializeSystem(), 100);
+                    });
+                } else {
+                    console.log('📄 [DOM] DOM уже загружен');
+                    setTimeout(() => initializeSystem(), 100);
                 }
-            };
-            
-            // Запускаем после полной загрузки DOM
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function() {
-                    console.log('📄 [DOM] DOM загружен');
-                    window.updateLoadingStatus('🚀 Инициализация...', 10);
-                    setTimeout(() => initSystem(), 500);
-                });
-            } else {
-                console.log('📄 [DOM] DOM уже готов');
-                window.updateLoadingStatus('🚀 Инициализация...', 10);
-                setTimeout(() => initSystem(), 500);
             }
             
-            console.log('✅ [INIT] Инициализатор готов');
+            // Запускаем инициализацию
+            startInitialization();
+            
         })();
     </script>
 </body>
