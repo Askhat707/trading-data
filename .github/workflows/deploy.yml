@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -14,10 +14,12 @@ concurrency:
   group: "pages"
   cancel-in-progress: true
 
+env:
+  CACHE_CONTROL: "max-age=3600, must-revalidate"
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    # ВАЖНО: Добавляем environment для деплоя на GitHub Pages
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -31,10 +33,8 @@ jobs:
         with:
           node-version: '18'
 
-      - name: 🔧 Генерация firebase-config.js из секретов
-        id: generate-config
+      - name: 🔧 Генерация firebase-config.js
         env:
-          # ВАЖНО: Все 8 секретов ДОЛЖНЫ быть здесь
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
@@ -44,45 +44,51 @@ jobs:
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
         run: |
-          echo "🚀 Генерация firebase-config.js..."
-          
-          # Проверка секретов
-          echo "Проверка секретов:"
-          echo "- FIREBASE_API_KEY: ${FIREBASE_API_KEY:0:10}..."
-          echo "- FIREBASE_PROJECT_ID: $FIREBASE_PROJECT_ID"
-          
-          # Запускаем скрипт
+          echo "🔧 Генерируем firebase-config.js из секретов..."
           node scripts/generate-config.js
           
-          # Проверяем файл
           if [ ! -f "firebase-config.js" ]; then
-            echo "❌ firebase-config.js не создан!"
+            echo "❌ Ошибка: firebase-config.js не создан!"
             exit 1
           fi
           
-          echo "✅ Файл создан. Размер: $(wc -c < firebase-config.js) байт"
+          echo "✅ firebase-config.js создан успешно"
+          ls -lh firebase-config.js
+
+      - name: 📝 Коммит конфига (если изменился)
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          if git diff --quiet firebase-config.js 2>/dev/null; then
+            echo "✅ firebase-config.js не изменился"
+          else
+            echo "📝 Коммитим firebase-config.js..."
+            git add firebase-config.js
+            git commit -m "🔒 Обновление firebase-config.js [skip ci]" || true
+            git push origin main || echo "⚠️ Push не требуется"
+          fi
 
       - name: 📄 Создание .nojekyll
         run: touch .nojekyll
 
-      - name: 📋 Проверка файлов
+      - name: 🔍 Проверка файлов
         run: |
-          echo "📁 Список файлов:"
-          ls -la | grep -E "(firebase|index|\.nojekyll)"
-          echo ""
-          echo "🔍 Проверяем firebase-config.js:"
-          if [ -f "firebase-config.js" ]; then
-            echo "✅ Файл существует"
-          else
-            echo "❌ Файл отсутствует!"
-            exit 1
-          fi
+          echo "📁 Проверяем файлы для деплоя:"
+          [ -f "index.html" ] && echo "✅ index.html" || (echo "❌ index.html отсутствует" && exit 1)
+          [ -f "firebase-config.js" ] && echo "✅ firebase-config.js" || (echo "❌ firebase-config.js отсутствует" && exit 1)
+          [ -f "service-worker.js" ] && echo "✅ service-worker.js" || echo "⚠️ service-worker.js опционально"
+          [ -d "js" ] && echo "✅ js/" || (echo "❌ js/ отсутствует" && exit 1)
+          [ -d "css" ] && echo "✅ css/" || (echo "❌ css/ отсутствует" && exit 1)
 
       - name: 📦 Упаковка для GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
+          retention-days: 30
 
       - name: 🚀 Деплой на GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          timeout: 600000
