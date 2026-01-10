@@ -447,65 +447,74 @@ const App = {
     },
     
     /**
-     * Загрузка данных для DTE
-     */
-    async loadData(index) {
-        if (index >= this.dteList.length) return;
-        
-        this.currentDTEIndex = index;
-        const dteItem = this.dteList[index];
-        
-        try {
-            const tableLabel = document.getElementById('table-dte-label');
-            if (tableLabel) {
-                tableLabel.innerText = `EXPIRATION: ${dteItem.display}`;
-            }
-            
-            const cacheKey = Constants.CACHE_VERSION + ':' + dteItem.key;
-            let records = CacheService.get(cacheKey);
-            
-            if (!records) {
-                console.log(`📥 [DATA] Загружаем данные для ${dteItem.key}...`);
-                records = await ApiService.getDTEData(dteItem.key);
-                
-                if (records.length > 0) {
-                    CacheService.set(cacheKey, records);
-                }
-            } else {
-                console.log(`📊 [CACHE] Используем кэш для ${dteItem.key}`);
-            }
-            
-            if (records.length > 0) {
-                this.renderTable(records);
-                
-                if (window.ChartsModule) {
-                    window.ChartsModule.createAllCharts(records);
-                }
-                
-                this.updateTopStats(records);
-                this.updateAnalyticsForDTE(dteItem.idx);
-                this.loadBreakevensForDTE(dteItem.idx);
-                
-                console.log(`✅ [DATA] Данные загружены для ${dteItem.display}`);
-            }
-        } catch (error) {
-            console.error(`❌ [DATA] Ошибка загрузки данных для ${dteItem.key}:`, error);
-        }
-    },
+ * Загрузка данных для DTE - С ДЕБАГ ЛОГАМИ
+ */
+async loadData(index) {
+    if (index >= this.dteList.length) return;
     
-    /**
-     * Обновление аналитики для DTE
-     */
-    async updateAnalyticsForDTE(dte) {
-        try {
-            const analyticsData = await ApiService.getAnalytics(dte);
-            if (analyticsData) {
-                this.updateAnalyticsUI(analyticsData);
-            }
-        } catch (error) {
-            console.error('❌ [ANALYTICS] Ошибка обновления аналитики для DTE:', error);
+    this.currentDTEIndex = index;
+    const dteItem = this.dteList[index];
+    
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`📥 ЗАГРУЗКА ДАННЫХ ДЛЯ ${dteItem.key}`);
+    console.log(`${'='.repeat(60)}`);
+    
+    try {
+        const tableLabel = document.getElementById('table-dte-label');
+        if (tableLabel) {
+            tableLabel.innerText = `EXPIRATION: ${dteItem.display}`;
         }
-    },
+        
+        const cacheKey = Constants.CACHE_VERSION + ':' + dteItem.key;
+        let records = CacheService.get(cacheKey);
+        
+        if (!records) {
+            console.log(`\n🔄 [CACHE] Кэш пуст, загружаем с Firebase...`);
+            console.log(`   Key: ${dteItem.key}`);
+            console.log(`   Cache Key: ${cacheKey}`);
+            
+            records = await ApiService.getDTEData(dteItem.key);
+            
+            console.log(`\n📊 [RESULT] Получено записей: ${records ? records.length : 0}`);
+            
+            if (records && records.length > 0) {
+                console.log(`\n✅ [SAMPLE] Первая запись:`, records[0]);
+                console.log(`\n✅ [CACHE] Сохраняем в кэш...`);
+                
+                CacheService.set(cacheKey, records);
+            } else {
+                console.error(`\n❌ [ERROR] Записи не получены!`);
+                this.showNotification('Ошибка загрузки данных из Firebase', 'error');
+                return;
+            }
+        } else {
+            console.log(`✅ [CACHE] Используем кэш (${records.length} записей)`);
+        }
+        
+        if (records.length > 0) {
+            console.log(`\n🎨 [RENDER] Рендеринг интерфейса...`);
+            
+            this.renderTable(records);
+            console.log(`   ✅ Таблица отрендерена`);
+            
+            if (window.ChartsModule) {
+                window.ChartsModule.createAllCharts(records);
+                console.log(`   ✅ Графики созданы`);
+            }
+            
+            this.updateTopStats(records);
+            console.log(`   ✅ Статистика обновлена`);
+            
+            this.updateAnalyticsForDTE(dteItem.idx);
+            this.loadBreakevensForDTE(dteItem.idx);
+            
+            console.log(`\n✅ [SUCCESS] Все данные загружены и отрендерены!\n`);
+        }
+    } catch (error) {
+        console.error(`\n❌ [FATAL ERROR] Ошибка загрузки для ${dteItem.key}:`, error);
+        this.showNotification(`Ошибка: ${error.message}`, 'error');
+    }
+},
     
     /**
      * Загрузка безубытков для DTE
