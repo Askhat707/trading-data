@@ -204,3 +204,111 @@ th {
     font-weight: 800;
     color: var(--gold);
 }
+/* Добавить в конец файла */
+
+/* Стили для таблицы */
+table { 
+    width: 100%;
+    border-collapse: collapse; 
+    font-size: 0.95rem; 
+    table-layout: fixed;
+}
+
+th, td {
+    padding: 10px 5px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    text-align: center;
+}
+
+th {
+    background: rgba(15, 15, 15, 0.95); 
+    color: var(--text-muted); 
+    position: sticky; 
+    top: 0; 
+    z-index: 10; 
+    font-weight: 700; 
+    font-size: 0.75rem;
+    border-bottom: 1px solid #333;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.strike-cell {
+    background: rgba(25, 25, 25, 0.95); 
+    border-left: 1px solid #333; 
+    border-right: 1px solid #333;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #fff; 
+    width: 90px;
+    padding: 10px 8px;
+    white-space: nowrap;
+}
+
+.row-atm { 
+    background: rgba(255, 215, 0, 0.08) !important; 
+    border-top: 2px solid var(--gold); 
+    border-bottom: 2px solid var(--gold); 
+    position: relative;
+}
+
+.row-atm::after {
+    content: 'ATM';
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7em;
+    color: var(--gold);
+    background: rgba(0, 0, 0, 0.5);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+/* Улучшенные цвета для значений */
+td:first-child, td:last-child {
+    font-weight: 600;
+}
+
+/* Цвета для Call/Put */
+td:nth-child(3) { /* Call Premium */
+    color: var(--call);
+}
+
+td:nth-child(11) { /* Put Premium */
+    color: var(--put);
+}
+
+/* Градиентные границы для таблицы */
+.table-wrapper {
+    border: var(--border);
+    border-radius: 15px;
+    overflow: hidden;
+    position: relative;
+}
+
+.table-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
+/* Анимация для обновления строк */
+@keyframes highlightUpdate {
+    0% { background-color: rgba(255, 215, 0, 0.1); }
+    100% { background-color: transparent; }
+}
+
+.updating {
+    animation: highlightUpdate 1s ease;
+}
