@@ -17,89 +17,85 @@ const App = {
     dataInterval: null,
     
     /**
- * Инициализация приложения - ИСПРАВЛЕНО
- */
-async init() {
-    console.log('🚀 [APP] Запуск приложения...');
-    
-    // ✅ ПРОВЕРКА АВТОРИЗАЦИИ
-    if (!window.AuthModule || !window.AuthModule.currentUser) {
-        console.warn('⚠️ [APP] Пользователь не авторизован, ожидание...');
-        // Ждем авторизации
-        setTimeout(() => {
-            if (window.AuthModule && window.AuthModule.currentUser) {
-                this.init();
-            } else {
-                console.error('❌ [APP] Пользователь не авторизован');
-            }
-        }, 1000);
-        return;
-    }
-    
-    console.log(`✅ [APP] Пользователь авторизован: ${window.AuthModule.currentUser.email}`);
-    
-    // ✅ ПРОВЕРКА FIREBASE КОНФИГА
-    if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
-        console.error('❌ [APP] Firebase конфигурация не загружена!');
-        window.showErrorScreen('Firebase конфигурация не найдена. Обновите страницу.');
-        return;
-    }
-    
-    console.log('✅ [APP] Firebase конфиг найден:', window.firebaseConfig.projectId);
-    
-    if (this.initialized) {
-        console.warn('⚠️ [APP] Приложение уже инициализировано');
-        return;
-    }
-    
-    try {
-        console.log('🔧 [APP] Определяем тип пользователя...');
+     * Инициализация приложения - ИСПРАВЛЕНО
+     */
+    async init() {
+        console.log('🚀 [APP] Запуск приложения...');
         
-        // Определяем тип пользователя
-        this.isTrial = window.AuthModule.currentUser.plan !== "PREMIUM" || 
-                      window.AuthModule.isSubscriptionExpired(window.AuthModule.currentUser);
-        
-        console.log(`${this.isTrial ? '🔒' : '🔓'} [APP] Пользователь: ${this.isTrial ? 'TRIAL' : 'PREMIUM'}`);
-        
-        // Обновляем UI в зависимости от типа пользователя
-        this.updateUIForUserType();
-        
-        console.log('📊 [APP] Загружаем начальные данные...');
-        
-        // Запускаем обновления данных
-        this.startPriceUpdates();
-        this.startDataUpdates();
-        this.startAnalyticsUpdates();
-        
-        // Загружаем начальные данные
-        await this.loadInitialData();
-        console.log('✅ [APP] Начальные данные загружены');
-        
-        await this.loadDTEList();
-        console.log('✅ [APP] Список DTE загружен');
-        
-        // Обновляем время
-        this.updateTime();
-        setInterval(() => this.updateTime(), 1000);
-        
-        // Инициализируем MT5 модуль (если существует)
-        if (window.MT5Module) {
-            console.log('🤖 [APP] Инициализируем MT5Module...');
-            window.MT5Module.init();
+        // ✅ ПРОВЕРКА АВТОРИЗАЦИИ
+        if (!window.AuthModule || !window.AuthModule.currentUser) {
+            console.warn('⚠️ [APP] Пользователь не авторизован, ожидание...');
+            // Ждем авторизации
+            setTimeout(() => {
+                if (window.AuthModule && window.AuthModule.currentUser) {
+                    this.init();
+                } else {
+                    console.error('❌ [APP] Пользователь не авторизован');
+                }
+            }, 1000);
+            return;
         }
         
-        this.initialized = true;
-        console.log('✅ [APP] Приложение полностью инициализировано');
+        console.log(`✅ [APP] Пользователь авторизован: ${window.AuthModule.currentUser.email}`);
         
-    } catch (error) {
-        console.error('❌ [APP] Ошибка инициализации приложения:', error);
-        window.showErrorScreen(`Ошибка инициализации: ${error.message}`);
-    }
-  },
-    
-    // ... остальной код остается без изменений ...
-    
-
+        // ✅ ПРОВЕРКА FIREBASE КОНФИГА
+        if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
+            console.error('❌ [APP] Firebase конфигурация не загружена!');
+            window.showErrorScreen('Firebase конфигурация не найдена. Обновите страницу.');
+            return;
+        }
+        
+        console.log('✅ [APP] Firebase конфиг найден:', window.firebaseConfig.projectId);
+        
+        if (this.initialized) {
+            console.warn('⚠️ [APP] Приложение уже инициализировано');
+            return;
+        }
+        
+        try {
+            console.log('🔧 [APP] Определяем тип пользователя...');
+            
+            // Определяем тип пользователя
+            this.isTrial = window.AuthModule.currentUser.plan !== "PREMIUM" || 
+                          window.AuthModule.isSubscriptionExpired(window.AuthModule.currentUser);
+            
+            console.log(`${this.isTrial ? '🔒' : '🔓'} [APP] Пользователь: ${this.isTrial ? 'TRIAL' : 'PREMIUM'}`);
+            
+            // Обновляем UI в зависимости от типа пользователя
+            this.updateUIForUserType();
+            
+            console.log('📊 [APP] Загружаем начальные данные...');
+            
+            // Запускаем обновления данных
+            this.startPriceUpdates();
+            this.startDataUpdates();
+            this.startAnalyticsUpdates();
+            
+            // Загружаем начальные данные
+            await this.loadInitialData();
+            console.log('✅ [APP] Начальные данные загружены');
+            
+            await this.loadDTEList();
+            console.log('✅ [APP] Список DTE загружен');
+            
+            // Обновляем время
+            this.updateTime();
+            setInterval(() => this.updateTime(), 1000);
+            
+            // Инициализируем MT5 модуль (если существует)
+            if (window.MT5Module) {
+                console.log('🤖 [APP] Инициализируем MT5Module...');
+                window.MT5Module.init();
+            }
+            
+            this.initialized = true;
+            console.log('✅ [APP] Приложение полностью инициализировано');
+            
+        } catch (error) {
+            console.error('❌ [APP] Ошибка инициализации приложения:', error);
+            window.showErrorScreen(`Ошибка инициализации: ${error.message}`);
+        }
+    },
     
     /**
      * Обновление UI для типа пользователя
@@ -452,74 +448,78 @@ async init() {
     },
     
     /**
- * Загрузка данных для DTE - С ДЕБАГ ЛОГАМИ
- */
-async loadData(index) {
-    if (index >= this.dteList.length) return;
-    
-    this.currentDTEIndex = index;
-    const dteItem = this.dteList[index];
-    
-    console.log(`\n${'='.repeat(60)}`);
-    console.log(`📥 ЗАГРУЗКА ДАННЫХ ДЛЯ ${dteItem.key}`);
-    console.log(`${'='.repeat(60)}`);
-    
-    try {
-        const tableLabel = document.getElementById('table-dte-label');
-        if (tableLabel) {
-            tableLabel.innerText = `EXPIRATION: ${dteItem.display}`;
-        }
+     * Загрузка данных для DTE - ИСПРАВЛЕНО
+     */
+    async loadData(index) {
+        if (index >= this.dteList.length) return;
         
-        const cacheKey = Constants.CACHE_VERSION + ':' + dteItem.key;
-        let records = CacheService.get(cacheKey);
+        this.currentDTEIndex = index;
+        const dteItem = this.dteList[index];
         
-        if (!records) {
-            console.log(`\n🔄 [CACHE] Кэш пуст, загружаем с Firebase...`);
-            console.log(`   Key: ${dteItem.key}`);
-            console.log(`   Cache Key: ${cacheKey}`);
+        console.log(`\n${'='.repeat(60)}`);
+        console.log(`📥 ЗАГРУЗКА ДАННЫХ ДЛЯ ${dteItem.key}`);
+        console.log(`${'='.repeat(60)}`);
+        
+        try {
+            const tableLabel = document.getElementById('table-dte-label');
+            if (tableLabel) {
+                tableLabel.innerText = `EXPIRATION: ${dteItem.display}`;
+            }
             
-            records = await ApiService.getDTEData(dteItem.key);
+            const cacheKey = Constants.CACHE_VERSION + ':' + dteItem.key;
+            let records = CacheService.get(cacheKey);
             
-            console.log(`\n📊 [RESULT] Получено записей: ${records ? records.length : 0}`);
-            
-            if (records && records.length > 0) {
-                console.log(`\n✅ [SAMPLE] Первая запись:`, records[0]);
-                console.log(`\n✅ [CACHE] Сохраняем в кэш...`);
+            if (!records) {
+                console.log(`\n🔄 [CACHE] Кэш пуст, загружаем с Firebase...`);
+                console.log(`   Key: ${dteItem.key}`);
+                console.log(`   Cache Key: ${cacheKey}`);
                 
-                CacheService.set(cacheKey, records);
+                records = await ApiService.getDTEData(dteItem.key);
+                
+                console.log(`\n📊 [RESULT] Получено записей: ${records ? records.length : 0}`);
+                
+                if (records && records.length > 0) {
+                    console.log(`\n✅ [SAMPLE] Первая запись:`, records[0]);
+                    console.log(`\n✅ [CACHE] Сохраняем в кэш...`);
+                    
+                    CacheService.set(cacheKey, records);
+                } else {
+                    console.error(`\n❌ [ERROR] Записи не получены!`);
+                    this.showNotification('Ошибка загрузки данных из Firebase', 'error');
+                    return;
+                }
             } else {
-                console.error(`\n❌ [ERROR] Записи не получены!`);
-                this.showNotification('Ошибка загрузки данных из Firebase', 'error');
-                return;
-            }
-        } else {
-            console.log(`✅ [CACHE] Используем кэш (${records.length} записей)`);
-        }
-        
-        if (records.length > 0) {
-            console.log(`\n🎨 [RENDER] Рендеринг интерфейса...`);
-            
-            this.renderTable(records);
-            console.log(`   ✅ Таблица отрендерена`);
-            
-            if (window.ChartsModule) {
-                window.ChartsModule.createAllCharts(records);
-                console.log(`   ✅ Графики созданы`);
+                console.log(`✅ [CACHE] Используем кэш (${records.length} записей)`);
             }
             
-            this.updateTopStats(records);
-            console.log(`   ✅ Статистика обновлена`);
-            
-            this.updateAnalyticsForDTE(dteItem.idx);
-            this.loadBreakevensForDTE(dteItem.idx);
-            
-            console.log(`\n✅ [SUCCESS] Все данные загружены и отрендерены!\n`);
+            if (records.length > 0) {
+                console.log(`\n🎨 [RENDER] Рендеринг интерфейса...`);
+                
+                this.renderTable(records);
+                console.log(`   ✅ Таблица отрендерена`);
+                
+                if (window.ChartsModule) {
+                    window.ChartsModule.createAllCharts(records);
+                    console.log(`   ✅ Графики созданы`);
+                }
+                
+                this.updateTopStats(records);
+                console.log(`   ✅ Статистика обновлена`);
+                
+                // ИСПРАВЛЕНО: Вместо updateAnalyticsForDTE вызываем updateAnalytics
+                this.updateAnalytics();
+                console.log(`   ✅ Аналитика обновлена`);
+                
+                this.loadBreakevensForDTE(dteItem.idx);
+                console.log(`   ✅ Безубытки загружены`);
+                
+                console.log(`\n✅ [SUCCESS] Все данные загружены и отрендерены!\n`);
+            }
+        } catch (error) {
+            console.error(`\n❌ [FATAL ERROR] Ошибка загрузки для ${dteItem.key}:`, error);
+            this.showNotification(`Ошибка: ${error.message}`, 'error');
         }
-    } catch (error) {
-        console.error(`\n❌ [FATAL ERROR] Ошибка загрузки для ${dteItem.key}:`, error);
-        this.showNotification(`Ошибка: ${error.message}`, 'error');
-    }
-},
+    },
     
     /**
      * Загрузка безубытков для DTE
@@ -534,212 +534,211 @@ async loadData(index) {
     },
     
     /**
- * Рендеринг таблицы - ИСПРАВЛЕНО
- */
-renderTable(records) {
-    try {
-        const tbody = document.getElementById('table-body');
-        if (!tbody || !records || records.length === 0) {
-            console.warn('⚠️ [TABLE] Таблица не найдена или нет записей');
-            return;
+     * Рендеринг таблицы - ИСПРАВЛЕНО
+     */
+    renderTable(records) {
+        try {
+            const tbody = document.getElementById('table-body');
+            if (!tbody || !records || records.length === 0) {
+                console.warn('⚠️ [TABLE] Таблица не найдена или нет записей');
+                return;
+            }
+            
+            console.log(`\n📋 [TABLE] Начало рендеринга ${records.length} записей`);
+            
+            let workingPrice = this.currentPrice;
+            if (workingPrice <= 0) {
+                const sorted = [...records].sort((a,b) => parseFloat(a.s) - parseFloat(b.s));
+                if (sorted.length > 0) {
+                    workingPrice = parseFloat(sorted[Math.floor(sorted.length/2)].s);
+                } else {
+                    workingPrice = 4520;
+                }
+            }
+            
+            console.log(`   💰 Working Price: $${workingPrice}`);
+            
+            const sorted = [...records].sort((a, b) => parseFloat(a.s) - parseFloat(b.s));
+            
+            // Находим ATM страйк
+            let atmStrike = null;
+            let minDiff = Infinity;
+            
+            sorted.forEach(r => {
+                const diff = Math.abs(parseFloat(r.s) - workingPrice);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    atmStrike = parseFloat(r.s);
+                }
+            });
+            
+            console.log(`   🎯 ATM Strike: $${atmStrike}`);
+            
+            const halfCount = Math.floor(this.displayCount / 2);
+            const startIdx = Math.max(0, sorted.findIndex(r => parseFloat(r.s) === atmStrike) - halfCount);
+            const endIdx = Math.min(sorted.length, startIdx + this.displayCount);
+            const displayRecords = sorted.slice(startIdx, endIdx);
+            
+            console.log(`   📊 Отобразим записей: ${displayRecords.length} (с ${startIdx} по ${endIdx})`);
+            
+            let html = '';
+            let rowCount = 0;
+            
+            displayRecords.forEach(r => {
+                try {
+                    const strike = parseFloat(r.s);
+                    const isATM = strike === atmStrike;
+                    
+                    // ✅ ВАЖНО: Данные в формате {c: {...}, p: {...}, s: strike}
+                    const call = (r.c && typeof r.c === 'object') ? r.c : {};
+                    const put = (r.p && typeof r.p === 'object') ? r.p : {};
+                    
+                    // Достаем значения
+                    const callOI = parseInt(call.oi) || 0;
+                    const callVol = parseInt(call.v) || 0;
+                    const callIV = parseFloat(call.iv) || 0;
+                    const callDelta = parseFloat(call.d) || 0;
+                    const callGamma = parseFloat(call.g) || 0;
+                    const callTheta = parseFloat(call.t) || 0;
+                    const callPrem = parseFloat(call.pr) || 0;
+                    
+                    const putOI = parseInt(put.oi) || 0;
+                    const putVol = parseInt(put.v) || 0;
+                    const putIV = parseFloat(put.iv) || 0;
+                    const putDelta = parseFloat(put.d) || 0;
+                    const putGamma = parseFloat(put.g) || 0;
+                    const putTheta = parseFloat(put.t) || 0;
+                    const putPrem = parseFloat(put.pr) || 0;
+                    
+                    // Цвета
+                    const getColorForValue = (value) => {
+                        if (value === 0 || value === undefined) return 'rgba(100, 100, 100, 0.3)';
+                        if (value <= 50) return 'rgba(150, 150, 150, 0.4)';
+                        if (value <= 100) return 'rgba(200, 200, 200, 0.3)';
+                        if (value <= 150) return 'rgba(100, 150, 255, 0.3)';
+                        if (value <= 250) return 'rgba(255, 230, 100, 0.3)';
+                        if (value <= 400) return 'rgba(255, 215, 0, 0.4)';
+                        if (value <= 700) return 'rgba(255, 100, 100, 0.4)';
+                        return 'rgba(255, 0, 0, 0.5)';
+                    };
+                    
+                    let displayedStrike = strike + this.forwardAdj;
+                    const callStrike = this.showPremiums ? (displayedStrike + callPrem).toFixed(1) : displayedStrike.toFixed(1);
+                    const putStrike = this.showPremiums ? (displayedStrike - putPrem).toFixed(1) : displayedStrike.toFixed(1);
+                    const callPremDisplay = this.showPremiums ? callPrem.toFixed(2) : '---';
+                    const putPremDisplay = this.showPremiums ? putPrem.toFixed(2) : '---';
+                    
+                    html += `
+                        <tr class="${isATM ? 'row-atm' : ''}">
+                            <td style="background: ${getColorForValue(callOI)}; font-weight: 600;">${callOI}</td>
+                            <td style="background: ${getColorForValue(callVol)}; font-weight: 600;">${callVol}</td>
+                            <td style="color: ${this.showPremiums ? 'var(--call)' : '#888'}; font-weight: ${this.showPremiums ? '700' : '400'}; background: ${this.showPremiums ? 'rgba(0, 230, 118, 0.1)' : 'transparent'};">
+                                ${callPremDisplay}
+                            </td>
+                            <td>${callDelta ? callDelta.toFixed(4) : '-'}</td>
+                            <td>${callGamma ? callGamma.toFixed(4) : '-'}</td>
+                            <td>${callIV ? callIV.toFixed(2) : '-'}</td>
+                            <td class="strike-cell">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 0.75em; color: #888; margin-bottom: 3px;">STRIKE</div>
+                                    <div style="font-weight: 800; color: var(--gold); font-size: 1.1em;">$${displayedStrike.toFixed(1)}</div>
+                                </div>
+                            </td>
+                            <td>${putIV ? putIV.toFixed(2) : '-'}</td>
+                            <td>${putGamma ? putGamma.toFixed(4) : '-'}</td>
+                            <td>${putDelta ? putDelta.toFixed(4) : '-'}</td>
+                            <td style="color: ${this.showPremiums ? 'var(--put)' : '#888'}; font-weight: ${this.showPremiums ? '700' : '400'}; background: ${this.showPremiums ? 'rgba(255, 23, 68, 0.1)' : 'transparent'};">
+                                ${putPremDisplay}
+                            </td>
+                            <td style="background: ${getColorForValue(putVol)}; font-weight: 600;">${putVol}</td>
+                            <td style="background: ${getColorForValue(putOI)}; font-weight: 600;">${putOI}</td>
+                        </tr>
+                    `;
+                    rowCount++;
+                } catch (rowError) {
+                    console.error(`   ⚠️ Ошибка обработки строки ${rowCount}:`, rowError);
+                }
+            });
+            
+            tbody.innerHTML = html;
+            console.log(`✅ [TABLE] Таблица отрендерена (${rowCount} строк)\n`);
+            
+        } catch (error) {
+            console.error('❌ [TABLE] Ошибка рендеринга таблицы:', error);
         }
-        
-        console.log(`\n📋 [TABLE] Начало рендеринга ${records.length} записей`);
-        
-        let workingPrice = this.currentPrice;
-        if (workingPrice <= 0) {
-            const sorted = [...records].sort((a,b) => parseFloat(a.s) - parseFloat(b.s));
-            if (sorted.length > 0) {
-                workingPrice = parseFloat(sorted[Math.floor(sorted.length/2)].s);
-            } else {
-                workingPrice = 4520;
-            }
-        }
-        
-        console.log(`   💰 Working Price: $${workingPrice}`);
-        
-        const sorted = [...records].sort((a, b) => parseFloat(a.s) - parseFloat(b.s));
-        
-        // Находим ATM страйк
-        let atmStrike = null;
-        let minDiff = Infinity;
-        
-        sorted.forEach(r => {
-            const diff = Math.abs(parseFloat(r.s) - workingPrice);
-            if (diff < minDiff) {
-                minDiff = diff;
-                atmStrike = parseFloat(r.s);
-            }
-        });
-        
-        console.log(`   🎯 ATM Strike: $${atmStrike}`);
-        
-        const halfCount = Math.floor(this.displayCount / 2);
-        const startIdx = Math.max(0, sorted.findIndex(r => parseFloat(r.s) === atmStrike) - halfCount);
-        const endIdx = Math.min(sorted.length, startIdx + this.displayCount);
-        const displayRecords = sorted.slice(startIdx, endIdx);
-        
-        console.log(`   📊 Отобразим записей: ${displayRecords.length} (с ${startIdx} по ${endIdx})`);
-        
-        let html = '';
-        let rowCount = 0;
-        
-        displayRecords.forEach(r => {
-            try {
-                const strike = parseFloat(r.s);
-                const isATM = strike === atmStrike;
-                
-                // ✅ ВАЖНО: Данные в формате {c: {...}, p: {...}, s: strike}
-                const call = (r.c && typeof r.c === 'object') ? r.c : {};
-                const put = (r.p && typeof r.p === 'object') ? r.p : {};
-                
-                // Достаем значения
-                const callOI = parseInt(call.oi) || 0;
-                const callVol = parseInt(call.v) || 0;
-                const callIV = parseFloat(call.iv) || 0;
-                const callDelta = parseFloat(call.d) || 0;
-                const callGamma = parseFloat(call.g) || 0;
-                const callTheta = parseFloat(call.t) || 0;
-                const callPrem = parseFloat(call.pr) || 0;
-                
-                const putOI = parseInt(put.oi) || 0;
-                const putVol = parseInt(put.v) || 0;
-                const putIV = parseFloat(put.iv) || 0;
-                const putDelta = parseFloat(put.d) || 0;
-                const putGamma = parseFloat(put.g) || 0;
-                const putTheta = parseFloat(put.t) || 0;
-                const putPrem = parseFloat(put.pr) || 0;
-                
-                // Цвета
-                const getColorForValue = (value) => {
-                    if (value === 0 || value === undefined) return 'rgba(100, 100, 100, 0.3)';
-                    if (value <= 50) return 'rgba(150, 150, 150, 0.4)';
-                    if (value <= 100) return 'rgba(200, 200, 200, 0.3)';
-                    if (value <= 150) return 'rgba(100, 150, 255, 0.3)';
-                    if (value <= 250) return 'rgba(255, 230, 100, 0.3)';
-                    if (value <= 400) return 'rgba(255, 215, 0, 0.4)';
-                    if (value <= 700) return 'rgba(255, 100, 100, 0.4)';
-                    return 'rgba(255, 0, 0, 0.5)';
-                };
-                
-                let displayedStrike = strike + this.forwardAdj;
-                const callStrike = this.showPremiums ? (displayedStrike + callPrem).toFixed(1) : displayedStrike.toFixed(1);
-                const putStrike = this.showPremiums ? (displayedStrike - putPrem).toFixed(1) : displayedStrike.toFixed(1);
-                const callPremDisplay = this.showPremiums ? callPrem.toFixed(2) : '---';
-                const putPremDisplay = this.showPremiums ? putPrem.toFixed(2) : '---';
-                
-                html += `
-                    <tr class="${isATM ? 'row-atm' : ''}">
-                        <td style="background: ${getColorForValue(callOI)}; font-weight: 600;">${callOI}</td>
-                        <td style="background: ${getColorForValue(callVol)}; font-weight: 600;">${callVol}</td>
-                        <td style="color: ${this.showPremiums ? 'var(--call)' : '#888'}; font-weight: ${this.showPremiums ? '700' : '400'}; background: ${this.showPremiums ? 'rgba(0, 230, 118, 0.1)' : 'transparent'};">
-                            ${callPremDisplay}
-                        </td>
-                        <td>${callDelta ? callDelta.toFixed(4) : '-'}</td>
-                        <td>${callGamma ? callGamma.toFixed(4) : '-'}</td>
-                        <td>${callIV ? callIV.toFixed(2) : '-'}</td>
-                        <td class="strike-cell">
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.75em; color: #888; margin-bottom: 3px;">STRIKE</div>
-                                <div style="font-weight: 800; color: var(--gold); font-size: 1.1em;">$${displayedStrike.toFixed(1)}</div>
-                            </div>
-                        </td>
-                        <td>${putIV ? putIV.toFixed(2) : '-'}</td>
-                        <td>${putGamma ? putGamma.toFixed(4) : '-'}</td>
-                        <td>${putDelta ? putDelta.toFixed(4) : '-'}</td>
-                        <td style="color: ${this.showPremiums ? 'var(--put)' : '#888'}; font-weight: ${this.showPremiums ? '700' : '400'}; background: ${this.showPremiums ? 'rgba(255, 23, 68, 0.1)' : 'transparent'};">
-                            ${putPremDisplay}
-                        </td>
-                        <td style="background: ${getColorForValue(putVol)}; font-weight: 600;">${putVol}</td>
-                        <td style="background: ${getColorForValue(putOI)}; font-weight: 600;">${putOI}</td>
-                    </tr>
-                `;
-                rowCount++;
-            } catch (rowError) {
-                console.error(`   ⚠️ Ошибка обработки строки ${rowCount}:`, rowError);
-            }
-        });
-        
-        tbody.innerHTML = html;
-        console.log(`✅ [TABLE] Таблица отрендерена (${rowCount} строк)\n`);
-        
-    } catch (error) {
-        console.error('❌ [TABLE] Ошибка рендеринга таблицы:', error);
-    }
-
- },
+    },
     
     /**
- * Обновление статистики - ИСПРАВЛЕНО
- */
-updateTopStats(records) {
-    try {
-        if (!records || records.length === 0) return;
-        
-        const sorted = [...records].sort((a, b) => parseFloat(a.s) - parseFloat(b.s));
-        
-        // Маппируем в нужный формат
-        const adjustedRecords = sorted.map(r => ({
-            strike: parseFloat(r.s),
-            adjusted_s: parseFloat(r.s) + this.forwardAdj,
-            call_oi: (r.c && r.c.oi) ? parseInt(r.c.oi) : 0,
-            call_vol: (r.c && r.c.v) ? parseInt(r.c.v) : 0,
-            call_prem: (r.c && r.c.pr) ? parseFloat(r.c.pr) : 0,
-            put_oi: (r.p && r.p.oi) ? parseInt(r.p.oi) : 0,
-            put_vol: (r.p && r.p.v) ? parseInt(r.p.v) : 0,
-            put_prem: (r.p && r.p.pr) ? parseFloat(r.p.pr) : 0
-        }));
-        
-        const topCallOI = adjustedRecords
-            .map(r => ({ 
-                strike: r.strike, 
-                adjusted_strike: r.adjusted_s, 
-                value: r.call_oi, 
-                prem: r.call_prem 
-            }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
-        
-        const topPutOI = adjustedRecords
-            .map(r => ({ 
-                strike: r.strike, 
-                adjusted_strike: r.adjusted_s, 
-                value: r.put_oi, 
-                prem: r.put_prem 
-            }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
-        
-        const topCallVol = adjustedRecords
-            .map(r => ({ 
-                strike: r.strike, 
-                adjusted_strike: r.adjusted_s, 
-                value: r.call_vol, 
-                prem: r.call_prem 
-            }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
-        
-        const topPutVol = adjustedRecords
-            .map(r => ({ 
-                strike: r.strike, 
-                adjusted_strike: r.adjusted_s, 
-                value: r.put_vol, 
-                prem: r.put_prem 
-            }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
-        
-        this.updateTopStatList('top-call-oi', topCallOI);
-        this.updateTopStatList('top-put-oi', topPutOI);
-        this.updateTopStatList('top-call-vol', topCallVol);
-        this.updateTopStatList('top-put-vol', topPutVol);
-        
-        console.log('✅ [STATS] Статистика обновлена');
-    } catch (error) {
-        console.error('❌ [STATS] Ошибка обновления статистики:', error);
-    }
-},
+     * Обновление статистики - ИСПРАВЛЕНО
+     */
+    updateTopStats(records) {
+        try {
+            if (!records || records.length === 0) return;
+            
+            const sorted = [...records].sort((a, b) => parseFloat(a.s) - parseFloat(b.s));
+            
+            // Маппируем в нужный формат
+            const adjustedRecords = sorted.map(r => ({
+                strike: parseFloat(r.s),
+                adjusted_s: parseFloat(r.s) + this.forwardAdj,
+                call_oi: (r.c && r.c.oi) ? parseInt(r.c.oi) : 0,
+                call_vol: (r.c && r.c.v) ? parseInt(r.c.v) : 0,
+                call_prem: (r.c && r.c.pr) ? parseFloat(r.c.pr) : 0,
+                put_oi: (r.p && r.p.oi) ? parseInt(r.p.oi) : 0,
+                put_vol: (r.p && r.p.v) ? parseInt(r.p.v) : 0,
+                put_prem: (r.p && r.p.pr) ? parseFloat(r.p.pr) : 0
+            }));
+            
+            const topCallOI = adjustedRecords
+                .map(r => ({ 
+                    strike: r.strike, 
+                    adjusted_strike: r.adjusted_s, 
+                    value: r.call_oi, 
+                    prem: r.call_prem 
+                }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 5);
+            
+            const topPutOI = adjustedRecords
+                .map(r => ({ 
+                    strike: r.strike, 
+                    adjusted_strike: r.adjusted_s, 
+                    value: r.put_oi, 
+                    prem: r.put_prem 
+                }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 5);
+            
+            const topCallVol = adjustedRecords
+                .map(r => ({ 
+                    strike: r.strike, 
+                    adjusted_strike: r.adjusted_s, 
+                    value: r.call_vol, 
+                    prem: r.call_prem 
+                }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 5);
+            
+            const topPutVol = adjustedRecords
+                .map(r => ({ 
+                    strike: r.strike, 
+                    adjusted_strike: r.adjusted_s, 
+                    value: r.put_vol, 
+                    prem: r.put_prem 
+                }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 5);
+            
+            this.updateTopStatList('top-call-oi', topCallOI);
+            this.updateTopStatList('top-put-oi', topPutOI);
+            this.updateTopStatList('top-call-vol', topCallVol);
+            this.updateTopStatList('top-put-vol', topPutVol);
+            
+            console.log('✅ [STATS] Статистика обновлена');
+        } catch (error) {
+            console.error('❌ [STATS] Ошибка обновления статистики:', error);
+        }
+    },
     
     /**
      * Обновление списка статистики
@@ -789,7 +788,7 @@ updateTopStats(records) {
     },
     
     /**
-     * Обновление UI аналитики
+     * Обновление UI аналитики - ИСПРАВЛЕННАЯ
      */
     updateAnalyticsUI(data) {
         try {
@@ -805,226 +804,249 @@ updateTopStats(records) {
             if (data.em !== undefined) {
                 const em = parseFloat(data.em);
                 const emEl = document.getElementById('em');
-                const emRangeEl = document.getElementById('em-range');
-                
                 if (emEl) emEl.innerText = '±$' + em.toFixed(1);
-                if (emRangeEl && this.currentPrice > 0) {
-                    const up = (this.currentPrice + em).toFixed(0);
-                    const down = (this.currentPrice - em).toFixed(0);
-                    emRangeEl.innerText = `Range: $${down} - $${up}`;
-                }
             }
             
             // Нулевая гамма
             if (data.zg !== undefined) {
                 const zgEl = document.getElementById('zg');
-                const zgPosEl = document.getElementById('zg-pos');
                 const zgValue = parseFloat(data.zg);
-            if (zgEl) zgEl.innerText = '$' + zgValue.toFixed(1);
-            if (zgPosEl && this.currentPrice > 0) {
-                const diff = this.currentPrice - zgValue;
-                if (Math.abs(diff) < 50) zgPosEl.innerHTML = '<span style="color:var(--gold)">🎯 ОЧЕНЬ БЛИЗКО</span>';
-                else if (diff > 0) zgPosEl.innerHTML = `<span style="color:var(--call)">↑ +${Math.abs(diff).toFixed(1)}</span>`;
-                else zgPosEl.innerHTML = `<span style="color:var(--put)">↓ ${diff.toFixed(1)}</span>`;
+                if (zgEl) zgEl.innerText = '$' + zgValue.toFixed(1);
             }
-        }
-        
-        // Соотношение Call/Put
-        if (data.cp_ratio !== undefined) {
-            const cpRatioEl = document.getElementById('cp-ratio');
-            if (cpRatioEl) cpRatioEl.innerText = parseFloat(data.cp_ratio).toFixed(2);
             
-            const sentimentEl = document.getElementById('sentiment');
-            if (sentimentEl) {
-                const ratio = parseFloat(data.cp_ratio);
-                if (ratio > 1.2) sentimentEl.innerHTML = '<span style="color:var(--call)">BEARISH 📉</span>';
-                else if (ratio < 0.8) sentimentEl.innerHTML = '<span style="color:var(--put)">BULLISH 📈</span>';
-                else sentimentEl.innerHTML = '<span style="color:#aaa">NEUTRAL ➡️</span>';
+            // Соотношение Call/Put
+            if (data.cp_ratio !== undefined) {
+                const cpRatioEl = document.getElementById('cp-ratio');
+                if (cpRatioEl) cpRatioEl.innerText = parseFloat(data.cp_ratio).toFixed(2);
             }
+        } catch (error) {
+            console.error('❌ [ANALYTICS UI] Ошибка обновления UI аналитики:', error);
         }
-    } catch (error) {
-        console.error('❌ [ANALYTICS UI] Ошибка обновления UI аналитики:', error);
-    }
-},
-
-/**
- * Отображение TOP безубытков
- */
-displayTopBreakevens(breakevens) {
-    try {
-        const container = document.getElementById('top-breakevens');
-        if (!container) return;
-        
-        if (!breakevens || breakevens.length === 0) {
-            container.innerHTML = '<div style="text-align:center; color:#888; padding:30px;">No breakeven data</div>';
-            return;
-        }
-        
-        const displayBreakevens = breakevens.slice(0, 10);
-        
-        container.innerHTML = displayBreakevens.map((b, index) => `
-            <div style="background:${b.type === 'CALL' ? 'rgba(0, 230, 118, 0.1)' : 'rgba(255, 23, 68, 0.1)'}; border:2px solid ${b.type === 'CALL' ? 'var(--call)' : 'var(--put)'}; border-radius:10px; padding:15px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <div style="font-weight:800; color:${b.type === 'CALL' ? 'var(--call)' : 'var(--put)'};">#${index + 1} ${b.type}</div>
-                    <div style="font-weight:700; color:var(--gold);">$${b.be?.toFixed(1) || '0'}</div>
-                </div>
-            </div>
-        `).join('');
-        
-        console.log('✅ [BREAKEVENS] Безубытки отрендерены');
-    } catch (error) {
-        console.error('❌ [BREAKEVENS] Ошибка отображения безубытков:', error);
-    }
-},
-
-/**
- * Обновление времени
- */
-updateTime() {
-    try {
-        const now = new Date();
-        const updatedEl = document.getElementById('updated');
-        if (updatedEl) {
-            updatedEl.innerText = now.toLocaleTimeString();
-        }
-    } catch (error) {
-        console.error('❌ [TIME] Ошибка обновления времени:', error);
-    }
-},
-
-/**
- * Переключение отображения премий
- */
-togglePremium() {
-    try {
-        this.showPremiums = !this.showPremiums;
-        
-        const btn = document.getElementById('btn-prem');
-        if (btn) {
-            btn.innerText = this.showPremiums ? 'ON' : 'OFF';
-            btn.classList.toggle('active', this.showPremiums);
-        }
-        
-        this.reloadCurrentDTE();
-        console.log('✅ [UI] Premium отображение переключено');
-    } catch (error) {
-        console.error('❌ [UI] Ошибка переключения премий:', error);
-    }
-},
-
-/**
- * Применение коррекции вперед
- */
-applyForwardAdjustment() {
-    try {
-        if (this.isTrial) {
-            this.showNotification('Forward Adjustment доступен только в PREMIUM версии', 'warning');
-            const input = document.getElementById('forward-adj');
-            if (input) input.value = 0;
-            return;
-        }
-        
-        const input = document.getElementById('forward-adj');
-        if (!input) return;
-        
-        const newValue = parseFloat(input.value) || 0;
-        this.forwardAdj = newValue;
-        
-        this.reloadCurrentDTE();
-        console.log('✅ [FORWARD] Коррекция применена:', newValue);
-    } catch (error) {
-        console.error('❌ [FORWARD] Ошибка применения коррекции:', error);
-    }
-},
-
-/**
- * Перезагрузка текущего DTE
- */
-reloadCurrentDTE() {
-    try {
-        if (this.dteList.length === 0) return;
-        
-        const dteItem = this.dteList[this.currentDTEIndex];
-        const cacheKey = Constants.CACHE_VERSION + ':' + dteItem.key;
-        
-        CacheService.delete(cacheKey);
-        this.loadData(this.currentDTEIndex);
-    } catch (error) {
-        console.error('❌ [RELOAD] Ошибка перезагрузки DTE:', error);
-    }
-},
-
-/**
- * Показ уведомления
- */
-showNotification(message, type = 'info') {
-    try {
-        const colors = { 
-            success: '#00E676', 
-            error: '#FF1744', 
-            warning: '#FFD700', 
-            info: '#2196F3' 
-        };
-        
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed; top: 100px; right: 20px;
-            background: rgba(20, 20, 20, 0.95); color: white;
-            padding: 15px 20px; border-radius: 8px;
-            border-left: 4px solid ${colors[type]};
-            box-shadow: 0 5px 20px rgba(0,0,0,0.5); z-index: 10000;
-            max-width: 400px; font-weight: 600;
-        `;
-        
-        notification.innerHTML = `
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div style="width:8px; height:8px; border-radius:50%; background:${colors[type]};"></div>
-                <div>${message}</div>
-            </div>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            if (notification.parentElement) {
-                document.body.removeChild(notification);
-            }
-        }, 3000);
-    } catch (error) {
-        console.error('❌ [NOTIFICATION] Ошибка показа уведомления:', error);
-    }
-},
-
-/**
- * Очистка приложения
- */
-cleanup() {
-    console.log('🧹 [CLEANUP] Очистка приложения...');
+    },
     
-    try {
-        if (this.priceInterval) clearInterval(this.priceInterval);
-        if (this.analyticsInterval) clearInterval(this.analyticsInterval);
-        if (this.dataInterval) clearInterval(this.dataInterval);
-        
-        if (window.ChartsModule) {
-            window.ChartsModule.destroyAllCharts();
+    /**
+     * Отображение TOP безубытков
+     */
+    displayTopBreakevens(breakevens) {
+        try {
+            const container = document.getElementById('top-breakevens');
+            if (!container) {
+                // Создаем контейнер если его нет
+                const statsContainer = document.querySelector('.top-stats-grid');
+                if (statsContainer) {
+                    const breakevenBox = document.createElement('div');
+                    breakevenBox.className = 'top-stat-box';
+                    breakevenBox.innerHTML = `
+                        <div class="top-stat-header">
+                            <div class="top-stat-name">TOP BREAKEVENS</div>
+                            <div class="top-stat-icon">🎯</div>
+                        </div>
+                        <div class="top-stat-list" id="top-breakevens">
+                            ${breakevens && breakevens.length > 0 ? 
+                                breakevens.slice(0, 5).map(b => `
+                                    <div class="top-stat-item">
+                                        <span class="top-stat-strike" style="color:${b.type === 'CALL' ? 'var(--call)' : 'var(--put)'};">${b.type}</span>
+                                        <span class="top-stat-value" style="color:var(--gold);">$${b.be?.toFixed(1) || '0'}</span>
+                                    </div>
+                                `).join('') : 
+                                '<div style="text-align:center; color:#888; padding:10px;">No data</div>'
+                            }
+                        </div>
+                    `;
+                    statsContainer.appendChild(breakevenBox);
+                }
+                return;
+            }
+            
+            if (!breakevens || breakevens.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#888; padding:10px;">No breakeven data</div>';
+                return;
+            }
+            
+            container.innerHTML = breakevens.slice(0, 5).map((b, index) => `
+                <div class="top-stat-item">
+                    <span class="top-stat-strike" style="color:${b.type === 'CALL' ? 'var(--call)' : 'var(--put)'};">${b.type} #${index + 1}</span>
+                    <span class="top-stat-value" style="color:var(--gold);">$${b.be?.toFixed(1) || '0'}</span>
+                </div>
+            `).join('');
+            
+            console.log('✅ [BREAKEVENS] Безубытки отрендерены');
+        } catch (error) {
+            console.error('❌ [BREAKEVENS] Ошибка отображения безубытков:', error);
         }
-        
-        if (window.CacheService) {
-            window.CacheService.clear();
+    },
+    
+    /**
+     * Обновление времени
+     */
+    updateTime() {
+        try {
+            const now = new Date();
+            const updatedEl = document.getElementById('updated');
+            if (updatedEl) {
+                updatedEl.innerText = now.toLocaleTimeString();
+            }
+        } catch (error) {
+            console.error('❌ [TIME] Ошибка обновления времени:', error);
         }
+    },
+    
+    /**
+     * Переключение отображения премий
+     */
+    togglePremium() {
+        try {
+            this.showPremiums = !this.showPremiums;
+            
+            const btn = document.getElementById('btn-prem');
+            if (btn) {
+                btn.innerText = this.showPremiums ? 'ON' : 'OFF';
+                btn.classList.toggle('active', this.showPremiums);
+            }
+            
+            this.reloadCurrentDTE();
+            console.log('✅ [UI] Premium отображение переключено');
+        } catch (error) {
+            console.error('❌ [UI] Ошибка переключения премий:', error);
+        }
+    },
+    
+    /**
+     * Применение коррекции вперед
+     */
+    applyForwardAdjustment() {
+        try {
+            if (this.isTrial) {
+                this.showNotification('Forward Adjustment доступен только в PREMIUM версии', 'warning');
+                const input = document.getElementById('forward-adj');
+                if (input) input.value = 0;
+                return;
+            }
+            
+            const input = document.getElementById('forward-adj');
+            if (!input) return;
+            
+            const newValue = parseFloat(input.value) || 0;
+            this.forwardAdj = newValue;
+            
+            this.reloadCurrentDTE();
+            console.log('✅ [FORWARD] Коррекция применена:', newValue);
+        } catch (error) {
+            console.error('❌ [FORWARD] Ошибка применения коррекции:', error);
+        }
+    },
+    
+    /**
+     * Изменение количества отображаемых страйков
+     */
+    changeStrikeCount() {
+        try {
+            const input = document.getElementById('strike-count');
+            if (!input) return;
+            
+            const newCount = parseInt(input.value) || 15;
+            if (newCount < 5 || newCount > 30) {
+                this.showNotification('Количество страйков должно быть от 5 до 30', 'warning');
+                return;
+            }
+            
+            this.displayCount = newCount;
+            this.reloadCurrentDTE();
+            console.log(`✅ [TABLE] Количество страйков изменено: ${newCount}`);
+        } catch (error) {
+            console.error('❌ [TABLE] Ошибка изменения количества страйков:', error);
+        }
+    },
+    
+    /**
+     * Перезагрузка текущего DTE
+     */
+    reloadCurrentDTE() {
+        try {
+            if (this.dteList.length === 0) return;
+            
+            const dteItem = this.dteList[this.currentDTEIndex];
+            const cacheKey = Constants.CACHE_VERSION + ':' + dteItem.key;
+            
+            CacheService.delete(cacheKey);
+            this.loadData(this.currentDTEIndex);
+        } catch (error) {
+            console.error('❌ [RELOAD] Ошибка перезагрузки DTE:', error);
+        }
+    },
+    
+    /**
+     * Показ уведомления
+     */
+    showNotification(message, type = 'info') {
+        try {
+            const colors = { 
+                success: '#00E676', 
+                error: '#FF1744', 
+                warning: '#FFD700', 
+                info: '#2196F3' 
+            };
+            
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed; top: 100px; right: 20px;
+                background: rgba(20, 20, 20, 0.95); color: white;
+                padding: 15px 20px; border-radius: 8px;
+                border-left: 4px solid ${colors[type]};
+                box-shadow: 0 5px 20px rgba(0,0,0,0.5); z-index: 10000;
+                max-width: 400px; font-weight: 600;
+            `;
+            
+            notification.innerHTML = `
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:8px; height:8px; border-radius:50%; background:${colors[type]};"></div>
+                    <div>${message}</div>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    document.body.removeChild(notification);
+                }
+            }, 3000);
+        } catch (error) {
+            console.error('❌ [NOTIFICATION] Ошибка показа уведомления:', error);
+        }
+    },
+    
+    /**
+     * Очистка приложения
+     */
+    cleanup() {
+        console.log('🧹 [CLEANUP] Очистка приложения...');
         
-        this.initialized = false;
-        console.log('✅ [CLEANUP] Приложение очищено');
-    } catch (error) {
-        console.error('❌ [CLEANUP] Ошибка при очистке:', error);
+        try {
+            if (this.priceInterval) clearInterval(this.priceInterval);
+            if (this.analyticsInterval) clearInterval(this.analyticsInterval);
+            if (this.dataInterval) clearInterval(this.dataInterval);
+            
+            if (window.ChartsModule) {
+                window.ChartsModule.destroyAllCharts();
+            }
+            
+            if (window.CacheService) {
+                window.CacheService.clear();
+            }
+            
+            this.initialized = false;
+            console.log('✅ [CLEANUP] Приложение очищено');
+        } catch (error) {
+            console.error('❌ [CLEANUP] Ошибка при очистке:', error);
+        }
     }
-}
 };
+
 // Экспорт
 if (typeof module !== 'undefined' && module.exports) {
-module.exports = App;
+    module.exports = App;
 } else {
-window.app = App;
+    window.app = App;
 }
 console.log('✅ App модуль загружен');
