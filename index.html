@@ -158,10 +158,42 @@
             </div>
 
             <!-- ГРАФИКИ -->
-            <h2 class="section-header">📈 ВИЗУАЛЬНАЯ АНАЛИТИКА</h2>
-            <div class="chart-grid-8" id="charts-container">
-                <div style="text-align: center; color: #666; padding: 40px;">Загрузка графиков...</div>
-            </div>
+            <!-- 📈 ГРАФИКИ -->
+<h2 class="section-header">📈 ВИЗУАЛЬНАЯ АНАЛИТИКА</h2>
+<div class="chart-grid-8" id="charts-container">
+    <div class="chart-container">
+        <div class="chart-title">Open Interest Distribution</div>
+        <canvas id="chart-oi"></canvas>
+    </div>
+    <div class="chart-container">
+        <div class="chart-title">Volume Heatmap</div>
+        <canvas id="chart-vol"></canvas>
+    </div>
+    <div class="chart-container">
+        <div class="chart-title">IV Smile Curve</div>
+        <canvas id="chart-iv"></canvas>
+    </div>
+    <div class="chart-container">
+        <div class="chart-title">Max Pain Curve</div>
+        <canvas id="chart-mp"></canvas>
+    </div>
+    <div class="chart-container">
+        <div class="chart-title">Gamma Exposure</div>
+        <canvas id="chart-gamma"></canvas>
+    </div>
+    <div class="chart-container">
+        <div class="chart-title">Delta Profile</div>
+        <canvas id="chart-delta"></canvas>
+    </div>
+    <div class="chart-container">
+        <div class="chart-title">GEX Profile</div>
+        <canvas id="chart-gex"></canvas>
+    </div>
+    <div class="chart-container">
+        <div class="chart-title">Theta Decay</div>
+        <canvas id="chart-theta"></canvas>
+    </div>
+</div>
 
             <!-- ТАБЛИЦА И СТАТИСТИКА -->
             <div class="main-table-container" id="table-container">
