@@ -446,6 +446,37 @@ const App = {
             console.error('❌ [UI] Ошибка рендеринга кнопок DTE:', error);
         }
     },
+
+    // ДОБАВИТЬ ПОСЛЕ renderDTEButtons():
+this.updateControlPanel();
+
+// И добавить новый метод:
+/**
+ * Обновление контрольной панели (видимость Forward и Strikes)
+ */
+updateControlPanel() {
+    try {
+        const forwardInput = document.getElementById('forward-adj');
+        const strikeCountInput = document.getElementById('strike-count');
+        
+        // Показываем эти элементы
+        if (forwardInput) forwardInput.style.display = 'block';
+        if (strikeCountInput) strikeCountInput.style.display = 'block';
+        
+        // Проверяем если TRIAL - отключаем Forward
+        if (this.isTrial) {
+            if (forwardInput) {
+                forwardInput.disabled = true;
+                forwardInput.style.opacity = '0.5';
+                forwardInput.title = 'Available in PREMIUM';
+            }
+        }
+        
+        console.log('✅ [CONTROL] Панель управления обновлена');
+    } catch (error) {
+        console.error('❌ [CONTROL] Ошибка обновления панели:', error);
+    }
+}
     
     /**
      * Загрузка данных для DTE - ИСПРАВЛЕНО
@@ -669,76 +700,81 @@ const App = {
     },
     
     /**
-     * Обновление статистики - ИСПРАВЛЕНО
-     */
-    updateTopStats(records) {
-        try {
-            if (!records || records.length === 0) return;
-            
-            const sorted = [...records].sort((a, b) => parseFloat(a.s) - parseFloat(b.s));
-            
-            // Маппируем в нужный формат
-            const adjustedRecords = sorted.map(r => ({
-                strike: parseFloat(r.s),
-                adjusted_s: parseFloat(r.s) + this.forwardAdj,
-                call_oi: (r.c && r.c.oi) ? parseInt(r.c.oi) : 0,
-                call_vol: (r.c && r.c.v) ? parseInt(r.c.v) : 0,
-                call_prem: (r.c && r.c.pr) ? parseFloat(r.c.pr) : 0,
-                put_oi: (r.p && r.p.oi) ? parseInt(r.p.oi) : 0,
-                put_vol: (r.p && r.p.v) ? parseInt(r.p.v) : 0,
-                put_prem: (r.p && r.p.pr) ? parseFloat(r.p.pr) : 0
-            }));
-            
-            const topCallOI = adjustedRecords
-                .map(r => ({ 
-                    strike: r.strike, 
-                    adjusted_strike: r.adjusted_s, 
-                    value: r.call_oi, 
-                    prem: r.call_prem 
-                }))
-                .sort((a, b) => b.value - a.value)
-                .slice(0, 5);
-            
-            const topPutOI = adjustedRecords
-                .map(r => ({ 
-                    strike: r.strike, 
-                    adjusted_strike: r.adjusted_s, 
-                    value: r.put_oi, 
-                    prem: r.put_prem 
-                }))
-                .sort((a, b) => b.value - a.value)
-                .slice(0, 5);
-            
-            const topCallVol = adjustedRecords
-                .map(r => ({ 
-                    strike: r.strike, 
-                    adjusted_strike: r.adjusted_s, 
-                    value: r.call_vol, 
-                    prem: r.call_prem 
-                }))
-                .sort((a, b) => b.value - a.value)
-                .slice(0, 5);
-            
-            const topPutVol = adjustedRecords
-                .map(r => ({ 
-                    strike: r.strike, 
-                    adjusted_strike: r.adjusted_s, 
-                    value: r.put_vol, 
-                    prem: r.put_prem 
-                }))
-                .sort((a, b) => b.value - a.value)
-                .slice(0, 5);
-            
-            this.updateTopStatList('top-call-oi', topCallOI);
-            this.updateTopStatList('top-put-oi', topPutOI);
-            this.updateTopStatList('top-call-vol', topCallVol);
-            this.updateTopStatList('top-put-vol', topPutVol);
-            
-            console.log('✅ [STATS] Статистика обновлена');
-        } catch (error) {
-            console.error('❌ [STATS] Ошибка обновления статистики:', error);
-        }
-    },
+ * ИСПРАВЛЕННОЕ обновление статистики с VOL
+ */
+updateTopStats(records) {
+    try {
+        if (!records || records.length === 0) return;
+        
+        const sorted = [...records].sort((a, b) => parseFloat(a.s) - parseFloat(b.s));
+        
+        // Маппируем в нужный формат
+        const adjustedRecords = sorted.map(r => ({
+            strike: parseFloat(r.s),
+            adjusted_s: parseFloat(r.s) + this.forwardAdj,
+            call_oi: (r.c && r.c.oi) ? parseInt(r.c.oi) : 0,
+            call_vol: (r.c && r.c.v) ? parseInt(r.c.v) : 0,
+            call_prem: (r.c && r.c.pr) ? parseFloat(r.c.pr) : 0,
+            put_oi: (r.p && r.p.oi) ? parseInt(r.p.oi) : 0,
+            put_vol: (r.p && r.p.v) ? parseInt(r.p.v) : 0,
+            put_prem: (r.p && r.p.pr) ? parseFloat(r.p.pr) : 0
+        }));
+        
+        // ✅ TOP CALL OI
+        const topCallOI = adjustedRecords
+            .map(r => ({ 
+                strike: r.strike, 
+                adjusted_strike: r.adjusted_s, 
+                value: r.call_oi, 
+                prem: r.call_prem 
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+        
+        // ✅ TOP PUT OI
+        const topPutOI = adjustedRecords
+            .map(r => ({ 
+                strike: r.strike, 
+                adjusted_strike: r.adjusted_s, 
+                value: r.put_oi, 
+                prem: r.put_prem 
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+        
+        // ✅ TOP CALL VOL (ИСПРАВЛЕНО - БЫЛ BUG)
+        const topCallVol = adjustedRecords
+            .map(r => ({ 
+                strike: r.strike, 
+                adjusted_strike: r.adjusted_s, 
+                value: r.call_vol,  // ← БЫЛА call_oi, ТЕПЕРЬ call_vol!
+                prem: r.call_prem 
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+        
+        // ✅ TOP PUT VOL (ИСПРАВЛЕНО - БЫЛ BUG)
+        const topPutVol = adjustedRecords
+            .map(r => ({ 
+                strike: r.strike, 
+                adjusted_strike: r.adjusted_s, 
+                value: r.put_vol,  // ← БЫЛА put_oi, ТЕПЕРЬ put_vol!
+                prem: r.put_prem 
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+        
+        // Обновляем UI
+        this.updateTopStatList('top-call-oi', topCallOI);
+        this.updateTopStatList('top-put-oi', topPutOI);
+        this.updateTopStatList('top-call-vol', topCallVol);
+        this.updateTopStatList('top-put-vol', topPutVol);
+        
+        console.log('✅ [STATS] Статистика обновлена');
+    } catch (error) {
+        console.error('❌ [STATS] Ошибка обновления статистики:', error);
+    }
+},
     
     /**
      * Обновление списка статистики
@@ -825,56 +861,162 @@ const App = {
     },
     
     /**
-     * Отображение TOP безубытков
-     */
-    displayTopBreakevens(breakevens) {
-        try {
-            const container = document.getElementById('top-breakevens');
-            if (!container) {
-                // Создаем контейнер если его нет
-                const statsContainer = document.querySelector('.top-stats-grid');
-                if (statsContainer) {
-                    const breakevenBox = document.createElement('div');
-                    breakevenBox.className = 'top-stat-box';
-                    breakevenBox.innerHTML = `
-                        <div class="top-stat-header">
-                            <div class="top-stat-name">TOP BREAKEVENS</div>
-                            <div class="top-stat-icon">🎯</div>
-                        </div>
-                        <div class="top-stat-list" id="top-breakevens">
-                            ${breakevens && breakevens.length > 0 ? 
-                                breakevens.slice(0, 5).map(b => `
-                                    <div class="top-stat-item">
-                                        <span class="top-stat-strike" style="color:${b.type === 'CALL' ? 'var(--call)' : 'var(--put)'};">${b.type}</span>
-                                        <span class="top-stat-value" style="color:var(--gold);">$${b.be?.toFixed(1) || '0'}</span>
-                                    </div>
-                                `).join('') : 
-                                '<div style="text-align:center; color:#888; padding:10px;">No data</div>'
-                            }
-                        </div>
-                    `;
-                    statsContainer.appendChild(breakevenBox);
-                }
-                return;
-            }
-            
-            if (!breakevens || breakevens.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:#888; padding:10px;">No breakeven data</div>';
-                return;
-            }
-            
-            container.innerHTML = breakevens.slice(0, 5).map((b, index) => `
-                <div class="top-stat-item">
-                    <span class="top-stat-strike" style="color:${b.type === 'CALL' ? 'var(--call)' : 'var(--put)'};">${b.type} #${index + 1}</span>
-                    <span class="top-stat-value" style="color:var(--gold);">$${b.be?.toFixed(1) || '0'}</span>
-                </div>
-            `).join('');
-            
-            console.log('✅ [BREAKEVENS] Безубытки отрендерены');
-        } catch (error) {
-            console.error('❌ [BREAKEVENS] Ошибка отображения безубытков:', error);
+ * ИСПРАВЛЕННОЕ отображение TOP 10 BREAKEVENS (как на скрине 2)
+ */
+displayTopBreakevens(breakevens) {
+    try {
+        if (!breakevens || breakevens.length === 0) {
+            console.warn('⚠️ [BREAKEVENS] Нет данных');
+            return;
         }
-    },
+        
+        // Ищем контейнер для breakevens
+        let breakevensContainer = document.getElementById('breakevens-grid');
+        
+        // Если контейнера нет - создаем его
+        if (!breakevensContainer) {
+            const section = document.createElement('div');
+            section.style.cssText = `
+                margin: 60px 0;
+                padding: 0 40px;
+                width: 100%;
+            `;
+            
+            section.innerHTML = `
+                <h2 class="section-header">🎯 TOP 10 BREAKEVENS (MT5 READY)</h2>
+                <div id="breakevens-grid" style="
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                    gap: 20px;
+                    padding: 0;
+                "></div>
+            `;
+            
+            // Вставляем ПЕРЕД bottom-control-panel
+            const controlPanel = document.querySelector('.bottom-control-panel');
+            if (controlPanel) {
+                controlPanel.parentElement.insertBefore(section, controlPanel);
+            } else {
+                document.querySelector('.container').appendChild(section);
+            }
+            
+            breakevensContainer = document.getElementById('breakevens-grid');
+        }
+        
+        // Берем ТОП 10 и сортируем (CALL первыми)
+        const top10 = breakevens.slice(0, 10);
+        const callBreaks = top10.filter(b => b.type === 'CALL').sort((a, b) => (b.oi || 0) - (a.oi || 0));
+        const putBreaks = top10.filter(b => b.type === 'PUT').sort((a, b) => (b.oi || 0) - (a.oi || 0));
+        const sorted = [...callBreaks, ...putBreaks].slice(0, 10);
+        
+        // HTML для каждого breakeven (как на скрине 2)
+        breakevensContainer.innerHTML = sorted.map((b, idx) => {
+            const isCall = b.type === 'CALL';
+            const borderColor = isCall ? '#00E676' : '#FF1744';
+            const bgColor = isCall ? 'rgba(0, 230, 118, 0.05)' : 'rgba(255, 23, 68, 0.05)';
+            const distance = b.s ? ((Math.abs(parseFloat(b.be || 0) - parseFloat(b.s)) / parseFloat(b.s)) * 100).toFixed(2) : 0;
+            const isVeryClose = distance < 1;
+            
+            return `
+                <div style="
+                    background: ${bgColor};
+                    border: 2px solid ${borderColor};
+                    border-radius: 15px;
+                    padding: 20px;
+                    position: relative;
+                    overflow: hidden;
+                ">
+                    <!-- Номер и тип -->
+                    <div style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 15px;
+                    ">
+                        <div style="
+                            background: ${borderColor};
+                            color: #000;
+                            width: 30px;
+                            height: 30px;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-weight: 800;
+                            font-size: 1.2rem;
+                        ">
+                            ${idx + 1}
+                        </div>
+                        <div style="
+                            color: ${borderColor};
+                            font-weight: 700;
+                            font-size: 1rem;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                        ">
+                            ${b.type}
+                        </div>
+                    </div>
+                    
+                    <!-- Breakeven цена -->
+                    <div style="
+                        font-size: 2rem;
+                        font-weight: 900;
+                        color: var(--gold);
+                        margin: 10px 0;
+                        text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+                    ">
+                        $${parseFloat(b.be || 0).toFixed(1)}
+                    </div>
+                    
+                    <!-- Детали -->
+                    <div style="
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 10px;
+                        margin: 15px 0;
+                        padding: 12px 0;
+                        border-top: 1px solid rgba(255, 255, 255, 0.1);
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                    ">
+                        <div>
+                            <div style="color: #888; font-size: 0.75rem; text-transform: uppercase;">Strike</div>
+                            <div style="color: #fff; font-weight: 700;">$${parseFloat(b.s || 0).toFixed(1)}</div>
+                        </div>
+                        <div>
+                            <div style="color: #888; font-size: 0.75rem; text-transform: uppercase;">Premium</div>
+                            <div style="color: ${borderColor}; font-weight: 700;">$${parseFloat(b.pr || 0).toFixed(2)}</div>
+                        </div>
+                        <div>
+                            <div style="color: #888; font-size: 0.75rem; text-transform: uppercase;">Vol</div>
+                            <div style="color: #fff; font-weight: 700;">${parseInt(b.v || 0).toLocaleString()}</div>
+                        </div>
+                        <div>
+                            <div style="color: #888; font-size: 0.75rem; text-transform: uppercase;">OI</div>
+                            <div style="color: #fff; font-weight: 700;">${parseInt(b.oi || 0).toLocaleString()}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Distance -->
+                    <div style="
+                        padding: 10px 0;
+                        font-size: 0.9rem;
+                        font-weight: 600;
+                        color: ${isVeryClose ? '#FFD700' : borderColor};
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    ">
+                        Distance: ${distance}% ${isVeryClose ? '⬇️ VERY CLOSE!' : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        console.log('✅ [BREAKEVENS] ТОП 10 отрендерены');
+    } catch (error) {
+        console.error('❌ [BREAKEVENS] Ошибка отображения:', error);
+    }
+},
     
     /**
      * Обновление времени
@@ -892,24 +1034,43 @@ const App = {
     },
     
     /**
-     * Переключение отображения премий
-     */
-    togglePremium() {
-        try {
-            this.showPremiums = !this.showPremiums;
+ * ИСПРАВЛЕННОЕ переключение отображения премий
+ */
+togglePremium() {
+    try {
+        // Переключаем флаг
+        this.showPremiums = !this.showPremiums;
+        
+        console.log(`💳 [PREMIUM] Переключение: ${this.showPremiums ? 'ON' : 'OFF'}`);
+        
+        // ✅ Находим ВСЕ кнопки с id="btn-prem" и обновляем их
+        const allPremButtons = document.querySelectorAll('#btn-prem');
+        allPremButtons.forEach(btn => {
+            btn.innerText = this.showPremiums ? 'ON' : 'OFF';
+            btn.classList.toggle('active', this.showPremiums);
             
-            const btn = document.getElementById('btn-prem');
-            if (btn) {
-                btn.innerText = this.showPremiums ? 'ON' : 'OFF';
-                btn.classList.toggle('active', this.showPremiums);
+            // Визуальные стили
+            if (this.showPremiums) {
+                btn.style.background = 'var(--gradient-gold)';
+                btn.style.color = '#000';
+                btn.style.fontWeight = '800';
+                btn.style.boxShadow = '0 0 15px var(--gold-glow)';
+            } else {
+                btn.style.background = 'rgba(40, 40, 40, 0.9)';
+                btn.style.color = 'var(--text-muted)';
+                btn.style.fontWeight = '600';
+                btn.style.boxShadow = 'none';
             }
-            
-            this.reloadCurrentDTE();
-            console.log('✅ [UI] Premium отображение переключено');
-        } catch (error) {
-            console.error('❌ [UI] Ошибка переключения премий:', error);
-        }
-    },
+        });
+        
+        // ✅ Перерисовываем таблицу с новыми премиями
+        this.reloadCurrentDTE();
+        
+        console.log('✅ [PREMIUM] Кнопки обновлены и таблица перерисована');
+    } catch (error) {
+        console.error('❌ [PREMIUM] Ошибка переключения:', error);
+    }
+},
     
     /**
      * Применение коррекции вперед
