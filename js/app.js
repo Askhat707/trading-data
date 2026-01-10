@@ -529,48 +529,83 @@ async loadData(index) {
     },
     
     /**
-     * Рендеринг таблицы
-     */
-    renderTable(records) {
-        try {
-            const tbody = document.getElementById('table-body');
-            if (!tbody || !records || records.length === 0) return;
-            
-            let workingPrice = this.currentPrice;
-            if (workingPrice <= 0) {
-                const sorted = [...records].sort((a,b) => parseFloat(a.s) - parseFloat(b.s));
-                if (sorted.length > 0) {
-                    workingPrice = parseFloat(sorted[Math.floor(sorted.length/2)].s);
-                } else {
-                    workingPrice = 2600;
-                }
+ * Рендеринг таблицы - ИСПРАВЛЕНО
+ */
+renderTable(records) {
+    try {
+        const tbody = document.getElementById('table-body');
+        if (!tbody || !records || records.length === 0) {
+            console.warn('⚠️ [TABLE] Таблица не найдена или нет записей');
+            return;
+        }
+        
+        console.log(`\n📋 [TABLE] Начало рендеринга ${records.length} записей`);
+        
+        let workingPrice = this.currentPrice;
+        if (workingPrice <= 0) {
+            const sorted = [...records].sort((a,b) => parseFloat(a.s) - parseFloat(b.s));
+            if (sorted.length > 0) {
+                workingPrice = parseFloat(sorted[Math.floor(sorted.length/2)].s);
+            } else {
+                workingPrice = 4520;
             }
-            
-            const sorted = [...records].sort((a, b) => parseFloat(a.s) - parseFloat(b.s));
-            let atmStrike = null;
-            let minDiff = Infinity;
-            
-            sorted.forEach(r => {
-                const diff = Math.abs(parseFloat(r.s) - workingPrice);
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    atmStrike = parseFloat(r.s);
-                }
-            });
-            
-            const halfCount = Math.floor(this.displayCount / 2);
-            const startIdx = Math.max(0, sorted.findIndex(r => parseFloat(r.s) === atmStrike) - halfCount);
-            const endIdx = Math.min(sorted.length, startIdx + this.displayCount);
-            const displayRecords = sorted.slice(startIdx, endIdx);
-            
-            let html = '';
-            displayRecords.forEach(r => {
+        }
+        
+        console.log(`   💰 Working Price: $${workingPrice}`);
+        
+        const sorted = [...records].sort((a, b) => parseFloat(a.s) - parseFloat(b.s));
+        
+        // Находим ATM страйк
+        let atmStrike = null;
+        let minDiff = Infinity;
+        
+        sorted.forEach(r => {
+            const diff = Math.abs(parseFloat(r.s) - workingPrice);
+            if (diff < minDiff) {
+                minDiff = diff;
+                atmStrike = parseFloat(r.s);
+            }
+        });
+        
+        console.log(`   🎯 ATM Strike: $${atmStrike}`);
+        
+        const halfCount = Math.floor(this.displayCount / 2);
+        const startIdx = Math.max(0, sorted.findIndex(r => parseFloat(r.s) === atmStrike) - halfCount);
+        const endIdx = Math.min(sorted.length, startIdx + this.displayCount);
+        const displayRecords = sorted.slice(startIdx, endIdx);
+        
+        console.log(`   📊 Отобразим записей: ${displayRecords.length} (с ${startIdx} по ${endIdx})`);
+        
+        let html = '';
+        let rowCount = 0;
+        
+        displayRecords.forEach(r => {
+            try {
                 const strike = parseFloat(r.s);
                 const isATM = strike === atmStrike;
-                const call = r.c || {};
-                const put = r.p || {};
-                let displayedStrike = strike + this.forwardAdj;
                 
+                // ✅ ВАЖНО: Данные в формате {c: {...}, p: {...}, s: strike}
+                const call = (r.c && typeof r.c === 'object') ? r.c : {};
+                const put = (r.p && typeof r.p === 'object') ? r.p : {};
+                
+                // Достаем значения
+                const callOI = parseInt(call.oi) || 0;
+                const callVol = parseInt(call.v) || 0;
+                const callIV = parseFloat(call.iv) || 0;
+                const callDelta = parseFloat(call.d) || 0;
+                const callGamma = parseFloat(call.g) || 0;
+                const callTheta = parseFloat(call.t) || 0;
+                const callPrem = parseFloat(call.pr) || 0;
+                
+                const putOI = parseInt(put.oi) || 0;
+                const putVol = parseInt(put.v) || 0;
+                const putIV = parseFloat(put.iv) || 0;
+                const putDelta = parseFloat(put.d) || 0;
+                const putGamma = parseFloat(put.g) || 0;
+                const putTheta = parseFloat(put.t) || 0;
+                const putPrem = parseFloat(put.pr) || 0;
+                
+                // Цвета
                 const getColorForValue = (value) => {
                     if (value === 0 || value === undefined) return 'rgba(100, 100, 100, 0.3)';
                     if (value <= 50) return 'rgba(150, 150, 150, 0.4)';
@@ -582,12 +617,7 @@ async loadData(index) {
                     return 'rgba(255, 0, 0, 0.5)';
                 };
                 
-                const callOI = call.oi || 0;
-                const callVol = call.vol || 0;
-                const putOI = put.oi || 0;
-                const putVol = put.vol || 0;
-                const callPrem = call.pr || 0;
-                const putPrem = put.pr || 0;
+                let displayedStrike = strike + this.forwardAdj;
                 const callStrike = this.showPremiums ? (displayedStrike + callPrem).toFixed(1) : displayedStrike.toFixed(1);
                 const putStrike = this.showPremiums ? (displayedStrike - putPrem).toFixed(1) : displayedStrike.toFixed(1);
                 const callPremDisplay = this.showPremiums ? callPrem.toFixed(2) : '---';
@@ -600,18 +630,18 @@ async loadData(index) {
                         <td style="color: ${this.showPremiums ? 'var(--call)' : '#888'}; font-weight: ${this.showPremiums ? '700' : '400'}; background: ${this.showPremiums ? 'rgba(0, 230, 118, 0.1)' : 'transparent'};">
                             ${callPremDisplay}
                         </td>
-                        <td>${call.d ? call.d.toFixed(4) : '-'}</td>
-                        <td>${call.g ? call.g.toFixed(4) : '-'}</td>
-                        <td>${call.iv ? call.iv.toFixed(2) : '-'}</td>
+                        <td>${callDelta ? callDelta.toFixed(4) : '-'}</td>
+                        <td>${callGamma ? callGamma.toFixed(4) : '-'}</td>
+                        <td>${callIV ? callIV.toFixed(2) : '-'}</td>
                         <td class="strike-cell">
                             <div style="text-align: center;">
                                 <div style="font-size: 0.75em; color: #888; margin-bottom: 3px;">STRIKE</div>
                                 <div style="font-weight: 800; color: var(--gold); font-size: 1.1em;">$${displayedStrike.toFixed(1)}</div>
                             </div>
                         </td>
-                        <td>${put.iv ? put.iv.toFixed(2) : '-'}</td>
-                        <td>${put.g ? put.g.toFixed(4) : '-'}</td>
-                        <td>${put.d ? put.d.toFixed(4) : '-'}</td>
+                        <td>${putIV ? putIV.toFixed(2) : '-'}</td>
+                        <td>${putGamma ? putGamma.toFixed(4) : '-'}</td>
+                        <td>${putDelta ? putDelta.toFixed(4) : '-'}</td>
                         <td style="color: ${this.showPremiums ? 'var(--put)' : '#888'}; font-weight: ${this.showPremiums ? '700' : '400'}; background: ${this.showPremiums ? 'rgba(255, 23, 68, 0.1)' : 'transparent'};">
                             ${putPremDisplay}
                         </td>
@@ -619,14 +649,20 @@ async loadData(index) {
                         <td style="background: ${getColorForValue(putOI)}; font-weight: 600;">${putOI}</td>
                     </tr>
                 `;
-            });
-            
-            tbody.innerHTML = html;
-            console.log(`✅ [TABLE] Таблица отрендерена (${displayRecords.length} страйков)`);
-        } catch (error) {
-            console.error('❌ [TABLE] Ошибка рендеринга таблицы:', error);
-        }
-    },
+                rowCount++;
+            } catch (rowError) {
+                console.error(`   ⚠️ Ошибка обработки строки ${rowCount}:`, rowError);
+            }
+        });
+        
+        tbody.innerHTML = html;
+        console.log(`✅ [TABLE] Таблица отрендерена (${rowCount} строк)\n`);
+        
+    } catch (error) {
+        console.error('❌ [TABLE] Ошибка рендеринга таблицы:', error);
+    }
+
+ },
     
     /**
      * Обновление статистики
