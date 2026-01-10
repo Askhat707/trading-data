@@ -420,33 +420,47 @@ const ChartsModule = {
     },
     
     /**
-     * Расчёт датасетов для графиков
-     */
-    calculateDatasets(records, strikes) {
-        return {
-            callOI: records.map(r => r.c?.oi || 0),
-            putOI: records.map(r => r.p?.oi || 0),
-            callVol: records.map(r => r.c?.vol || 0),
-            putVol: records.map(r => r.p?.vol || 0),
-            callIV: records.map(r => r.c?.iv || 0),
-            putIV: records.map(r => r.p?.iv || 0),
-            callDelta: records.map(r => (r.c?.d || 0) * (r.c?.oi || 0) / 100),
-            putDelta: records.map(r => (r.p?.d || 0) * (r.p?.oi || 0) / 100),
-            callTheta: records.map(r => r.c?.t || 0),
-            putTheta: records.map(r => r.p?.t || 0),
-            netGamma: records.map(r => {
-                const callGamma = (r.c?.g || 0) * (r.c?.oi || 0);
-                const putGamma = (r.p?.g || 0) * (r.p?.oi || 0);
-                return callGamma - putGamma;
-            }),
-            netGEX: records.map(r => {
-                const strike = parseFloat(r.s);
-                const callGEX = (r.c?.oi || 0) * (r.c?.g || 0) * strike * 100;
-                const putGEX = (r.p?.oi || 0) * (r.p?.g || 0) * strike * 100;
-                return (callGEX - putGEX) / 1000000;
-            })
-        };
-    },
+ * Расчёт датасетов для графиков - ИСПРАВЛЕНО
+ */
+calculateDatasets(records, strikes) {
+    return {
+        callOI: records.map(r => (r.c && r.c.oi) ? parseInt(r.c.oi) : 0),
+        putOI: records.map(r => (r.p && r.p.oi) ? parseInt(r.p.oi) : 0),
+        callVol: records.map(r => (r.c && r.c.v) ? parseInt(r.c.v) : 0),
+        putVol: records.map(r => (r.p && r.p.v) ? parseInt(r.p.v) : 0),
+        callIV: records.map(r => (r.c && r.c.iv) ? parseFloat(r.c.iv) : 0),
+        putIV: records.map(r => (r.p && r.p.iv) ? parseFloat(r.p.iv) : 0),
+        callDelta: records.map(r => {
+            const d = (r.c && r.c.d) ? parseFloat(r.c.d) : 0;
+            const oi = (r.c && r.c.oi) ? parseInt(r.c.oi) : 0;
+            return (d * oi) / 100;
+        }),
+        putDelta: records.map(r => {
+            const d = (r.p && r.p.d) ? parseFloat(r.p.d) : 0;
+            const oi = (r.p && r.p.oi) ? parseInt(r.p.oi) : 0;
+            return (d * oi) / 100;
+        }),
+        callTheta: records.map(r => (r.c && r.c.t) ? parseFloat(r.c.t) : 0),
+        putTheta: records.map(r => (r.p && r.p.t) ? parseFloat(r.p.t) : 0),
+        netGamma: records.map(r => {
+            const callG = (r.c && r.c.g) ? parseFloat(r.c.g) : 0;
+            const callOI = (r.c && r.c.oi) ? parseInt(r.c.oi) : 0;
+            const putG = (r.p && r.p.g) ? parseFloat(r.p.g) : 0;
+            const putOI = (r.p && r.p.oi) ? parseInt(r.p.oi) : 0;
+            return (callG * callOI) - (putG * putOI);
+        }),
+        netGEX: records.map(r => {
+            const strike = parseFloat(r.s);
+            const callG = (r.c && r.c.g) ? parseFloat(r.c.g) : 0;
+            const callOI = (r.c && r.c.oi) ? parseInt(r.c.oi) : 0;
+            const putG = (r.p && r.p.g) ? parseFloat(r.p.g) : 0;
+            const putOI = (r.p && r.p.oi) ? parseInt(r.p.oi) : 0;
+            const callGEX = callOI * callG * strike * 100;
+            const putGEX = putOI * putG * strike * 100;
+            return (callGEX - putGEX) / 1000000;
+        })
+    };
+},
     
     /**
      * Расчёт потерь для Max Pain
