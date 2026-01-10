@@ -1,16 +1,69 @@
 // ============================================
-// 🌐 API СЕРВИСЫ - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// 🌐 API СЕРВИСЫ - ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ
 // ============================================
 
 const ApiService = {
     /**
-     * Получение цены из Firebase - ИСПРАВЛЕНО
+     * Получение данных для DTE - ГЛАВНАЯ ФУНКЦИЯ
+     */
+    async getDTEData(dteKey) {
+        try {
+            console.log(`📥 [API] Загружаем данные для ${dteKey}...`);
+            
+            const snap = await firebase.database().ref(dteKey).once('value');
+            
+            if (!snap.exists()) {
+                console.warn(`⚠️ [API] ${dteKey} не существует`);
+                return [];
+            }
+            
+            const val = snap.val();
+            console.log(`📊 [API] Структура ${dteKey}:`, {
+                hasData: !!val.data,
+                isArray: Array.isArray(val.data),
+                length: Array.isArray(val.data) ? val.data.length : 'N/A',
+                keys: Object.keys(val).slice(0, 10)
+            });
+            
+            let records = [];
+            
+            // ✅ Данные в .data массиве с формой {c: {...}, p: {...}, s: strike}
+            if (val.data && Array.isArray(val.data)) {
+                records = val.data.map(item => ({
+                    s: item.s,  // strike
+                    c: item.c || {},  // call data
+                    p: item.p || {}   // put data
+                }));
+                
+                console.log(`✅ [API] Найдено в ${dteKey}.data: ${records.length} записей`);
+                console.log(`   Первая запись:`, records[0]);
+                console.log(`   Последняя запись:`, records[records.length - 1]);
+                
+                return records;
+            }
+            
+            console.error(`❌ [API] Неожиданная структура для ${dteKey}`);
+            console.error(`   Ожидалось: .data как массив`);
+            console.error(`   Получено:`, {
+                type: typeof val,
+                keys: Object.keys(val || {})
+            });
+            
+            return [];
+            
+        } catch (error) {
+            console.error(`❌ [API] Ошибка получения данных для ${dteKey}:`, error);
+            return [];
+        }
+    },
+
+    /**
+     * Получение цены из Firebase
      */
     async getPrice() {
         try {
             console.log('💰 [API] Попытка загрузить цену...');
             
-            // Пути для поиска цены
             const paths = [
                 'current_price',
                 'gc/live_data/current_price',
@@ -58,75 +111,51 @@ const ApiService = {
             return null;
         }
     },
-    
+
     /**
- * Получение данных для DTE - ИСПРАВЛЕНО ДЛЯ РЕАЛЬНОЙ СТРУКТУРЫ
- */
-async getDTEData(dteKey) {
-    try {
-        console.log(`📥 [API] Загружаем данные для ${dteKey}...`);
+     * Получение цены из DTE данных
+     */
+    async getPriceFromDTE() {
+        const dteList = [0, 1, 2, 3, 4, 5];
         
-        const snap = await firebase.database().ref(dteKey).once('value');
-        
-        if (!snap.exists()) {
-            console.warn(`⚠️ [API] ${dteKey} не существует`);
-            return [];
+        for (const dte of dteList) {
+            try {
+                const snap = await firebase.database().ref(`dte_${dte}`).once('value');
+                const data = snap.val();
+                
+                if (data) {
+                    let price = data.current_price || data.price || data.underlying_price;
+                    
+                    if (price !== undefined) {
+                        price = parseFloat(price);
+                        if (!isNaN(price) && price > 0) {
+                            console.log(`✅ [API] Цена из DTE ${dte}: $${price}`);
+                            return price;
+                        }
+                    }
+                }
+            } catch (e) {
+                continue;
+            }
         }
         
-        const val = snap.val();
-        console.log(`📊 [API] Структура ${dteKey}:`, {
-            hasData: !!val.data,
-            isArray: Array.isArray(val.data),
-            length: Array.isArray(val.data) ? val.data.length : 'N/A',
-            keys: Object.keys(val).slice(0, 10)
-        });
-        
-        let records = [];
-        
-        // ✅ ГЛАВНОЕ: Данные в .data массиве с формой {c: {...}, p: {...}, s: strike}
-        if (val.data && Array.isArray(val.data)) {
-            records = val.data.map(item => ({
-                s: item.s,  // strike
-                c: item.c || {},  // call data
-                p: item.p || {}   // put data
-            }));
-            
-            console.log(`✅ [API] Найдено в ${dteKey}.data: ${records.length} записей`);
-            console.log(`   Первая запись:`, records[0]);
-            console.log(`   Последняя запись:`, records[records.length - 1]);
-            
-            return records;
-        }
-        
-        console.error(`❌ [API] Неожиданная структура для ${dteKey}`);
-        console.error(`   Ожидалось: .data как массив`);
-        console.error(`   Получено:`, {
-            type: typeof val,
-            keys: Object.keys(val || {})
-        });
-        
-        return [];
-        
-    } catch (error) {
-        console.error(`❌ [API] Ошибка получения данных для ${dteKey}:`, error);
-        return [];
-    }
-}
-    
+        console.warn('⚠️ [API] Цена не найдена ни в одном DTE');
+        return null;
+    },
+
     /**
-     * Получение аналитики для DTE - ИСПРАВЛЕНО
+     * Получение аналитики для DTE
      */
     async getAnalytics(dte) {
         try {
             console.log(`📊 [API] Загружаем аналитику для DTE ${dte}...`);
             
-            // Попробуем различные пути
             const paths = [
                 `dte_${dte}/analytics`,
                 `gc/analytics/dte_${dte}`,
                 `gc/analytics/${dte}`,
                 `analytics/dte_${dte}`,
-                `dte_${dte}` // Может быть в корне с вложенными данными
+                `dte_${dte}`
             ];
             
             for (const path of paths) {
@@ -136,13 +165,11 @@ async getDTEData(dteKey) {
                     if (snap.exists()) {
                         const data = snap.val();
                         
-                        // Если это объект с полями аналитики
                         if (data && (data.mp !== undefined || data.em !== undefined || data.atm !== undefined)) {
                             console.log(`✅ [API] Аналитика найдена в ${path}`);
                             return data;
                         }
                         
-                        // Если это вложенный объект
                         if (data && data.analytics) {
                             console.log(`✅ [API] Аналитика найдена в ${path}.analytics`);
                             return data.analytics;
@@ -161,9 +188,9 @@ async getDTEData(dteKey) {
             return null;
         }
     },
-    
+
     /**
-     * Проверка существования DTE - ИСПРАВЛЕНО
+     * Проверка существования DTE
      */
     async checkDTEExists(dte) {
         try {
@@ -178,7 +205,6 @@ async getDTEData(dteKey) {
                 const data = snap.val();
                 let expirationDate = null;
                 
-                // Пытаемся получить дату истечения
                 if (data.metadata && data.metadata.expiration_date) {
                     expirationDate = new Date(data.metadata.expiration_date);
                 } else if (data.expiration_date) {
@@ -224,9 +250,9 @@ async getDTEData(dteKey) {
             return null;
         }
     },
-    
+
     /**
-     * Получение безубытков для DTE - ИСПРАВЛЕНО
+     * Получение безубытков для DTE
      */
     async getBreakevens(dte) {
         try {
@@ -261,7 +287,7 @@ async getDTEData(dteKey) {
             return [];
         }
     },
-    
+
     /**
      * Обработка данных безубытков
      */
@@ -324,38 +350,6 @@ async getDTEData(dteKey) {
         }
         
         return allBreakevens;
-    },
-    
-    /**
-     * Получение цены из DTE данных
-     */
-    async getPriceFromDTE() {
-        const dteList = [0, 1, 2, 3, 4, 5];
-        
-        for (const dte of dteList) {
-            try {
-                const snap = await firebase.database().ref(`dte_${dte}`).once('value');
-                const data = snap.val();
-                
-                if (data) {
-                    // Различные варианты названия цены
-                    let price = data.current_price || data.price || data.underlying_price;
-                    
-                    if (price !== undefined) {
-                        price = parseFloat(price);
-                        if (!isNaN(price) && price > 0) {
-                            console.log(`✅ [API] Цена из DTE ${dte}: $${price}`);
-                            return price;
-                        }
-                    }
-                }
-            } catch (e) {
-                continue;
-            }
-        }
-        
-        console.warn('⚠️ [API] Цена не найдена ни в одном DTE');
-        return null;
     }
 };
 
@@ -366,4 +360,4 @@ if (typeof module !== 'undefined' && module.exports) {
     window.ApiService = ApiService;
 }
 
-console.log('✅ [API] ApiService загружен с исправлениями');
+console.log('✅ [API] ApiService загружен');
