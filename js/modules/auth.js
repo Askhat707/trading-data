@@ -1,18 +1,19 @@
 // ============================================
-// 🔐 МОДУЛЬ АУТЕНТИФИКАЦИИ V2 - ИСПРАВЛЕННЫЙ
+// 🔐 МОДУЛЬ АУТЕНТИФИКАЦИИ V7 - ИСПРАВЛЕННЫЙ
 // ============================================
 
 const AuthModule = {
     config: {
         trialDays: 3,
-        localStorageKey: 'gold_options_pro_session_v2',
+        localStorageKey: 'gold_options_pro_auth_v7',
         sessionTimeout: 30 * 24 * 60 * 60 * 1000, // 30 дней
         adminEmail: 'omaralinovaskar95@gmail.com',
         adminTelegram: '@ASKHAT_1985',
-        version: 'v6'
+        version: 'v7'
     },
     
     currentUser: null,
+    isInitializing: false,
     
     status: {
         initialized: false,
@@ -21,48 +22,92 @@ const AuthModule = {
     },
     
     /**
-     * АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ - ИСПРАВЛЕНО
+     * АВТОИНИЦИАЛИЗАЦИЯ - ИСПРАВЛЕНО
      */
     async autoInit() {
+        if (this.isInitializing) {
+            console.log('⏳ [AUTH] Уже инициализируется...');
+            return false;
+        }
+        
+        this.isInitializing = true;
+        
         try {
-            console.log('🔐 [AUTH] Автоинициализация...');
+            console.log('🔐 [AUTH] Начало автоинициализации v7...');
             
-            // Ждем инициализации Firebase
-            let attempts = 0;
-            while (!window.FirebaseModule || !window.FirebaseModule.isInitialized()) {
-                attempts++;
-                if (attempts > 30) { // 30 * 100ms = 3 секунды
-                    throw new Error('Таймаут ожидания Firebase');
-                }
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
+            // Шаг 1: Ждем Firebase
+            await this.waitForFirebase();
             
-            // Настраиваем persistence ДО получения auth
-            const auth = firebase.auth();
-            if (auth && auth.setPersistence) {
-                await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-                console.log('✅ [AUTH] Persistence установлен в LOCAL');
-            }
+            // Шаг 2: Настраиваем persistence
+            await this.setupPersistence();
             
-            // Проверяем сохраненную сессию
-            await this.restoreSession();
-            
-            // Инициализируем обработчики
+            // Шаг 3: Инициализируем обработчики
             this.initAuthHandlers();
             
+            // Шаг 4: Восстанавливаем сессию
+            const restored = await this.checkSavedSession(); // ← ИСПРАВЛЕНО: правильное имя метода
+            
+            this.status.initialized = true;
             console.log('✅ [AUTH] Автоинициализация завершена');
+            
             return true;
             
         } catch (error) {
             console.error('❌ [AUTH] Ошибка автоинициализации:', error);
-            // Показываем окно аутентификации при ошибке
-            setTimeout(() => this.showAuthModal(), 500);
+            this.status.initialized = false;
+            return false;
+        } finally {
+            this.isInitializing = false;
+        }
+    },
+    
+    /**
+     * ОЖИДАНИЕ FIREBASE
+     */
+    async waitForFirebase() {
+        console.log('⏳ [AUTH] Ожидание Firebase...');
+        
+        let attempts = 0;
+        const maxAttempts = 50; // 5 секунд
+        
+        while (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
+            attempts++;
+            if (attempts > maxAttempts) {
+                throw new Error('Таймаут загрузки Firebase конфига');
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        console.log('✅ [AUTH] Firebase конфиг найден');
+        return true;
+    },
+    
+    /**
+     * НАСТРОЙКА PERSISTENCE
+     */
+    async setupPersistence() {
+        console.log('🔧 [AUTH] Настройка persistence...');
+        
+        try {
+            const auth = firebase.auth();
+            
+            if (!auth.setPersistence) {
+                console.warn('⚠️ [AUTH] setPersistence недоступен');
+                return false;
+            }
+            
+            await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+            console.log('✅ [AUTH] Persistence установлен в LOCAL');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ [AUTH] Ошибка настройки persistence:', error);
             return false;
         }
     },
     
     /**
-     * ИНИЦИАЛИЗАЦИЯ ОБРАБОТЧИКОВ AUTH
+     * ИНИЦИАЛИЗАЦИЯ ОБРАБОТЧИКОВ
      */
     initAuthHandlers() {
         console.log('🔄 [AUTH] Инициализация обработчиков...');
@@ -71,11 +116,11 @@ const AuthModule = {
             const auth = firebase.auth();
             
             // Обработчик изменения состояния аутентификации
-            auth.onAuthStateChanged((user) => {
-                console.log('👤 [AUTH] Состояние изменилось:', user ? user.email : 'null');
+            auth.onAuthStateChanged((firebaseUser) => {
+                console.log('👤 [AUTH] Auth State Changed:', firebaseUser ? firebaseUser.email : 'null');
                 
-                if (user) {
-                    this.handleUserLogin(user);
+                if (firebaseUser) {
+                    this.handleUserLogin(firebaseUser);
                 } else {
                     this.handleUserLogout();
                 }
@@ -88,50 +133,27 @@ const AuthModule = {
     },
     
     /**
-     * ВОССТАНОВЛЕНИЕ СЕССИИ - ИСПРАВЛЕННАЯ
+     * ПРОВЕРКА СОХРАНЕННОЙ СЕССИИ - ИСПРАВЛЕНО (было checkSavedAuth)
      */
-    async restoreSession() {
-        console.log('🔄 [AUTH] Восстановление сессии...');
+    async checkSavedSession() {
+        console.log('🔄 [AUTH] Проверка сохраненной сессии...');
         
         try {
-            // Проверяем активную сессию Firebase
-            const auth = firebase.auth();
-            const currentUser = auth.currentUser;
+            // Получаем текущего пользователя Firebase
+            const firebaseUser = firebase.auth().currentUser;
             
-            if (currentUser) {
-                console.log('🔥 [AUTH] Активная сессия Firebase найдена:', currentUser.email);
-                await this.handleUserLogin(currentUser);
+            if (firebaseUser) {
+                console.log('✅ [AUTH] Найден активный пользователь Firebase:', firebaseUser.email);
+                await this.handleUserLogin(firebaseUser);
+                this.status.sessionRestored = true;
                 return true;
-            }
-            
-            // Проверяем сохраненную сессию в localStorage
-            const savedSession = localStorage.getItem(this.config.localStorageKey);
-            
-            if (savedSession) {
-                const sessionData = JSON.parse(savedSession);
-                const now = Date.now();
-                
-                // Проверяем не истекла ли сессия
-                if (sessionData.expires && sessionData.expires > now) {
-                    console.log('📱 [AUTH] Найдена сохраненная сессия для:', sessionData.email);
-                    
-                    // Пытаемся войти с сохраненными данными
-                    const success = await this.login(sessionData.email, sessionData.password, true);
-                    if (success) {
-                        this.status.sessionRestored = true;
-                        return true;
-                    }
-                } else {
-                    console.log('⏰ [AUTH] Сессия истекла, очищаем...');
-                    localStorage.removeItem(this.config.localStorageKey);
-                }
             }
             
             console.log('⚠️ [AUTH] Активная сессия не найдена');
             return false;
             
         } catch (error) {
-            console.error('❌ [AUTH] Ошибка восстановления сессии:', error);
+            console.error('❌ [AUTH] Ошибка проверки сессии:', error);
             return false;
         }
     },
@@ -140,7 +162,7 @@ const AuthModule = {
      * ВХОД ПОЛЬЗОВАТЕЛЯ
      */
     async login(email, password, silent = false) {
-        console.log(`🔐 [AUTH] Попытка входа: ${email}`);
+        console.log(`🔐 [AUTH] Вход: ${email}`);
         
         if (!silent) {
             this.showAuthLoading('Вход в систему...');
@@ -151,14 +173,9 @@ const AuthModule = {
             
             console.log('✅ [AUTH] Вход успешен:', userCredential.user.email);
             
-            // Сохраняем сессию
-            this.saveSession(email, password);
-            
-            // Получаем/создаем данные пользователя
-            await this.handleUserLogin(userCredential.user);
-            
             if (!silent) {
-                this.showAuthSuccess('Вход выполнен успешно!');
+                this.hideAuthLoading();
+                this.showNotification('Вход выполнен успешно!', 'success');
             }
             
             return true;
@@ -179,7 +196,7 @@ const AuthModule = {
      * ОБРАБОТКА УСПЕШНОГО ВХОДА
      */
     async handleUserLogin(firebaseUser) {
-        console.log('👤 [AUTH] Обработка входа пользователя:', firebaseUser.email);
+        console.log('👤 [AUTH] Обработка входа:', firebaseUser.email);
         
         try {
             // Получаем данные пользователя из базы
@@ -189,19 +206,17 @@ const AuthModule = {
             let userData = null;
             
             if (snapshot.exists()) {
-                // Существующий пользователь
                 userData = {
                     ...snapshot.val(),
                     id: firebaseUser.uid,
-                    email: firebaseUser.email,
-                    version: this.config.version
+                    email: firebaseUser.email
                 };
                 
-                console.log('📊 [AUTH] Данные пользователя загружены:', userData.plan);
+                console.log('📊 [AUTH] План:', userData.plan);
                 
-                // Проверяем не истекла ли подписка
+                // Проверяем подписку
                 if (this.isSubscriptionExpired(userData)) {
-                    console.warn('⚠️ [AUTH] Подписка пользователя истекла');
+                    console.warn('⚠️ [AUTH] Подписка истекла');
                     userData.plan = 'TRIAL';
                     userData.trialEnd = Date.now() + (this.config.trialDays * 24 * 60 * 60 * 1000);
                     await userRef.update(userData);
@@ -221,40 +236,23 @@ const AuthModule = {
                 };
                 
                 await userRef.set(userData);
-                console.log('🎉 [AUTH] Создан новый пользователь с TRIAL доступом');
-                
-                // Показываем окно с приветствием для нового пользователя
-                setTimeout(() => {
-                    this.showTrialWelcome(userData);
-                }, 1000);
+                console.log('🎉 [AUTH] Новый пользователь создан с TRIAL доступом');
             }
             
-            // Обновляем время последнего входа
-            await userRef.update({ 
-                lastLogin: Date.now(),
-                version: this.config.version
-            });
+            // Обновляем lastLogin
+            await userRef.update({ lastLogin: Date.now() });
             
             // Сохраняем в модуле
             this.currentUser = userData;
             this.status.authChecked = true;
             
-            // Показываем основной интерфейс
+            // Показываем интерфейс
             this.showMainInterface();
-            
-            // Обновляем UI
             this.updateUserUI();
-            
-            // Запускаем приложение, если оно загружено
-            setTimeout(() => {
-                if (window.app && typeof window.app.init === 'function' && !window.app.initialized) {
-                    window.app.init();
-                }
-            }, 500);
             
         } catch (error) {
             console.error('❌ [AUTH] Ошибка обработки входа:', error);
-            this.showAuthError('Ошибка загрузки данных пользователя');
+            this.showAuthError('Ошибка загрузки данных');
         }
     },
     
@@ -262,29 +260,22 @@ const AuthModule = {
      * ВЫХОД ПОЛЬЗОВАТЕЛЯ
      */
     async logout() {
-        console.log('🚪 [AUTH] Выход пользователя...');
+        console.log('🚪 [AUTH] Выход...');
         
         try {
             await firebase.auth().signOut();
             
-            // Очищаем сессию
-            localStorage.removeItem(this.config.localStorageKey);
-            
-            // Сбрасываем состояние
             this.currentUser = null;
             this.status.authChecked = false;
             
-            // Очищаем приложение
             if (window.app && window.app.cleanup) {
                 window.app.cleanup();
             }
             
-            // Показываем окно входа
             this.showAuthModal();
+            this.showNotification('Вы вышли из системы', 'success');
             
-            this.showNotification('Вы успешно вышли из системы', 'success');
-            
-            console.log('✅ [AUTH] Выход выполнен успешно');
+            console.log('✅ [AUTH] Выход выполнен');
             
         } catch (error) {
             console.error('❌ [AUTH] Ошибка выхода:', error);
@@ -293,194 +284,60 @@ const AuthModule = {
     },
     
     /**
-     * ОБРАБОТКА ВЫХОДА ПОЛЬЗОВАТЕЛЯ
+     * ОБРАБОТКА ВЫХОДА
      */
     handleUserLogout() {
         console.log('👋 [AUTH] Пользователь вышел');
-        
         this.currentUser = null;
-        this.status.authChecked = false;
-        
-        // Показываем окно входа
         this.showAuthModal();
-    },
-    
-    /**
-     * СОХРАНЕНИЕ СЕССИИ
-     */
-    saveSession(email, password) {
-        try {
-            const sessionData = {
-                email: email,
-                password: password,
-                timestamp: Date.now(),
-                expires: Date.now() + this.config.sessionTimeout,
-                version: this.config.version
-            };
-            
-            localStorage.setItem(this.config.localStorageKey, JSON.stringify(sessionData));
-            console.log('💾 [AUTH] Сессия сохранена в localStorage');
-            
-        } catch (error) {
-            console.warn('⚠️ [AUTH] Не удалось сохранить сессию:', error);
-        }
     },
     
     /**
      * ПОКАЗ ГЛАВНОГО ИНТЕРФЕЙСА
      */
     showMainInterface() {
-        console.log('🖥️ [AUTH] Показ главного интерфейса');
-        
-        // Скрываем окно аутентификации
         const authModal = document.getElementById('auth-modal');
         if (authModal) {
             authModal.classList.add('hidden');
         }
         
-        // Показываем основной контент
         const mainContent = document.getElementById('main-content');
         if (mainContent) {
             mainContent.style.display = 'block';
-            setTimeout(() => {
-                mainContent.style.opacity = '1';
-            }, 50);
         }
     },
     
     /**
-     * ПОКАЗ ОКНА АУТЕНТИФИКАЦИИ
+     * ПОКАЗ ОКНА ВХОДА
      */
     showAuthModal() {
-        console.log('🔓 [AUTH] Показ окна аутентификации');
-        
-        // Скрываем основной контент
         const mainContent = document.getElementById('main-content');
         if (mainContent) {
             mainContent.style.display = 'none';
-            mainContent.style.opacity = '0';
         }
         
-        // Показываем окно аутентификации
         const authModal = document.getElementById('auth-modal');
         if (authModal) {
             authModal.classList.remove('hidden');
         }
-        
-        // Заполняем email если есть сохраненный
-        const savedSession = localStorage.getItem(this.config.localStorageKey);
-        if (savedSession) {
-            try {
-                const sessionData = JSON.parse(savedSession);
-                const emailInput = document.getElementById('user-email');
-                if (emailInput) {
-                    emailInput.value = sessionData.email;
-                }
-            } catch (e) {
-                // Игнорируем ошибки
-            }
-        }
     },
     
     /**
-     * ОБНОВЛЕНИЕ UI ПОЛЬЗОВАТЕЛЯ
+     * ОБНОВЛЕНИЕ UI
      */
     updateUserUI() {
         if (!this.currentUser) return;
         
-        console.log('🎨 [AUTH] Обновление UI пользователя');
-        
-        // Обновляем шапку
         const userDisplay = document.getElementById('user-display');
         if (userDisplay) {
-            const email = this.currentUser.email;
-            const displayName = email.split('@')[0];
+            const displayName = this.currentUser.email.split('@')[0];
             userDisplay.textContent = displayName;
-            
-            const userBadge = userDisplay.closest('.user-badge');
-            if (userBadge) {
-                if (this.currentUser.plan === 'PREMIUM') {
-                    userBadge.classList.add('premium');
-                    userBadge.style.background = 'rgba(0, 230, 118, 0.1)';
-                    userBadge.innerHTML = `<span>👑</span> <span id="user-display">${displayName}</span>`;
-                } else {
-                    userBadge.classList.remove('premium');
-                    userBadge.style.background = '';
-                    userBadge.innerHTML = `<span>👤</span> <span id="user-display">${displayName}</span>`;
-                }
-            }
         }
         
-        // Показываем кнопку выхода
         const logoutBtn = document.getElementById('header-logout');
         if (logoutBtn) {
             logoutBtn.style.display = 'block';
         }
-    },
-    
-    /**
-     * ПОКАЗ ПРИВЕТСТВЕННОГО ОКНА ДЛЯ TRIAL
-     */
-    showTrialWelcome(userData) {
-        console.log('🎉 [AUTH] Показ приветствия для нового пользователя');
-        
-        // Создаем модальное окно для триала
-        const modal = document.createElement('div');
-        modal.id = 'trial-welcome-modal';
-        modal.className = 'trial-modal-overlay show';
-        
-        const daysLeft = this.getDaysLeft(userData);
-        
-        modal.innerHTML = `
-            <div class="trial-modal">
-                <button class="close-trial-modal" onclick="this.closest('.trial-modal-overlay').remove()">×</button>
-                <div class="trial-modal-header">
-                    <div class="trial-modal-title">🎉 ДОБРО ПОЖАЛОВАТЬ!</div>
-                    <div class="trial-modal-subtitle">Gold Options Pro v2 Professional Trading Terminal</div>
-                </div>
-                
-                <div class="trial-info-box">
-                    <div class="info-row">
-                        <span class="info-label">Ваш email:</span>
-                        <span class="info-value">${userData.email}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Текущий план:</span>
-                        <span class="info-value" style="color: var(--gold);">TRIAL</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Дней осталось:</span>
-                        <span class="info-value">${daysLeft}</span>
-                    </div>
-                </div>
-                
-                <div class="trial-template">
-                    <span class="template-label">📝 Шаблон сообщения для активации PREMIUM:</span>
-                    <div class="template-text" id="trial-message-template">
-Здравствуйте! Хочу активировать PREMIUM доступ к Gold Options Pro v2.
-
-Мой email: ${userData.email}
-Текущий план: TRIAL (осталось ${daysLeft} дней)
-Прошу предоставить реквизиты для оплаты.
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button class="auth-button secondary" onclick="copyTemplate()" style="flex: 1;">
-                        📋 Копировать шаблон
-                    </button>
-                    <button class="auth-button" onclick="openTelegramForTrial()" style="flex: 1; background: var(--gradient-gold); color: #000;">
-                        📱 Открыть Telegram
-                    </button>
-                </div>
-                
-                <div class="trial-modal-footer">
-                    Для активации PREMIUM доступа напишите в Telegram: <strong>@ASKHAT_1985</strong>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
     },
     
     /**
@@ -497,163 +354,96 @@ const AuthModule = {
     },
     
     /**
-     * ПОЛУЧЕНИЕ ОСТАВШИХСЯ ДНЕЙ
+     * ОСТАВШИЕСЯ ДНИ
      */
     getDaysLeft(user = this.currentUser) {
         if (!user) return 0;
         
-        let endDate = 0;
-        
-        if (user.plan === 'PREMIUM') {
-            endDate = user.premiumEnd;
-        } else {
-            endDate = user.trialEnd;
-        }
-        
+        const endDate = user.plan === 'PREMIUM' ? user.premiumEnd : user.trialEnd;
         if (!endDate) return 0;
         
-        const now = Date.now();
-        if (endDate <= now) return 0;
-        
-        const daysLeft = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
+        const daysLeft = Math.ceil((endDate - Date.now()) / (1000 * 60 * 60 * 24));
         return Math.max(0, daysLeft);
     },
     
     /**
-     * ПОКАЗ ЗАГРУЗКИ АУТЕНТИФИКАЦИИ
-     */
-    showAuthLoading(message) {
-        const loginBtn = document.getElementById('login-btn');
-        if (loginBtn) {
-            loginBtn.disabled = true;
-            loginBtn.innerHTML = `<span>⏳</span> ${message}`;
-        }
-    },
-    
-    /**
-     * СКРЫТИЕ ЗАГРУЗКИ АУТЕНТИФИКАЦИИ
-     */
-    hideAuthLoading() {
-        const loginBtn = document.getElementById('login-btn');
-        if (loginBtn) {
-            loginBtn.disabled = false;
-            loginBtn.innerHTML = `ВОЙТИ В СИСТЕМУ`;
-        }
-    },
-    
-    /**
-     * ПОКАЗ ОШИБКИ АУТЕНТИФИКАЦИИ
+     * ПОКАЗ ОШИБКИ
      */
     showAuthError(message) {
         const errorEl = document.getElementById('auth-error');
         if (errorEl) {
             errorEl.textContent = message;
             errorEl.classList.add('show');
-            
-            setTimeout(() => {
-                errorEl.classList.remove('show');
-            }, 5000);
+            setTimeout(() => errorEl.classList.remove('show'), 5000);
         }
     },
     
     /**
-     * ПОКАЗ УСПЕХА АУТЕНТИФИКАЦИИ
+     * ЗАГРУЗКА КНОПКИ ВХОДА
      */
-    showAuthSuccess(message) {
-        this.showNotification(message, 'success');
+    showAuthLoading(message) {
+        const btn = document.getElementById('login-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `⏳ ${message}`;
+        }
     },
     
     /**
-     * ПОЛУЧЕНИЕ СООБЩЕНИЯ ОБ ОШИБКЕ
+     * СКРЫТИЕ ЗАГРУЗКИ
+     */
+    hideAuthLoading() {
+        const btn = document.getElementById('login-btn');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'ВОЙТИ В СИСТЕМУ';
+        }
+    },
+    
+    /**
+     * СООБЩЕНИЕ ОБ ОШИБКЕ
      */
     getAuthErrorMessage(error) {
-        switch (error.code) {
-            case 'auth/user-not-found':
-                return 'Пользователь не найден';
-            case 'auth/wrong-password':
-                return 'Неверный пароль';
-            case 'auth/invalid-email':
-                return 'Неверный формат email';
-            case 'auth/user-disabled':
-                return 'Аккаунт отключен';
-            case 'auth/too-many-requests':
-                return 'Слишком много попыток. Попробуйте позже';
-            case 'auth/network-request-failed':
-                return 'Ошибка сети. Проверьте подключение';
-            default:
-                return 'Ошибка входа. Проверьте данные';
-        }
+        const messages = {
+            'auth/user-not-found': 'Пользователь не найден',
+            'auth/wrong-password': 'Неверный пароль',
+            'auth/invalid-email': 'Неверный email',
+            'auth/user-disabled': 'Аккаунт отключен',
+            'auth/too-many-requests': 'Слишком много попыток'
+        };
+        return messages[error.code] || 'Ошибка входа';
     },
     
     /**
-     * ПОКАЗ УВЕДОМЛЕНИЯ
+     * УВЕДОМЛЕНИЕ
      */
     showNotification(message, type = 'info') {
-        console.log(`📢 [NOTIFY] ${type}: ${message}`);
-        
         const colors = {
             success: '#00E676',
             error: '#FF1744',
-            warning: '#FFD700',
-            info: '#2196F3'
-        };
-        
-        const icons = {
-            success: '✅',
-            error: '❌',
-            warning: '⚠️',
-            info: 'ℹ️'
+            warning: '#FFD700'
         };
         
         const notification = document.createElement('div');
         notification.style.cssText = `
             position: fixed; top: 20px; right: 20px;
-            background: rgba(20, 20, 20, 0.95); color: white;
+            background: rgba(20,20,20,0.95); color: white;
             padding: 15px 25px; border-radius: 10px;
             border-left: 4px solid ${colors[type]};
-            box-shadow: 0 5px 20px rgba(0,0,0,0.5); z-index: 10000;
-            max-width: 400px; font-weight: 600;
-            animation: slideIn 0.3s ease;
+            z-index: 10000; max-width: 400px;
         `;
-        
-        notification.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div>${icons[type]}</div>
-                <div>${message}</div>
-            </div>
-        `;
+        notification.textContent = message;
         
         document.body.appendChild(notification);
-        
         setTimeout(() => {
-            notification.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    document.body.removeChild(notification);
-                }
-            }, 300);
+            if (notification.parentElement) {
+                document.body.removeChild(notification);
+            }
         }, 3000);
-        
-        // Добавляем стили анимации
-        if (!document.querySelector('#notification-styles')) {
-            const style = document.createElement('style');
-            style.id = 'notification-styles';
-            style.textContent = `
-                @keyframes slideIn { 
-                    from { transform: translateX(100%); opacity: 0; } 
-                    to { transform: translateX(0); opacity: 1; } 
-                }
-                @keyframes slideOut { 
-                    from { transform: translateX(0); opacity: 1; } 
-                    to { transform: translateX(100%); opacity: 0; } 
-                }
-            `;
-            document.head.appendChild(style);
-        }
     }
 };
 
-// Глобальные функции для вызова из HTML
+// Глобальные функции
 window.handleLogin = async function(event) {
     event.preventDefault();
     
@@ -673,7 +463,5 @@ window.handleLogout = function() {
     AuthModule.logout();
 };
 
-// Экспорт
 window.AuthModule = AuthModule;
-
-console.log('✅ [AUTH] Модуль аутентификации загружен (исправленная версия v6)');
+console.log('✅ [AUTH] Модуль аутентификации загружен (v7)');
