@@ -665,46 +665,76 @@ renderTable(records) {
  },
     
     /**
-     * Обновление статистики
-     */
-    updateTopStats(records) {
-        try {
-            if (!records || records.length === 0) return;
-            
-            const sorted = [...records].sort((a, b) => parseFloat(a.s) - parseFloat(b.s));
-            const adjustedRecords = sorted.map(r => ({
-                ...r,
-                adjusted_s: parseFloat(r.s) + this.forwardAdj,
-                call_prem: r.c?.pr || 0,
-                put_prem: r.p?.pr || 0
-            }));
-            
-            const topCallOI = adjustedRecords
-                .map(r => ({ strike: parseFloat(r.s), adjusted_strike: r.adjusted_s, value: r.c?.oi || 0, prem: r.call_prem }))
-                .sort((a, b) => b.value - a.value).slice(0, 5);
-                
-            const topPutOI = adjustedRecords
-                .map(r => ({ strike: parseFloat(r.s), adjusted_strike: r.adjusted_s, value: r.p?.oi || 0, prem: r.put_prem }))
-                .sort((a, b) => b.value - a.value).slice(0, 5);
-                
-            const topCallVol = adjustedRecords
-                .map(r => ({ strike: parseFloat(r.s), adjusted_strike: r.adjusted_s, value: r.c?.vol || 0, prem: r.call_prem }))
-                .sort((a, b) => b.value - a.value).slice(0, 5);
-                
-            const topPutVol = adjustedRecords
-                .map(r => ({ strike: parseFloat(r.s), adjusted_strike: r.adjusted_s, value: r.p?.vol || 0, prem: r.put_prem }))
-                .sort((a, b) => b.value - a.value).slice(0, 5);
-            
-            this.updateTopStatList('top-call-oi', topCallOI);
-            this.updateTopStatList('top-put-oi', topPutOI);
-            this.updateTopStatList('top-call-vol', topCallVol);
-            this.updateTopStatList('top-put-vol', topPutVol);
-            
-            console.log('✅ [STATS] Статистика обновлена');
-        } catch (error) {
-            console.error('❌ [STATS] Ошибка обновления статистики:', error);
-        }
-    },
+ * Обновление статистики - ИСПРАВЛЕНО
+ */
+updateTopStats(records) {
+    try {
+        if (!records || records.length === 0) return;
+        
+        const sorted = [...records].sort((a, b) => parseFloat(a.s) - parseFloat(b.s));
+        
+        // Маппируем в нужный формат
+        const adjustedRecords = sorted.map(r => ({
+            strike: parseFloat(r.s),
+            adjusted_s: parseFloat(r.s) + this.forwardAdj,
+            call_oi: (r.c && r.c.oi) ? parseInt(r.c.oi) : 0,
+            call_vol: (r.c && r.c.v) ? parseInt(r.c.v) : 0,
+            call_prem: (r.c && r.c.pr) ? parseFloat(r.c.pr) : 0,
+            put_oi: (r.p && r.p.oi) ? parseInt(r.p.oi) : 0,
+            put_vol: (r.p && r.p.v) ? parseInt(r.p.v) : 0,
+            put_prem: (r.p && r.p.pr) ? parseFloat(r.p.pr) : 0
+        }));
+        
+        const topCallOI = adjustedRecords
+            .map(r => ({ 
+                strike: r.strike, 
+                adjusted_strike: r.adjusted_s, 
+                value: r.call_oi, 
+                prem: r.call_prem 
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+        
+        const topPutOI = adjustedRecords
+            .map(r => ({ 
+                strike: r.strike, 
+                adjusted_strike: r.adjusted_s, 
+                value: r.put_oi, 
+                prem: r.put_prem 
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+        
+        const topCallVol = adjustedRecords
+            .map(r => ({ 
+                strike: r.strike, 
+                adjusted_strike: r.adjusted_s, 
+                value: r.call_vol, 
+                prem: r.call_prem 
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+        
+        const topPutVol = adjustedRecords
+            .map(r => ({ 
+                strike: r.strike, 
+                adjusted_strike: r.adjusted_s, 
+                value: r.put_vol, 
+                prem: r.put_prem 
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+        
+        this.updateTopStatList('top-call-oi', topCallOI);
+        this.updateTopStatList('top-put-oi', topPutOI);
+        this.updateTopStatList('top-call-vol', topCallVol);
+        this.updateTopStatList('top-put-vol', topPutVol);
+        
+        console.log('✅ [STATS] Статистика обновлена');
+    } catch (error) {
+        console.error('❌ [STATS] Ошибка обновления статистики:', error);
+    }
+},
     
     /**
      * Обновление списка статистики
