@@ -60,67 +60,58 @@ const ApiService = {
     },
     
     /**
-     * Получение данных для DTE - ИСПРАВЛЕНО
-     */
-    async getDTEData(dteKey) {
-        try {
-            console.log(`📥 [API] Загружаем данные для ${dteKey}...`);
-            
-            // Попробуем различные структуры
-            let records = [];
-            
-            // Вариант 1: Данные в .data
-            try {
-                const snap1 = await firebase.database().ref(dteKey + '/data').once('value');
-                if (snap1.exists()) {
-                    const data = snap1.val();
-                    records = Array.isArray(data) ? data : Object.values(data || {});
-                    console.log(`✅ [API] Найдено в ${dteKey}/data: ${records.length} записей`);
-                    return records.filter(r => r && r.s);
-                }
-            } catch (e) {
-                console.log(`⚠️ Вариант ${dteKey}/data не подходит`);
-            }
-            
-            // Вариант 2: Данные прямо в DTE
-            try {
-                const snap2 = await firebase.database().ref(dteKey).once('value');
-                if (snap2.exists()) {
-                    const val = snap2.val();
-                    
-                    // Проверяем структуру
-                    if (val && val.data && Array.isArray(val.data)) {
-                        records = val.data;
-                        console.log(`✅ [API] Структура: ${dteKey}.data (массив)`);
-                    } else if (val && val.data && typeof val.data === 'object') {
-                        records = Object.values(val.data);
-                        console.log(`✅ [API] Структура: ${dteKey}.data (объект)`);
-                    } else if (Array.isArray(val)) {
-                        records = val;
-                        console.log(`✅ [API] Структура: ${dteKey} (массив)`);
-                    } else if (typeof val === 'object') {
-                        // Ищем объекты со свойством 's' (strike)
-                        records = Object.values(val).filter(v => v && v.s);
-                        console.log(`✅ [API] Структура: ${dteKey} (объект с s)`);
-                    }
-                    
-                    if (records.length > 0) {
-                        console.log(`✅ [API] Получено ${records.length} записей`);
-                        return records;
-                    }
-                }
-            } catch (e) {
-                console.error(`❌ Ошибка при чтении ${dteKey}:`, e.message);
-            }
-            
-            console.warn(`⚠️ [API] Нет данных для ${dteKey}`);
-            return [];
-            
-        } catch (error) {
-            console.error(`❌ [API] Ошибка получения данных для ${dteKey}:`, error);
+ * Получение данных для DTE - ИСПРАВЛЕНО ДЛЯ РЕАЛЬНОЙ СТРУКТУРЫ
+ */
+async getDTEData(dteKey) {
+    try {
+        console.log(`📥 [API] Загружаем данные для ${dteKey}...`);
+        
+        const snap = await firebase.database().ref(dteKey).once('value');
+        
+        if (!snap.exists()) {
+            console.warn(`⚠️ [API] ${dteKey} не существует`);
             return [];
         }
-    },
+        
+        const val = snap.val();
+        console.log(`📊 [API] Структура ${dteKey}:`, {
+            hasData: !!val.data,
+            isArray: Array.isArray(val.data),
+            length: Array.isArray(val.data) ? val.data.length : 'N/A',
+            keys: Object.keys(val).slice(0, 10)
+        });
+        
+        let records = [];
+        
+        // ✅ ГЛАВНОЕ: Данные в .data массиве с формой {c: {...}, p: {...}, s: strike}
+        if (val.data && Array.isArray(val.data)) {
+            records = val.data.map(item => ({
+                s: item.s,  // strike
+                c: item.c || {},  // call data
+                p: item.p || {}   // put data
+            }));
+            
+            console.log(`✅ [API] Найдено в ${dteKey}.data: ${records.length} записей`);
+            console.log(`   Первая запись:`, records[0]);
+            console.log(`   Последняя запись:`, records[records.length - 1]);
+            
+            return records;
+        }
+        
+        console.error(`❌ [API] Неожиданная структура для ${dteKey}`);
+        console.error(`   Ожидалось: .data как массив`);
+        console.error(`   Получено:`, {
+            type: typeof val,
+            keys: Object.keys(val || {})
+        });
+        
+        return [];
+        
+    } catch (error) {
+        console.error(`❌ [API] Ошибка получения данных для ${dteKey}:`, error);
+        return [];
+    }
+}
     
     /**
      * Получение аналитики для DTE - ИСПРАВЛЕНО
