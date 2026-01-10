@@ -1,19 +1,20 @@
 // ============================================
-// 🔐 МОДУЛЬ АУТЕНТИФИКАЦИИ V8 - ИСПРАВЛЕННЫЙ
+// 🔐 МОДУЛЬ АУТЕНТИФИКАЦИИ V10 - БЕЗ WRITE
 // ============================================
 
 const AuthModule = {
     config: {
         trialDays: 3,
-        localStorageKey: 'gold_options_pro_auth_v8',
+        localStorageKey: 'gold_options_pro_auth_v10',
         sessionTimeout: 30 * 24 * 60 * 60 * 1000,
         adminEmail: 'omaralinovaskar95@gmail.com',
         adminTelegram: '@ASKHAT_1985',
-        version: 'v8'
+        version: 'v10'
     },
     
     currentUser: null,
     isInitializing: false,
+    isLoggingOut: false,
     
     status: {
         initialized: false,
@@ -33,23 +34,20 @@ const AuthModule = {
         this.isInitializing = true;
         
         try {
-            console.log('🔐 [AUTH] Начало автоинициализации v8...');
+            console.log('🔐 [AUTH] Начало автоинициализации v10...');
             
             // Шаг 1: Ждем Firebase
             await this.waitForFirebase();
-            console.log('✅ [AUTH] Firebase готов');
             
             // Шаг 2: Настраиваем persistence
             await this.setupPersistence();
-            console.log('✅ [AUTH] Persistence настроен');
             
             // Шаг 3: Инициализируем обработчики
             this.initAuthHandlers();
-            console.log('✅ [AUTH] Обработчики инициализированы');
             
-            // Шаг 4: Проверяем сохраненную сессию
-            await this.checkSavedSession();
-            console.log('✅ [AUTH] Сессия проверена');
+            // Шаг 4: ВСЕГДА показываем форму входа при загрузке
+            console.log('🔓 [AUTH] Показываем форму входа при загрузке');
+            this.showAuthModal();
             
             this.status.initialized = true;
             console.log('✅ [AUTH] Автоинициализация завершена');
@@ -119,17 +117,19 @@ const AuthModule = {
         try {
             const auth = firebase.auth();
             
-            // Основной обработчик изменения состояния
+            // ТОЛЬКО ЧИТАЕМ состояние - НЕ ПИШЕМ ничего!
             auth.onAuthStateChanged(async (firebaseUser) => {
                 console.log('👤 [AUTH] onAuthStateChanged:', firebaseUser ? firebaseUser.email : 'null');
                 
-                if (firebaseUser) {
-                    // Пользователь авторизован - загружаем его данные
+                if (firebaseUser && !this.isLoggingOut) {
+                    console.log('✅ [AUTH] Пользователь авторизован, загружаем данные...');
                     await this.handleUserLogin(firebaseUser);
-                } else {
-                    // Пользователь НЕ авторизован
+                } else if (!this.isLoggingOut) {
+                    console.log('⚠️ [AUTH] Пользователь не авторизован');
                     this.handleUserLogout();
                 }
+                
+                this.isLoggingOut = false;
             });
             
             console.log('✅ [AUTH] Обработчики инициализированы');
@@ -139,34 +139,7 @@ const AuthModule = {
     },
     
     /**
-     * ПРОВЕРКА СОХРАНЕННОЙ СЕССИИ
-     */
-    async checkSavedSession() {
-        console.log('🔄 [AUTH] Проверка сохраненной сессии...');
-        
-        try {
-            const firebaseUser = firebase.auth().currentUser;
-            
-            if (firebaseUser) {
-                console.log('✅ [AUTH] Найден активный пользователь:', firebaseUser.email);
-                await this.handleUserLogin(firebaseUser);
-                this.status.sessionRestored = true;
-                return true;
-            }
-            
-            console.log('⚠️ [AUTH] Активная сессия не найдена, показываем форму входа');
-            this.handleUserLogout();
-            return false;
-            
-        } catch (error) {
-            console.error('❌ [AUTH] Ошибка проверки сессии:', error);
-            this.handleUserLogout();
-            return false;
-        }
-    },
-    
-    /**
-     * ВХОД ПОЛЬЗОВАТЕЛЯ - ИСПРАВЛЕНО
+     * ВХОД ПОЛЬЗОВАТЕЛЯ
      */
     async login(email, password, silent = false) {
         console.log(`🔐 [AUTH] Попытка входа: ${email}`);
@@ -176,18 +149,17 @@ const AuthModule = {
         }
         
         try {
-            // Авторизуемся в Firebase Authentication
+            // ТОЛЬКО авторизация - БЕЗ ЗАПИСИ В БД!
             const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
             const firebaseUser = userCredential.user;
             
             console.log('✅ [AUTH] Авторизация успешна:', firebaseUser.email);
             
-            // Обработка входа (загрузка данных пользователя)
+            // Загружаем данные пользователя
             await this.handleUserLogin(firebaseUser);
             
             if (!silent) {
                 this.hideAuthLoading();
-                this.showNotification('✅ Вход выполнен успешно!', 'success');
             }
             
             return true;
@@ -205,30 +177,27 @@ const AuthModule = {
     },
     
     /**
-     * ОБРАБОТКА УСПЕШНОГО ВХОДА - ИСПРАВЛЕНО
-     * ТОЛЬКО ЧИТАЕМ ДАННЫЕ, НЕ СОЗДАЕМ!
+     * ОБРАБОТКА УСПЕШНОГО ВХОДА
+     * ТОЛЬКО ЧИТАЕМ ДАННЫЕ - НЕ ПИШЕМ!
      */
     async handleUserLogin(firebaseUser) {
-        console.log('👤 [AUTH] Обработка входа:', firebaseUser.email);
+        console.log('👤 [AUTH] Загрузка данных пользователя:', firebaseUser.email);
         
         try {
-            // ВАЖНО: Только ЧИТАЕМ данные пользователя
-            // Не пытаемся создавать новую запись!
-            
+            // ТОЛЬКО ЧИТАЕМ из БД!
             const userRef = firebase.database().ref(`users/${firebaseUser.uid}`);
             const snapshot = await userRef.once('value');
             
             if (!snapshot.exists()) {
-                // ❌ Пользователь не найден в базе
+                // Пользователь не найден в БД
                 console.error('❌ [AUTH] Пользователь не найден в базе данных');
-                console.log('⚠️ [AUTH] Обратитесь к администратору:', this.config.adminTelegram);
                 
                 // Выходим из Firebase
                 await firebase.auth().signOut();
                 
                 // Показываем ошибку
                 this.showAuthError(
-                    `Ваш аккаунт не активирован.\n\n` +
+                    `❌ Ваш аккаунт не активирован.\n\n` +
                     `Обратитесь к администратору:\n` +
                     `📧 ${this.config.adminEmail}\n` +
                     `💬 ${this.config.adminTelegram}`
@@ -238,40 +207,26 @@ const AuthModule = {
                 return false;
             }
             
-            // ✅ Пользователь найден в базе
+            // ✅ Пользователь найден
             const userData = snapshot.val();
             
-            console.log('📊 [AUTH] Данные пользователя загружены');
+            console.log('📊 [AUTH] Данные загружены:');
             console.log('   План:', userData.plan);
             console.log('   Email:', userData.email);
-            console.log('   Версия:', userData.version);
+            console.log('   Version:', userData.version);
             
             // Проверяем подписку
             if (this.isSubscriptionExpired(userData)) {
                 console.warn('⚠️ [AUTH] Подписка истекла');
-                
-                const daysLeft = this.getDaysLeft(userData);
-                console.log(`   Дней осталось: ${daysLeft}`);
-                
-                // Обновляем статус
                 userData.plan = 'TRIAL';
                 if (!userData.trialEnd || userData.trialEnd < Date.now()) {
                     userData.trialEnd = Date.now() + (this.config.trialDays * 24 * 60 * 60 * 1000);
                 }
             }
             
-            // Добавляем ID и email если их нет
+            // Добавляем ID и email
             userData.id = firebaseUser.uid;
             userData.email = firebaseUser.email;
-            
-            // Обновляем lastLogin (если есть права)
-            try {
-                await userRef.update({ lastLogin: Date.now() });
-                console.log('✅ [AUTH] LastLogin обновлен');
-            } catch (e) {
-                console.warn('⚠️ [AUTH] Не удалось обновить lastLogin:', e.message);
-                // Продолжаем работу даже если не получилось обновить
-            }
             
             // Сохраняем в модуле
             this.currentUser = userData;
@@ -279,7 +234,7 @@ const AuthModule = {
             
             console.log('✅ [AUTH] Пользователь успешно загружен');
             
-            // Показываем основной интерфейс
+            // Показываем интерфейс
             this.showMainInterface();
             this.updateUserUI();
             
@@ -288,13 +243,7 @@ const AuthModule = {
         } catch (error) {
             console.error('❌ [AUTH] Ошибка обработки входа:', error.message);
             
-            // Если ошибка в доступе к БД - выходим
-            if (error.code === 'PERMISSION_DENIED') {
-                console.error('❌ [AUTH] Ошибка доступа к БД - проверьте правила Firebase');
-                this.showAuthError('Ошибка доступа к базе данных. Обратитесь к администратору.');
-            } else {
-                this.showAuthError('Ошибка загрузки данных пользователя: ' + error.message);
-            }
+            this.showAuthError('Ошибка загрузки данных: ' + error.message);
             
             // Выходим из Firebase
             try {
@@ -312,7 +261,9 @@ const AuthModule = {
      * ВЫХОД ПОЛЬЗОВАТЕЛЯ
      */
     async logout() {
-        console.log('🚪 [AUTH] Выход пользователя...');
+        console.log('🚪 [AUTH] Процесс выхода...');
+        
+        this.isLoggingOut = true;
         
         try {
             await firebase.auth().signOut();
@@ -326,15 +277,16 @@ const AuthModule = {
                 window.app.cleanup();
             }
             
-            // Показываем окно входа
+            // Показываем форму входа
+            console.log('🔓 [AUTH] Показываем форму входа');
             this.showAuthModal();
-            this.showNotification('Вы вышли из системы', 'success');
             
             console.log('✅ [AUTH] Выход завершен');
             
         } catch (error) {
             console.error('❌ [AUTH] Ошибка выхода:', error);
-            this.showNotification('Ошибка при выходе', 'error');
+        } finally {
+            this.isLoggingOut = false;
         }
     },
     
@@ -342,31 +294,37 @@ const AuthModule = {
      * ОБРАБОТКА ВЫХОДА
      */
     handleUserLogout() {
-        console.log('👋 [AUTH] Пользователь вышел или неавторизован');
+        console.log('👋 [AUTH] Пользователь разлогирован');
         this.currentUser = null;
         this.status.authChecked = true;
         this.showAuthModal();
     },
     
     /**
-     * ПОКАЗ ГЛАВНОГО ИНТЕРФЕЙСА
+     * ПОКАЗ ОСНОВНОГО ИНТЕРФЕЙСА
      */
     showMainInterface() {
         try {
+            console.log('🖥️ [UI] Показ основного интерфейса');
+            
+            // Скрываем форму входа
             const authModal = document.getElementById('auth-modal');
             if (authModal) {
                 authModal.classList.add('hidden');
+                authModal.style.display = 'none';
+                authModal.style.opacity = '0';
+                authModal.style.visibility = 'hidden';
             }
             
+            // Показываем основной контент
             const mainContent = document.getElementById('main-content');
             if (mainContent) {
                 mainContent.style.display = 'block';
-                setTimeout(() => {
-                    mainContent.style.opacity = '1';
-                }, 50);
+                mainContent.style.opacity = '1';
+                mainContent.style.visibility = 'visible';
             }
             
-            console.log('✅ [UI] Основной интерфейс показан');
+            console.log('✅ [UI] Интерфейс показан');
         } catch (error) {
             console.error('❌ [UI] Ошибка показа интерфейса:', error);
         }
@@ -377,30 +335,43 @@ const AuthModule = {
      */
     showAuthModal() {
         try {
+            console.log('🔓 [UI] Показываем форму входа');
+            
+            // Скрываем основной контент
             const mainContent = document.getElementById('main-content');
             if (mainContent) {
                 mainContent.style.display = 'none';
                 mainContent.style.opacity = '0';
+                mainContent.style.visibility = 'hidden';
             }
             
+            // Показываем окно входа
             const authModal = document.getElementById('auth-modal');
             if (authModal) {
-                console.log('✅ [UI] Показываем окно аутентификации');
                 authModal.classList.remove('hidden');
                 authModal.style.display = 'flex';
                 authModal.style.opacity = '1';
                 authModal.style.visibility = 'visible';
+                authModal.style.pointerEvents = 'auto';
                 
-                // Очищаем поля формы
+                // Очищаем поля
                 const emailInput = document.getElementById('user-email');
                 const passwordInput = document.getElementById('user-password');
+                const errorEl = document.getElementById('auth-error');
+                
                 if (emailInput) emailInput.value = '';
                 if (passwordInput) passwordInput.value = '';
+                if (errorEl) {
+                    errorEl.classList.remove('show');
+                    errorEl.innerHTML = '';
+                }
+                
+                console.log('✅ [UI] Форма входа готова');
             } else {
                 console.error('❌ [UI] Элемент auth-modal не найден!');
             }
         } catch (error) {
-            console.error('❌ [UI] Ошибка при показе модального окна:', error);
+            console.error('❌ [UI] Ошибка при показе формы:', error);
         }
     },
     
@@ -417,21 +388,12 @@ const AuthModule = {
                 userDisplay.textContent = displayName;
             }
             
-            const userBadge = document.querySelector('.user-badge');
-            if (userBadge) {
-                if (this.currentUser.plan === 'PREMIUM') {
-                    userBadge.classList.add('premium');
-                } else {
-                    userBadge.classList.remove('premium');
-                }
-            }
-            
             const logoutBtn = document.getElementById('header-logout');
             if (logoutBtn) {
                 logoutBtn.style.display = 'block';
             }
             
-            console.log('✅ [UI] UI пользователя обновлен');
+            console.log('✅ [UI] UI обновлен');
         } catch (error) {
             console.error('❌ [UI] Ошибка обновления UI:', error);
         }
@@ -464,19 +426,18 @@ const AuthModule = {
     },
     
     /**
-     * ПОКАЗ ОШИБКИ АВТОРИЗАЦИИ
+     * ПОКАЗ ОШИБКИ
      */
     showAuthError(message) {
         const errorEl = document.getElementById('auth-error');
         if (errorEl) {
             errorEl.innerHTML = message.replace(/\n/g, '<br>');
             errorEl.classList.add('show');
-            setTimeout(() => errorEl.classList.remove('show'), 8000);
         }
     },
     
     /**
-     * ЗАГРУЗКА КНОПКИ ВХОДА
+     * ЗАГРУЗКА КНОПКИ
      */
     showAuthLoading(message) {
         const btn = document.getElementById('login-btn');
@@ -502,55 +463,15 @@ const AuthModule = {
      */
     getAuthErrorMessage(error) {
         const messages = {
-            'auth/user-not-found': '❌ Пользователь не найден. Проверьте email.',
-            'auth/wrong-password': '❌ Неверный пароль.',
-            'auth/invalid-email': '❌ Неверный формат email.',
-            'auth/user-disabled': '❌ Аккаунт отключен администратором.',
-            'auth/too-many-requests': '⏳ Слишком много попыток. Попробуйте позже.',
-            'auth/invalid-credential': '❌ Email или пароль неверны.',
-            'auth/network-request-failed': '⚠️ Ошибка сети. Проверьте подключение.',
+            'auth/user-not-found': '❌ Пользователь не найден',
+            'auth/wrong-password': '❌ Неверный пароль',
+            'auth/invalid-email': '❌ Неверный email',
+            'auth/user-disabled': '❌ Аккаунт отключен',
+            'auth/too-many-requests': '⏳ Слишком много попыток',
+            'auth/invalid-credential': '❌ Email или пароль неверны',
+            'auth/network-request-failed': '⚠️ Ошибка сети',
         };
-        return messages[error.code] || `❌ Ошибка входа: ${error.message}`;
-    },
-    
-    /**
-     * ПОКАЗ УВЕДОМЛЕНИЯ
-     */
-    showNotification(message, type = 'info') {
-        console.log(`📢 [NOTIFY] ${type}: ${message}`);
-        
-        const colors = {
-            success: '#00E676',
-            error: '#FF1744',
-            warning: '#FFD700',
-            info: '#2196F3'
-        };
-        
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed; top: 20px; right: 20px;
-            background: rgba(20, 20, 20, 0.95); color: white;
-            padding: 15px 25px; border-radius: 10px;
-            border-left: 4px solid ${colors[type]};
-            box-shadow: 0 5px 20px rgba(0,0,0,0.5); 
-            z-index: 10000; max-width: 400px;
-            animation: slideIn 0.3s ease;
-        `;
-        
-        notification.innerHTML = `<div style="display: flex; align-items: center; gap: 10px;">
-            <div style="font-weight: 700;">${message}</div>
-        </div>`;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    document.body.removeChild(notification);
-                }
-            }, 300);
-        }, 3000);
+        return messages[error.code] || `❌ Ошибка: ${error.message}`;
     }
 };
 
@@ -566,20 +487,13 @@ window.handleLogin = async function(event) {
         return false;
     }
     
-    if (!email.includes('@')) {
-        AuthModule.showAuthError('⚠️ Введите корректный email');
-        return false;
-    }
-    
     await AuthModule.login(email, password);
     return false;
 };
 
 window.handleLogout = function() {
-    if (confirm('Вы уверены что хотите выйти?')) {
-        AuthModule.logout();
-    }
+    AuthModule.logout();
 };
 
 window.AuthModule = AuthModule;
-console.log('✅ [AUTH] Модуль аутентификации загружен (v8)');
+console.log('✅ [AUTH] Модуль аутентификации загружен (v10)');
