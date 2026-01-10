@@ -17,80 +17,85 @@ const App = {
     dataInterval: null,
     
     /**
-     * Инициализация приложения
-     */
-    async init() {
-        console.log('🚀 [APP] Запуск приложения...');
-        
-        // ✅ ПРОВЕРКА АВТОРИЗАЦИИ
-        if (!window.AuthModule || !window.AuthModule.currentUser) {
-            console.warn('⚠️ [APP] Пользователь не авторизован, ожидание...');
-            // Ждем авторизации
-            setTimeout(() => {
-                if (window.AuthModule && window.AuthModule.currentUser) {
-                    this.init();
-                } else {
-                    console.error('❌ [APP] Пользователь не авторизован');
-                }
-            }, 1000);
-            return;
-        }
-        
-        // ✅ ПРОВЕРКА FIREBASE КОНФИГА
-        if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
-            console.error('❌ [APP] Firebase конфигурация не загружена!');
-            window.showErrorScreen('Firebase конфигурация не найдена. Обновите страницу.');
-            return;
-        }
-        
-        console.log('✅ [APP] Firebase конфиг найден:', window.firebaseConfig.projectId);
-        
-        if (this.initialized) {
-            console.warn('⚠️ [APP] Приложение уже инициализировано');
-            return;
-        }
-        
-        try {
-            console.log('🔧 [APP] Определяем тип пользователя...');
-            
-            // Определяем тип пользователя
-            this.isTrial = window.AuthModule.currentUser.plan !== "PREMIUM" || 
-                          window.AuthModule.isSubscriptionExpired(window.AuthModule.currentUser);
-            
-            console.log(`${this.isTrial ? '🔒' : '🔓'} [APP] Пользователь: ${this.isTrial ? 'TRIAL' : 'PREMIUM'}`);
-            
-            // Обновляем UI в зависимости от типа пользователя
-            this.updateUIForUserType();
-            
-            console.log('📊 [APP] Загружаем начальные данные...');
-            
-            // Запускаем обновления данных
-            this.startPriceUpdates();
-            this.startDataUpdates();
-            this.startAnalyticsUpdates();
-            
-            // Загружаем начальные данные
-            await this.loadInitialData();
-            await this.loadDTEList();
-            
-            // Обновляем время
-            this.updateTime();
-            setInterval(() => this.updateTime(), 1000);
-            
-            // Инициализируем MT5 модуль (если существует)
-            if (window.MT5Module) {
-                console.log('🤖 [APP] Инициализируем MT5Module...');
-                window.MT5Module.init();
+ * Инициализация приложения - ИСПРАВЛЕНО
+ */
+async init() {
+    console.log('🚀 [APP] Запуск приложения...');
+    
+    // ✅ ПРОВЕРКА АВТОРИЗАЦИИ
+    if (!window.AuthModule || !window.AuthModule.currentUser) {
+        console.warn('⚠️ [APP] Пользователь не авторизован, ожидание...');
+        // Ждем авторизации
+        setTimeout(() => {
+            if (window.AuthModule && window.AuthModule.currentUser) {
+                this.init();
+            } else {
+                console.error('❌ [APP] Пользователь не авторизован');
             }
-            
-            this.initialized = true;
-            console.log('✅ [APP] Приложение полностью инициализировано');
-            
-        } catch (error) {
-            console.error('❌ [APP] Ошибка инициализации приложения:', error);
-            window.showErrorScreen(`Ошибка инициализации: ${error.message}`);
+        }, 1000);
+        return;
+    }
+    
+    console.log(`✅ [APP] Пользователь авторизован: ${window.AuthModule.currentUser.email}`);
+    
+    // ✅ ПРОВЕРКА FIREBASE КОНФИГА
+    if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
+        console.error('❌ [APP] Firebase конфигурация не загружена!');
+        window.showErrorScreen('Firebase конфигурация не найдена. Обновите страницу.');
+        return;
+    }
+    
+    console.log('✅ [APP] Firebase конфиг найден:', window.firebaseConfig.projectId);
+    
+    if (this.initialized) {
+        console.warn('⚠️ [APP] Приложение уже инициализировано');
+        return;
+    }
+    
+    try {
+        console.log('🔧 [APP] Определяем тип пользователя...');
+        
+        // Определяем тип пользователя
+        this.isTrial = window.AuthModule.currentUser.plan !== "PREMIUM" || 
+                      window.AuthModule.isSubscriptionExpired(window.AuthModule.currentUser);
+        
+        console.log(`${this.isTrial ? '🔒' : '🔓'} [APP] Пользователь: ${this.isTrial ? 'TRIAL' : 'PREMIUM'}`);
+        
+        // Обновляем UI в зависимости от типа пользователя
+        this.updateUIForUserType();
+        
+        console.log('📊 [APP] Загружаем начальные данные...');
+        
+        // Запускаем обновления данных
+        this.startPriceUpdates();
+        this.startDataUpdates();
+        this.startAnalyticsUpdates();
+        
+        // Загружаем начальные данные
+        await this.loadInitialData();
+        console.log('✅ [APP] Начальные данные загружены');
+        
+        await this.loadDTEList();
+        console.log('✅ [APP] Список DTE загружен');
+        
+        // Обновляем время
+        this.updateTime();
+        setInterval(() => this.updateTime(), 1000);
+        
+        // Инициализируем MT5 модуль (если существует)
+        if (window.MT5Module) {
+            console.log('🤖 [APP] Инициализируем MT5Module...');
+            window.MT5Module.init();
         }
-    },
+        
+        this.initialized = true;
+        console.log('✅ [APP] Приложение полностью инициализировано');
+        
+    } catch (error) {
+        console.error('❌ [APP] Ошибка инициализации приложения:', error);
+        window.showErrorScreen(`Ошибка инициализации: ${error.message}`);
+    }
+  },
     
     // ... остальной код остается без изменений ...
     
