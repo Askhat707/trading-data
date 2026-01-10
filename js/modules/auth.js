@@ -207,81 +207,93 @@ const AuthModule = {
     },
     
     /**
-     * ОБРАБОТКА УСПЕШНОГО ВХОДА
-     */
-    async handleUserLogin(firebaseUser) {
-        console.log('👤 [AUTH] Загрузка данных пользователя:', firebaseUser.email);
+ * ОБРАБОТКА УСПЕШНОГО ВХОДА - ИСПРАВЛЕНО
+ */
+async handleUserLogin(firebaseUser) {
+    console.log('👤 [AUTH] Загрузка данных пользователя:', firebaseUser.email);
+    
+    try {
+        // ТОЛЬКО ЧИТАЕМ из БД
+        const userRef = firebase.database().ref(`users/${firebaseUser.uid}`);
+        const snapshot = await userRef.once('value');
         
-        try {
-            // ТОЛЬКО ЧИТАЕМ из БД
-            const userRef = firebase.database().ref(`users/${firebaseUser.uid}`);
-            const snapshot = await userRef.once('value');
-            
-            if (!snapshot.exists()) {
-                console.error('❌ [AUTH] Пользователь не найден в базе данных');
-                
-                // Выходим
-                await firebase.auth().signOut();
-                
-                this.showAuthError(
-                    `❌ Ваш аккаунт не активирован.\n\n` +
-                    `Обратитесь к администратору:\n` +
-                    `📧 ${this.config.adminEmail}\n` +
-                    `💬 ${this.config.adminTelegram}`
-                );
-                
-                this.handleUserLogout();
-                return false;
-            }
-            
-            // ✅ Пользователь найден
-            const userData = snapshot.val();
-            
-            console.log('📊 [AUTH] Данные загружены:');
-            console.log('   План:', userData.plan);
-            console.log('   Email:', userData.email);
-            
-            // Проверяем подписку
-            if (this.isSubscriptionExpired(userData)) {
-                console.warn('⚠️ [AUTH] Подписка истекла');
-                userData.plan = 'TRIAL';
-                if (!userData.trialEnd || userData.trialEnd < Date.now()) {
-                    userData.trialEnd = Date.now() + (this.config.trialDays * 24 * 60 * 60 * 1000);
-                }
-            }
-            
-            // Добавляем ID и email
-            userData.id = firebaseUser.uid;
-            userData.email = firebaseUser.email;
-            
-            // Сохраняем в модуле
-            this.currentUser = userData;
-            this.status.authChecked = true;
-            
-            console.log('✅ [AUTH] Пользователь успешно загружен, показываем интерфейс');
-            
-            // Показываем интерфейс
-            this.showMainInterface();
-            this.updateUserUI();
-            
-            return true;
-            
-        } catch (error) {
-            console.error('❌ [AUTH] Ошибка обработки входа:', error.message);
-            
-            this.showAuthError('Ошибка загрузки данных: ' + error.message);
+        if (!snapshot.exists()) {
+            console.error('❌ [AUTH] Пользователь не найден в базе данных');
             
             // Выходим
-            try {
-                await firebase.auth().signOut();
-            } catch (e) {
-                console.warn('⚠️ [AUTH] Ошибка при выходе:', e);
-            }
+            await firebase.auth().signOut();
+            
+            this.showAuthError(
+                `❌ Ваш аккаунт не активирован.\n\n` +
+                `Обратитесь к администратору:\n` +
+                `📧 ${this.config.adminEmail}\n` +
+                `💬 ${this.config.adminTelegram}`
+            );
             
             this.handleUserLogout();
             return false;
         }
-    },
+        
+        // ✅ Пользователь найден
+        const userData = snapshot.val();
+        
+        console.log('📊 [AUTH] Данные загружены:');
+        console.log('   План:', userData.plan);
+        console.log('   Email:', userData.email);
+        
+        // Проверяем подписку
+        if (this.isSubscriptionExpired(userData)) {
+            console.warn('⚠️ [AUTH] Подписка истекла');
+            userData.plan = 'TRIAL';
+            if (!userData.trialEnd || userData.trialEnd < Date.now()) {
+                userData.trialEnd = Date.now() + (this.config.trialDays * 24 * 60 * 60 * 1000);
+            }
+        }
+        
+        // Добавляем ID и email
+        userData.id = firebaseUser.uid;
+        userData.email = firebaseUser.email;
+        
+        // Сохраняем в модуле
+        this.currentUser = userData;
+        this.status.authChecked = true;
+        
+        console.log('✅ [AUTH] Пользователь успешно загружен, показываем интерфейс');
+        
+        // Показываем интерфейс
+        this.showMainInterface();
+        this.updateUserUI();
+        
+        // 🔥 ГЛАВНОЕ: Запускаем приложение после авторизации!
+        console.log('🚀 [AUTH] Запуск основного приложения...');
+        if (window.app && typeof window.app.init === 'function') {
+            console.log('   ✅ app.init() найден, запускаем...');
+            await window.app.init();
+            console.log('   ✅ app.init() завершен');
+        } else {
+            console.error('   ❌ app.init() не найден!');
+            console.error('   Доступные методы:', Object.keys(window.app || {}));
+        }
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ [AUTH] Ошибка обработки входа:', error.message);
+        
+        this.showAuthError('Ошибка загрузки данных: ' + error.message);
+        
+        // Выходим
+        try {
+            await firebase.auth().signOut();
+        } catch (e) {
+            console.warn('⚠️ [AUTH] Ошибка при выходе:', e);
+        }
+        
+        this.handleUserLogout();
+        return false;
+    }
+
+  },
     
     /**
      * ВЫХОД ПОЛЬЗОВАТЕЛЯ - ИСПРАВЛЕНО
