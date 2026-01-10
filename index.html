@@ -165,7 +165,74 @@
 
             <!-- ТАБЛИЦА И СТАТИСТИКА -->
             <div class="main-table-container" id="table-container">
-                <div style="text-align: center; color: #666; padding: 40px; width: 100%;">Загрузка таблицы...</div>
+                <div class="top-stats-sidebar">
+                    <div class="top-stats-title">TOP STATISTICS</div>
+                    <div class="top-stats-grid">
+                        <div class="top-stat-box">
+                            <div class="top-stat-header">
+                                <div class="top-stat-name">CALL OI</div>
+                                <div class="top-stat-icon">📊</div>
+                            </div>
+                            <div class="top-stat-list" id="top-call-oi">
+                                <!-- Топ страйков по call OI -->
+                            </div>
+                        </div>
+                        <div class="top-stat-box">
+                            <div class="top-stat-header">
+                                <div class="top-stat-name">PUT OI</div>
+                                <div class="top-stat-icon">📊</div>
+                            </div>
+                            <div class="top-stat-list" id="top-put-oi">
+                                <!-- Топ страйков по put OI -->
+                            </div>
+                        </div>
+                        <div class="top-stat-box">
+                            <div class="top-stat-header">
+                                <div class="top-stat-name">CALL VOL</div>
+                                <div class="top-stat-icon">🔥</div>
+                            </div>
+                            <div class="top-stat-list" id="top-call-vol">
+                                <!-- Топ страйков по call volume -->
+                            </div>
+                        </div>
+                        <div class="top-stat-box">
+                            <div class="top-stat-header">
+                                <div class="top-stat-name">PUT VOL</div>
+                                <div class="top-stat-icon">🔥</div>
+                            </div>
+                            <div class="top-stat-list" id="top-put-vol">
+                                <!-- Топ страйков по put volume -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-wrapper">
+                    <div class="table-controls">
+                        <div style="color: var(--gold); font-weight: 700; font-size: 1rem;" id="table-dte-label">
+                            EXPIRATION: -
+                        </div>
+                        <div>
+                            <button class="btn" onclick="app.togglePremium()" id="btn-prem">OFF</button>
+                            <input type="number" id="forward-adj" class="inp" placeholder="0" onchange="app.applyForwardAdjustment()">
+                            <button class="btn" onclick="app.applyForwardAdjustment()">Apply FWD</button>
+                        </div>
+                    </div>
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>C-OI</th><th>C-VOL</th><th>C-PREM</th><th>C-DELTA</th><th>C-GAMMA</th><th>C-IV</th>
+                                    <th>STRIKE</th>
+                                    <th>P-IV</th><th>P-GAMMA</th><th>P-DELTA</th><th>P-PREM</th><th>P-VOL</th><th>P-OI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body">
+                                <!-- Данные будут здесь -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <!-- КОНТРОЛЬНАЯ ПАНЕЛЬ -->
@@ -186,6 +253,11 @@
                             <div class="control-group">
                                 <span class="control-label">Show Premiums:</span>
                                 <button id="btn-prem" class="btn" onclick="app.togglePremium()">OFF</button>
+                            </div>
+                            <div class="control-group">
+                                <span class="control-label">Strike Count:</span>
+                                <input type="number" id="strike-count" class="inp" value="15" min="5" max="30">
+                                <button class="btn" onclick="app.changeStrikeCount()">Apply</button>
                             </div>
                         </div>
                     </div>
@@ -405,88 +477,88 @@
             }
             
             // Основная функция инициализации
-async function initializeSystem() {
-    console.group('🚀 [INIT] Запуск инициализации...');
-    
-    try {
-        // Шаг 1: Загрузка конфига
-        window.updateLoadingStatus('📦 Загрузка конфигурации...', 20);
-        await loadFirebaseConfig();
-        
-        // Шаг 2: Инициализация Firebase
-        window.updateLoadingStatus('🔥 Инициализация Firebase...', 40);
-        await initializeFirebase();
-        
-        // Шаг 3: Проверка модулей
-        window.updateLoadingStatus('🔧 Проверка модулей...', 60);
-        
-        if (!window.FirebaseModule) {
-            throw new Error('FirebaseModule не найден');
-        }
-        
-        if (!window.AuthModule) {
-            throw new Error('AuthModule не найден');
-        }
-        
-        // Инициализируем FirebaseModule
-        if (!window.FirebaseModule.init()) {
-            throw new Error('Не удалось инициализировать FirebaseModule');
-        }
-        
-        // Шаг 4: Инициализация Auth с persistence
-        window.updateLoadingStatus('🔐 Инициализация аутентификации...', 80);
-        
-        // Настраиваем persistence ДО инициализации
-        if (firebase.auth) {
-            await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-            console.log('✅ [AUTH] Persistence установлен в LOCAL');
-        }
-        
-        // Инициализируем AuthModule
-        await window.AuthModule.autoInit();
-        
-        // Шаг 5: Регистрация Service Worker
-        window.updateLoadingStatus('⚙️ Регистрация Service Worker...', 90);
-        if ('serviceWorker' in navigator) {
-            try {
-                const registration = await navigator.serviceWorker.register('/trading-data/service-worker.js', {
-                    scope: '/trading-data/'
-                });
-                console.log('✅ [SW] Service Worker зарегистрирован:', registration.scope);
-            } catch (swError) {
-                console.warn('⚠️ [SW] Ошибка регистрации:', swError);
+            async function initializeSystem() {
+                console.group('🚀 [INIT] Запуск инициализации...');
+                
+                try {
+                    // Шаг 1: Загрузка конфига
+                    window.updateLoadingStatus('📦 Загрузка конфигурации...', 20);
+                    await loadFirebaseConfig();
+                    
+                    // Шаг 2: Инициализация Firebase
+                    window.updateLoadingStatus('🔥 Инициализация Firebase...', 40);
+                    await initializeFirebase();
+                    
+                    // Шаг 3: Проверка модулей
+                    window.updateLoadingStatus('🔧 Проверка модулей...', 60);
+                    
+                    if (!window.FirebaseModule) {
+                        throw new Error('FirebaseModule не найден');
+                    }
+                    
+                    if (!window.AuthModule) {
+                        throw new Error('AuthModule не найден');
+                    }
+                    
+                    // Инициализируем FirebaseModule
+                    if (!window.FirebaseModule.init()) {
+                        throw new Error('Не удалось инициализировать FirebaseModule');
+                    }
+                    
+                    // Шаг 4: Инициализация Auth с persistence
+                    window.updateLoadingStatus('🔐 Инициализация аутентификации...', 80);
+                    
+                    // Настраиваем persistence ДО инициализации
+                    if (firebase.auth) {
+                        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                        console.log('✅ [AUTH] Persistence установлен в LOCAL');
+                    }
+                    
+                    // Инициализируем AuthModule
+                    await window.AuthModule.autoInit();
+                    
+                    // Шаг 5: Регистрация Service Worker
+                    window.updateLoadingStatus('⚙️ Регистрация Service Worker...', 90);
+                    if ('serviceWorker' in navigator) {
+                        try {
+                            const registration = await navigator.serviceWorker.register('/trading-data/service-worker.js', {
+                                scope: '/trading-data/'
+                            });
+                            console.log('✅ [SW] Service Worker зарегистрирован:', registration.scope);
+                        } catch (swError) {
+                            console.warn('⚠️ [SW] Ошибка регистрации:', swError);
+                        }
+                    }
+                    
+                    // Шаг 6: Завершение инициализации
+                    window.updateLoadingStatus('✅ Система готова!', 100);
+                    
+                    // Плавное скрытие лоадера
+                    setTimeout(() => {
+                        const loading = document.getElementById('loading');
+                        if (loading) {
+                            loading.style.opacity = '0';
+                            loading.style.pointerEvents = 'none';
+                            setTimeout(() => {
+                                loading.style.display = 'none';
+                            }, 500);
+                        }
+                        
+                        // Автоматически запустится app.init() при успешной авторизации через AuthModule.handleUserLogin()
+                        
+                    }, 500);
+                    
+                    window.appState.initialized = true;
+                    console.log('✅ [INIT] Система полностью инициализирована');
+                    
+                } catch (error) {
+                    console.error('❌ [INIT] Ошибка инициализации:', error);
+                    window.appState.error = error.message;
+                    window.showErrorScreen(error.message || 'Неизвестная ошибка инициализации');
+                }
+                
+                console.groupEnd();
             }
-        }
-        
-        // Шаг 6: Завершение инициализации
-        window.updateLoadingStatus('✅ Система готова!', 100);
-        
-        // Плавное скрытие лоадера
-        setTimeout(() => {
-            const loading = document.getElementById('loading');
-            if (loading) {
-                loading.style.opacity = '0';
-                loading.style.pointerEvents = 'none';
-                setTimeout(() => {
-                    loading.style.display = 'none';
-                }, 500);
-            }
-            
-            // Автоматически запустится app.init() при успешной авторизации через AuthModule.handleUserLogin()
-            
-        }, 500);
-        
-        window.appState.initialized = true;
-        console.log('✅ [INIT] Система полностью инициализирована');
-        
-    } catch (error) {
-        console.error('❌ [INIT] Ошибка инициализации:', error);
-        window.appState.error = error.message;
-        window.showErrorScreen(error.message || 'Неизвестная ошибка инициализации');
-    }
-    
-    console.groupEnd();
-}
             
             // Функция запуска инициализации
             function startInitialization() {
