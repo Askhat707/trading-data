@@ -98,8 +98,13 @@ nav a::after {
     transition: var(--transition);
 }
 
-nav a:hover, nav a.active { color: var(--text-main); }
-nav a:hover::after { width: 100%; }
+nav a:hover, nav a.active { 
+    color: var(--text-main); 
+}
+
+nav a:hover::after { 
+    width: 100%; 
+}
 
 .btn-telegram {
     background: var(--gold);
@@ -108,6 +113,8 @@ nav a:hover::after { width: 100%; }
     border-radius: 30px;
     font-weight: 700;
     text-decoration: none;
+    border: none;
+    cursor: pointer;
     box-shadow: 0 0 20px var(--gold-glow);
     transition: all 0.3s ease;
 }
@@ -117,7 +124,9 @@ nav a:hover::after { width: 100%; }
     box-shadow: 0 0 30px var(--gold-glow); 
 }
 
-.btn-telegram::after { display: none; }
+.btn-telegram::after { 
+    display: none; 
+}
 
 /* ========================================================================== */
 /* 📊 LIVE STATUS PANEL */
@@ -208,7 +217,7 @@ nav a:hover::after { width: 100%; }
 }
 
 /* ========================================================================== */
-/* 📈 CHART GRID */
+/* 📈 CHART GRID - ИСПРАВЛЕННАЯ ВЕРСИЯ */
 /* ========================================================================== */
 .chart-grid-8 { 
     display: grid; 
@@ -223,14 +232,18 @@ nav a:hover::after { width: 100%; }
     border-radius: 15px;
     padding: 25px;
     height: 500px;
+    min-height: 500px;
     position: relative;
     transition: var(--transition);
     box-shadow: var(--shadow-card);
+    display: flex;
+    flex-direction: column;
 }
 
 .chart-container:hover {
     border-color: var(--gold);
     box-shadow: var(--shadow-card), 0 0 30px rgba(255, 215, 0, 0.1);
+    transform: translateY(-3px);
 }
 
 .chart-title { 
@@ -244,9 +257,17 @@ nav a:hover::after { width: 100%; }
     z-index: 5;
 }
 
-canvas { 
-    width: 100% !important; 
-    height: 100% !important; 
+/* ✅ ПРАВИЛЬНОЕ УПРАВЛЕНИЕ CANVAS */
+canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: calc(100% - 10px);
+}
+
+/* Для контейнера canvas внутри .chart-container */
+.chart-container > canvas {
+    flex: 1;
 }
 
 /* ========================================================================== */
@@ -421,6 +442,11 @@ canvas {
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: var(--transition);
+}
+
+.trial-notification-close:hover {
+    transform: scale(1.2);
 }
 
 .trial-notification-title {
@@ -438,42 +464,145 @@ canvas {
 /* 📱 RESPONSIVE STYLES */
 /* ========================================================================== */
 @media(max-width: 1400px) {
-    .chart-grid-8 { grid-template-columns: 1fr; }
-    .grid-8 { grid-template-columns: repeat(2, 1fr); }
-    .main-table-container { flex-direction: column; }
-    .top-stats-sidebar { position: static; width: 100%; }
-    .table-wrapper { width: 100%; }
-    .bottom-control-grid { grid-template-columns: 1fr; }
+    .chart-grid-8 { 
+        grid-template-columns: 1fr; 
+    }
+    
+    .grid-8 { 
+        grid-template-columns: repeat(2, 1fr); 
+    }
+    
+    .main-table-container { 
+        flex-direction: column; 
+    }
+    
+    .top-stats-sidebar { 
+        position: static; 
+        width: 100%; 
+    }
+    
+    .table-wrapper { 
+        width: 100%; 
+    }
+    
+    .bottom-control-grid { 
+        grid-template-columns: 1fr; 
+    }
 }
 
 @media(max-width: 1024px) {
-    header { flex-direction: column; gap: 15px; padding: 15px; }
-    nav { flex-wrap: wrap; justify-content: center; gap: 8px; }
-    .logo { font-size: 1.4rem; }
-    nav a { font-size: 0.75rem; padding: 6px 0; }
-    .btn-telegram { padding: 8px 15px; font-size: 0.8rem; }
+    header { 
+        flex-direction: column; 
+        gap: 15px; 
+        padding: 15px; 
+    }
     
-    .grid-8 { grid-template-columns: 1fr; gap: 15px; }
-    .card { min-height: 150px; padding: 15px; }
-    .card-main-value { font-size: 2rem; }
-    .card-header { gap: 8px; font-size: 0.95rem; margin-bottom: 15px; }
+    nav { 
+        flex-wrap: wrap; 
+        justify-content: center; 
+        gap: 8px; 
+    }
     
-    .chart-grid-8 { gap: 20px; }
-    .chart-container { height: 350px; padding: 15px; }
-    .chart-title { font-size: 0.9rem; top: 12px; left: 12px; }
+    .logo { 
+        font-size: 1.4rem; 
+    }
     
-    .status-bar { padding: 20px; margin-bottom: 30px; }
-    .data-grid { grid-template-columns: repeat(2, 1fr); gap: 15px; }
-    .data-box { padding: 15px; }
-    .data-value { font-size: 1.6rem; }
-    .data-label { font-size: 0.75rem; }
+    nav a { 
+        font-size: 0.75rem; 
+        padding: 6px 0; 
+    }
     
-    .bottom-control-grid { grid-template-columns: 1fr; gap: 12px; }
-    .bottom-control-section { padding: 12px; }
-    .control-label { min-width: 80px; font-size: 0.8rem; }
-    .control-row { gap: 8px; }
-    .btn { padding: 8px 12px; font-size: 0.8rem; min-width: 60px; }
-    .inp { width: 80px; padding: 8px 10px; font-size: 0.9rem; }
+    .btn-telegram { 
+        padding: 8px 15px; 
+        font-size: 0.8rem; 
+    }
+    
+    .grid-8 { 
+        grid-template-columns: 1fr; 
+        gap: 15px; 
+    }
+    
+    .card { 
+        min-height: 150px; 
+        padding: 15px; 
+    }
+    
+    .card-main-value { 
+        font-size: 2rem; 
+    }
+    
+    .card-header { 
+        gap: 8px; 
+        font-size: 0.95rem; 
+        margin-bottom: 15px; 
+    }
+    
+    .chart-grid-8 { 
+        gap: 20px; 
+    }
+    
+    .chart-container { 
+        height: 400px; 
+        padding: 15px; 
+    }
+    
+    .chart-title { 
+        font-size: 0.9rem; 
+        top: 12px; 
+        left: 12px; 
+    }
+    
+    .status-bar { 
+        padding: 20px; 
+        margin-bottom: 30px; 
+    }
+    
+    .data-grid { 
+        grid-template-columns: repeat(2, 1fr); 
+        gap: 15px; 
+    }
+    
+    .data-box { 
+        padding: 15px; 
+    }
+    
+    .data-value { 
+        font-size: 1.6rem; 
+    }
+    
+    .data-label { 
+        font-size: 0.75rem; 
+    }
+    
+    .bottom-control-grid { 
+        grid-template-columns: 1fr; 
+        gap: 12px; 
+    }
+    
+    .bottom-control-section { 
+        padding: 12px; 
+    }
+    
+    .control-label { 
+        min-width: 80px; 
+        font-size: 0.8rem; 
+    }
+    
+    .control-row { 
+        gap: 8px; 
+    }
+    
+    .btn { 
+        padding: 8px 12px; 
+        font-size: 0.8rem; 
+        min-width: 60px; 
+    }
+    
+    .inp { 
+        width: 80px; 
+        padding: 8px 10px; 
+        font-size: 0.9rem; 
+    }
     
     .trial-notification {
         bottom: 10px;
@@ -484,27 +613,88 @@ canvas {
 }
 
 @media(max-width: 768px) {
-    .container { padding: 15px 12px; }
+    .container { 
+        padding: 15px 12px; 
+    }
     
-    header { padding: 12px; gap: 12px; }
-    .logo { font-size: 1.2rem; gap: 6px; }
-    nav { width: 100%; gap: 5px; justify-content: space-between; }
-    nav a { font-size: 0.65rem; padding: 4px 0; letter-spacing: 0px; }
-    .btn-telegram { padding: 6px 12px; font-size: 0.7rem; }
+    header { 
+        padding: 12px; 
+        gap: 12px; 
+    }
     
-    .grid-8 { gap: 8px; }
-    .card { min-height: 100px; padding: 8px; }
-    .card-main-value { font-size: 1.4rem; }
+    .logo { 
+        font-size: 1.2rem; 
+        gap: 6px; 
+    }
     
-    .chart-container { height: 250px; }
+    nav { 
+        width: 100%; 
+        gap: 5px; 
+        justify-content: space-between; 
+    }
     
-    .table-scroll { max-height: 300px; }
-    table { font-size: 0.65rem; }
-    th, td { padding: 4px 2px; }
-    .strike-cell { width: 60px; }
+    nav a { 
+        font-size: 0.65rem; 
+        padding: 4px 0; 
+        letter-spacing: 0; 
+    }
     
-    .bottom-control-panel { padding: 8px; }
-    .bottom-control-title { font-size: 0.7rem; }
-    .control-row { gap: 4px; }
-    .btn { padding: 4px 8px; font-size: 0.65rem; }
+    .btn-telegram { 
+        padding: 6px 12px; 
+        font-size: 0.7rem; 
+    }
+    
+    .grid-8 { 
+        gap: 8px; 
+    }
+    
+    .card { 
+        min-height: 100px; 
+        padding: 8px; 
+    }
+    
+    .card-main-value { 
+        font-size: 1.4rem; 
+    }
+    
+    .chart-container { 
+        height: 300px; 
+    }
+    
+    .chart-grid-8 {
+        gap: 15px;
+    }
+    
+    .table-scroll { 
+        max-height: 300px; 
+    }
+    
+    table { 
+        font-size: 0.65rem; 
+    }
+    
+    th, td { 
+        padding: 4px 2px; 
+    }
+    
+    .strike-cell { 
+        width: 60px; 
+    }
+    
+    .bottom-control-panel { 
+        padding: 8px; 
+    }
+    
+    .bottom-control-title { 
+        font-size: 0.7rem; 
+    }
+    
+    .control-row { 
+        gap: 4px; 
+    }
+    
+    .btn { 
+        padding: 4px 8px; 
+        font-size: 0.65rem; 
+    }
 }
