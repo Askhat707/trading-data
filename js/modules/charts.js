@@ -1,9 +1,12 @@
 // ============================================
-// 📈 МОДУЛЬ ГРАФИКОВ
+// 📈 МОДУЛЬ ГРАФИКОВ - ПОЛНЫЙ КОД
 // ============================================
+
+console.log('📈 [CHARTS] Загрузка ChartsModule...');
 
 const ChartsModule = {
     charts: {},
+    
     chartOptions: {
         responsive: true,
         maintainAspectRatio: false,
@@ -66,60 +69,133 @@ const ChartsModule = {
     },
     
     /**
-     * Создание графика
+     * Инициализация модуля
+     */
+    init() {
+        console.log('✅ [CHARTS] ChartsModule инициализирован');
+    },
+    
+    /**
+     * Создание одного графика
      * @param {string} id - ID canvas элемента
-     * @param {Object} config - Конфигурация графика
+     * @param {Object} config - Конфигурация Chart.js
      */
     createChart(id, config) {
-        const ctx = document.getElementById(id);
-        if (!ctx) return;
+        console.log(`🎨 [CHART] Создаем график: ${id}`);
         
-        // Удаляем старый график, если есть
+        const ctx = document.getElementById(id);
+        if (!ctx) {
+            console.error(`❌ [CHART] Canvas #${id} не найден в DOM!`);
+            return false;
+        }
+        
+        // Удаляем старый график если существует
         if (this.charts[id]) {
+            console.log(`🔄 [CHART] Удаляем старый график ${id}`);
             this.charts[id].destroy();
+            delete this.charts[id];
         }
         
         try {
-            // Объединяем с общими настройками
+            // Объединяем с базовыми настройками
             const mergedConfig = {
-                ...config,
+                type: config.type || 'line',
+                data: config.data || {},
                 options: {
                     ...this.chartOptions,
-                    ...config.options
+                    ...(config.options || {})
                 }
             };
             
+            // Создаем новый график
             this.charts[id] = new Chart(ctx, mergedConfig);
+            console.log(`✅ [CHART] График ${id} успешно создан`);
+            return true;
+            
         } catch (error) {
-            console.error(`❌ Ошибка создания графика ${id}:`, error);
+            console.error(`❌ [CHART] Ошибка создания графика ${id}:`, error);
+            return false;
         }
     },
     
     /**
-     * Создание всех графиков
-     * @param {Array} records - Данные опционной цепи
+     * Создание всех 8 графиков
+     * @param {Array} records - Массив данных опционной цепи
      */
     createAllCharts(records) {
-        if (!records || records.length < 5) {
+        console.log('📊 [CHARTS] Начало создания всех графиков...');
+        
+        // ✅ ПРОВЕРКА ДАННЫХ
+        if (!records || !Array.isArray(records)) {
+            console.error('❌ [CHARTS] records не является массивом или null');
             this.showNoDataOnCharts();
             return;
         }
         
-        const sorted = [...records].sort((a,b) => parseFloat(a.s) - parseFloat(b.s));
-        const filtered = sorted;
-        
-        if (filtered.length < 5) {
+        if (records.length === 0) {
+            console.warn('⚠️ [CHARTS] records пуст');
             this.showNoDataOnCharts();
             return;
         }
         
-        const labels = filtered.map(r => parseFloat(r.s).toFixed(0));
-        const strikes = filtered.map(r => parseFloat(r.s));
+        if (records.length < 5) {
+            console.warn('⚠️ [CHARTS] Недостаточно данных (< 5 записей)');
+            this.showNoDataOnCharts();
+            return;
+        }
         
-        const datasets = this.calculateDatasets(filtered, strikes);
-        const losses = this.calculateMaxPainLosses(filtered, strikes);
-        
-        // OI Distribution Chart
+        try {
+            // ✅ СОРТИРУЕМ ДАННЫЕ
+            const sorted = [...records].sort((a, b) => {
+                const strikeA = parseFloat(a.s) || 0;
+                const strikeB = parseFloat(b.s) || 0;
+                return strikeA - strikeB;
+            });
+            
+            console.log(`✅ [CHARTS] Отсортировано записей: ${sorted.length}`);
+            
+            // ✅ СОЗДАЕМ LABELS И STRIKES
+            const labels = sorted.map(r => {
+                const strike = parseFloat(r.s) || 0;
+                return strike.toFixed(0);
+            });
+            
+            const strikes = sorted.map(r => parseFloat(r.s) || 0);
+            
+            console.log(`✅ [CHARTS] Labels: ${labels.slice(0, 3).join(', ')}... (всего ${labels.length})`);
+            console.log(`✅ [CHARTS] Strikes: ${strikes.slice(0, 3).join(', ')}... (всего ${strikes.length})`);
+            
+            // ✅ РАССЧИТЫВАЕМ ДАТАСЕТЫ
+            const datasets = this.calculateDatasets(sorted, strikes);
+            console.log('✅ [CHARTS] Датасеты рассчитаны');
+            
+            // ✅ РАССЧИТЫВАЕМ MAX PAIN
+            const losses = this.calculateMaxPainLosses(sorted, strikes);
+            console.log(`✅ [CHARTS] Max Pain losses: ${losses.slice(0, 3).join(', ')}...`);
+            
+            // ✅ СОЗДАЕМ ВСЕ ГРАФИКИ
+            this.createChartOI(labels, datasets);
+            this.createChartVolume(labels, datasets);
+            this.createChartIV(labels, datasets);
+            this.createChartMaxPain(labels, losses);
+            this.createChartGamma(labels, datasets);
+            this.createChartDelta(labels, datasets);
+            this.createChartGEX(labels, datasets);
+            this.createChartTheta(labels, datasets);
+            
+            console.log('✅ [CHARTS] ВСЕ 8 ГРАФИКОВ УСПЕШНО СОЗДАНЫ!');
+            
+        } catch (error) {
+            console.error('❌ [CHARTS] КРИТИЧЕСКАЯ ОШИБКА при создании графиков:', error);
+            console.error('Stack:', error.stack);
+            this.showNoDataOnCharts();
+        }
+    },
+    
+    /**
+     * 1️⃣ График Open Interest Distribution
+     */
+    createChartOI(labels, datasets) {
         this.createChart('chart-oi', {
             type: 'bar',
             data: {
@@ -163,8 +239,12 @@ const ChartsModule = {
                 }
             }
         });
-        
-        // Volume Heatmap Chart
+    },
+    
+    /**
+     * 2️⃣ График Volume Heatmap
+     */
+    createChartVolume(labels, datasets) {
         this.createChart('chart-vol', {
             type: 'bar',
             data: {
@@ -175,14 +255,16 @@ const ChartsModule = {
                         data: datasets.callVol,
                         backgroundColor: 'rgba(0, 230, 118, 0.6)',
                         borderColor: '#00E676',
-                        borderWidth: 1
+                        borderWidth: 1,
+                        yAxisID: 'y'
                     },
                     {
                         label: 'Put Volume',
                         data: datasets.putVol.map(v => -v),
                         backgroundColor: 'rgba(255, 23, 68, 0.6)',
                         borderColor: '#FF1744',
-                        borderWidth: 1
+                        borderWidth: 1,
+                        yAxisID: 'y'
                     }
                 ]
             },
@@ -197,8 +279,12 @@ const ChartsModule = {
                 }
             }
         });
-        
-        // IV Smile Chart
+    },
+    
+    /**
+     * 3️⃣ График IV Smile Curve
+     */
+    createChartIV(labels, datasets) {
         this.createChart('chart-iv', {
             type: 'line',
             data: {
@@ -213,7 +299,9 @@ const ChartsModule = {
                         fill: true,
                         tension: 0.4,
                         pointRadius: 3,
-                        pointBackgroundColor: '#00E676'
+                        pointBackgroundColor: '#00E676',
+                        pointBorderColor: '#00E676',
+                        pointBorderWidth: 1
                     },
                     {
                         label: 'Put IV',
@@ -224,7 +312,9 @@ const ChartsModule = {
                         fill: true,
                         tension: 0.4,
                         pointRadius: 3,
-                        pointBackgroundColor: '#FF1744'
+                        pointBackgroundColor: '#FF1744',
+                        pointBorderColor: '#FF1744',
+                        pointBorderWidth: 1
                     }
                 ]
             },
@@ -239,8 +329,12 @@ const ChartsModule = {
                 }
             }
         });
-        
-        // Max Pain Chart
+    },
+    
+    /**
+     * 4️⃣ График Max Pain Curve
+     */
+    createChartMaxPain(labels, losses) {
         this.createChart('chart-mp', {
             type: 'line',
             data: {
@@ -255,7 +349,9 @@ const ChartsModule = {
                         fill: true,
                         tension: 0.4,
                         pointRadius: 4,
-                        pointBackgroundColor: '#FFD700'
+                        pointBackgroundColor: '#FFD700',
+                        pointBorderColor: '#FFD700',
+                        pointBorderWidth: 2
                     }
                 ]
             },
@@ -270,8 +366,12 @@ const ChartsModule = {
                 }
             }
         });
-        
-        // Gamma Exposure Chart
+    },
+    
+    /**
+     * 5️⃣ График Gamma Exposure
+     */
+    createChartGamma(labels, datasets) {
         this.createChart('chart-gamma', {
             type: 'line',
             data: {
@@ -286,7 +386,9 @@ const ChartsModule = {
                         fill: true,
                         tension: 0.4,
                         pointRadius: 3,
-                        pointBackgroundColor: '#9C27B0'
+                        pointBackgroundColor: '#9C27B0',
+                        pointBorderColor: '#9C27B0',
+                        pointBorderWidth: 1
                     }
                 ]
             },
@@ -301,8 +403,12 @@ const ChartsModule = {
                 }
             }
         });
-        
-        // Delta Profile Chart
+    },
+    
+    /**
+     * 6️⃣ График Delta Profile
+     */
+    createChartDelta(labels, datasets) {
         this.createChart('chart-delta', {
             type: 'line',
             data: {
@@ -315,7 +421,9 @@ const ChartsModule = {
                         backgroundColor: 'rgba(0, 230, 118, 0.2)',
                         borderWidth: 2,
                         fill: true,
-                        tension: 0.4
+                        tension: 0.4,
+                        pointRadius: 2,
+                        pointBackgroundColor: '#00E676'
                     },
                     {
                         label: 'Put Delta',
@@ -324,7 +432,9 @@ const ChartsModule = {
                         backgroundColor: 'rgba(255, 23, 68, 0.2)',
                         borderWidth: 2,
                         fill: true,
-                        tension: 0.4
+                        tension: 0.4,
+                        pointRadius: 2,
+                        pointBackgroundColor: '#FF1744'
                     }
                 ]
             },
@@ -339,8 +449,12 @@ const ChartsModule = {
                 }
             }
         });
-        
-        // GEX Profile Chart
+    },
+    
+    /**
+     * 7️⃣ График GEX Profile
+     */
+    createChartGEX(labels, datasets) {
         this.createChart('chart-gex', {
             type: 'line',
             data: {
@@ -355,7 +469,9 @@ const ChartsModule = {
                         fill: true,
                         tension: 0.4,
                         pointRadius: 3,
-                        pointBackgroundColor: '#2196F3'
+                        pointBackgroundColor: '#2196F3',
+                        pointBorderColor: '#2196F3',
+                        pointBorderWidth: 1
                     }
                 ]
             },
@@ -379,8 +495,12 @@ const ChartsModule = {
                 }
             }
         });
-        
-        // Theta Decay Chart
+    },
+    
+    /**
+     * 8️⃣ График Theta Decay
+     */
+    createChartTheta(labels, datasets) {
         this.createChart('chart-theta', {
             type: 'line',
             data: {
@@ -393,7 +513,9 @@ const ChartsModule = {
                         backgroundColor: 'rgba(0, 230, 118, 0.2)',
                         borderWidth: 2,
                         fill: true,
-                        tension: 0.4
+                        tension: 0.4,
+                        pointRadius: 2,
+                        pointBackgroundColor: '#00E676'
                     },
                     {
                         label: 'Put Theta',
@@ -402,7 +524,9 @@ const ChartsModule = {
                         backgroundColor: 'rgba(255, 23, 68, 0.2)',
                         borderWidth: 2,
                         fill: true,
-                        tension: 0.4
+                        tension: 0.4,
+                        pointRadius: 2,
+                        pointBackgroundColor: '#FF1744'
                     }
                 ]
             },
@@ -420,79 +544,142 @@ const ChartsModule = {
     },
     
     /**
- * Расчёт датасетов для графиков - ИСПРАВЛЕНО
- */
-calculateDatasets(records, strikes) {
-    return {
-        callOI: records.map(r => (r.c && r.c.oi) ? parseInt(r.c.oi) : 0),
-        putOI: records.map(r => (r.p && r.p.oi) ? parseInt(r.p.oi) : 0),
-        callVol: records.map(r => (r.c && r.c.v) ? parseInt(r.c.v) : 0),
-        putVol: records.map(r => (r.p && r.p.v) ? parseInt(r.p.v) : 0),
-        callIV: records.map(r => (r.c && r.c.iv) ? parseFloat(r.c.iv) : 0),
-        putIV: records.map(r => (r.p && r.p.iv) ? parseFloat(r.p.iv) : 0),
-        callDelta: records.map(r => {
-            const d = (r.c && r.c.d) ? parseFloat(r.c.d) : 0;
-            const oi = (r.c && r.c.oi) ? parseInt(r.c.oi) : 0;
-            return (d * oi) / 100;
-        }),
-        putDelta: records.map(r => {
-            const d = (r.p && r.p.d) ? parseFloat(r.p.d) : 0;
-            const oi = (r.p && r.p.oi) ? parseInt(r.p.oi) : 0;
-            return (d * oi) / 100;
-        }),
-        callTheta: records.map(r => (r.c && r.c.t) ? parseFloat(r.c.t) : 0),
-        putTheta: records.map(r => (r.p && r.p.t) ? parseFloat(r.p.t) : 0),
-        netGamma: records.map(r => {
-            const callG = (r.c && r.c.g) ? parseFloat(r.c.g) : 0;
-            const callOI = (r.c && r.c.oi) ? parseInt(r.c.oi) : 0;
-            const putG = (r.p && r.p.g) ? parseFloat(r.p.g) : 0;
-            const putOI = (r.p && r.p.oi) ? parseInt(r.p.oi) : 0;
-            return (callG * callOI) - (putG * putOI);
-        }),
-        netGEX: records.map(r => {
-            const strike = parseFloat(r.s);
-            const callG = (r.c && r.c.g) ? parseFloat(r.c.g) : 0;
-            const callOI = (r.c && r.c.oi) ? parseInt(r.c.oi) : 0;
-            const putG = (r.p && r.p.g) ? parseFloat(r.p.g) : 0;
-            const putOI = (r.p && r.p.oi) ? parseInt(r.p.oi) : 0;
-            const callGEX = callOI * callG * strike * 100;
-            const putGEX = putOI * putG * strike * 100;
-            return (callGEX - putGEX) / 1000000;
-        })
-    };
-},
+     * ГЛАВНАЯ ФУНКЦИЯ: Расчет датасетов
+     * @param {Array} records - Отсортированные записи
+     * @param {Array} strikes - Массив страйков
+     * @returns {Object} Объект с расчитанными данными
+     */
+    calculateDatasets(records, strikes) {
+        console.log('📊 [DATASETS] Начало расчета датасетов...');
+        
+        const result = {
+            callOI: [],
+            putOI: [],
+            callVol: [],
+            putVol: [],
+            callIV: [],
+            putIV: [],
+            callDelta: [],
+            putDelta: [],
+            callTheta: [],
+            putTheta: [],
+            netGamma: [],
+            netGEX: []
+        };
+        
+        try {
+            records.forEach((record, idx) => {
+                // ✅ CALL DATA
+                const callData = (record.c && typeof record.c === 'object') ? record.c : {};
+                const callOI = parseInt(callData.oi) || 0;
+                const callVol = parseInt(callData.v) || 0;
+                const callIV = parseFloat(callData.iv) || 0;
+                const callDelta = parseFloat(callData.d) || 0;
+                const callGamma = parseFloat(callData.g) || 0;
+                const callTheta = parseFloat(callData.t) || 0;
+                
+                // ✅ PUT DATA
+                const putData = (record.p && typeof record.p === 'object') ? record.p : {};
+                const putOI = parseInt(putData.oi) || 0;
+                const putVol = parseInt(putData.v) || 0;
+                const putIV = parseFloat(putData.iv) || 0;
+                const putDelta = parseFloat(putData.d) || 0;
+                const putGamma = parseFloat(putData.g) || 0;
+                const putTheta = parseFloat(putData.t) || 0;
+                
+                // ✅ ДОБАВЛЯЕМ В РЕЗУЛЬТАТЫ
+                result.callOI.push(callOI);
+                result.putOI.push(putOI);
+                result.callVol.push(callVol);
+                result.putVol.push(putVol);
+                result.callIV.push(callIV);
+                result.putIV.push(putIV);
+                
+                // ✅ DELTA (с учетом OI)
+                result.callDelta.push((callDelta * callOI) / 100);
+                result.putDelta.push((putDelta * putOI) / 100);
+                
+                // ✅ THETA
+                result.callTheta.push(callTheta);
+                result.putTheta.push(putTheta);
+                
+                // ✅ GAMMA (NET)
+                result.netGamma.push((callGamma * callOI) - (putGamma * putOI));
+                
+                // ✅ GEX (Gamma Exposure)
+                const strike = parseFloat(record.s) || 0;
+                const callGEX = callOI * callGamma * strike * 100;
+                const putGEX = putOI * putGamma * strike * 100;
+                result.netGEX.push((callGEX - putGEX) / 1000000);
+            });
+            
+            console.log('✅ [DATASETS] Датасеты успешно рассчитаны');
+            console.log(`   - callOI: ${result.callOI.slice(0, 3).join(', ')}...`);
+            console.log(`   - callVol: ${result.callVol.slice(0, 3).join(', ')}...`);
+            console.log(`   - netGamma: ${result.netGamma.slice(0, 3).join(', ')}...`);
+            
+            return result;
+            
+        } catch (error) {
+            console.error('❌ [DATASETS] Ошибка при расчете датасетов:', error);
+            return result;
+        }
+    },
     
     /**
-     * Расчёт потерь для Max Pain
+     * Расчет Max Pain Losses
+     * @param {Array} records - Отсортированные записи
+     * @param {Array} strikes - Массив страйков
+     * @returns {Array} Массив потерь для каждого страйка
      */
     calculateMaxPainLosses(records, strikes) {
-        return strikes.map(k => {
+        console.log('💰 [MAXPAIN] Расчет Max Pain Losses...');
+        
+        const losses = strikes.map(k => {
             let loss = 0;
+            
             records.forEach(rec => {
-                const s = parseFloat(rec.s);
-                if (k < s) loss += (s - k) * (rec.c?.oi || 0);
-                if (k > s) loss += (k - s) * (rec.p?.oi || 0);
+                const s = parseFloat(rec.s) || 0;
+                const callOI = (rec.c && rec.c.oi) ? parseInt(rec.c.oi) : 0;
+                const putOI = (rec.p && rec.p.oi) ? parseInt(rec.p.oi) : 0;
+                
+                if (k < s) {
+                    loss += (s - k) * callOI;
+                }
+                if (k > s) {
+                    loss += (k - s) * putOI;
+                }
             });
+            
             return loss;
         });
+        
+        console.log(`✅ [MAXPAIN] Max Pain losses рассчитаны: ${losses.slice(0, 3).join(', ')}...`);
+        return losses;
     },
     
     /**
      * Показ сообщения об отсутствии данных
      */
     showNoDataOnCharts() {
-        const chartIds = [
-            'chart-oi', 'chart-vol', 'chart-iv', 'chart-mp',
-            'chart-gamma', 'chart-delta', 'chart-gex', 'chart-theta'
-        ];
+        console.log('⚠️ [CHARTS] Показываем "нет данных" на графиках...');
+        
+        const chartIds = ['chart-oi', 'chart-vol', 'chart-iv', 'chart-mp', 'chart-gamma', 'chart-delta', 'chart-gex', 'chart-theta'];
         
         chartIds.forEach(chartId => {
-            const container = document.getElementById(chartId)?.parentElement;
-            if (container) {
+            const canvas = document.getElementById(chartId);
+            if (canvas && canvas.parentElement) {
+                const container = canvas.parentElement;
+                
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.justifyContent = 'center';
+                container.style.alignItems = 'center';
+                
                 container.innerHTML = `
-                    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; color: #888; font-size: 1.1rem; text-align: center; padding: 40px;">
+                    <div style="text-align: center; color: #888; padding: 40px;">
                         <div style="font-size: 3rem; margin-bottom: 20px;">📊</div>
-                        <div style="font-weight: 600; margin-bottom: 10px;">Insufficient Data</div>
+                        <div style="font-weight: 600; margin-bottom: 5px;">Insufficient Data</div>
                         <div style="font-size: 0.9rem;">Not enough strike prices available for chart rendering</div>
                     </div>
                 `;
@@ -504,18 +691,29 @@ calculateDatasets(records, strikes) {
      * Очистка всех графиков
      */
     destroyAllCharts() {
-        Object.values(this.charts).forEach(chart => {
-            if (chart && chart.destroy) {
-                chart.destroy();
-            }
-        });
-        this.charts = {};
+        console.log('🧹 [CHARTS] Очистка всех графиков...');
+        
+        try {
+            Object.keys(this.charts).forEach(chartId => {
+                if (this.charts[chartId]) {
+                    this.charts[chartId].destroy();
+                    delete this.charts[chartId];
+                }
+            });
+            
+            this.charts = {};
+            console.log('✅ [CHARTS] Все графики успешно удалены');
+        } catch (error) {
+            console.error('❌ [CHARTS] Ошибка при удалении графиков:', error);
+        }
     }
 };
 
-// Экспорт
+// ✅ ЭКСПОРТ
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = ChartsModule;
 } else {
     window.ChartsModule = ChartsModule;
 }
+
+console.log('✅ [CHARTS] ChartsModule полностью загружен и готов к использованию');
