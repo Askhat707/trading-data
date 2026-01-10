@@ -1,20 +1,22 @@
 // ============================================
-// 🔐 МОДУЛЬ АУТЕНТИФИКАЦИИ V10 - БЕЗ WRITE
+// 🔐 МОДУЛЬ АУТЕНТИФИКАЦИИ V11 - ФИНАЛЬНЫЙ
 // ============================================
 
 const AuthModule = {
     config: {
         trialDays: 3,
-        localStorageKey: 'gold_options_pro_auth_v10',
+        localStorageKey: 'gold_options_pro_auth_v11',
         sessionTimeout: 30 * 24 * 60 * 60 * 1000,
         adminEmail: 'omaralinovaskar95@gmail.com',
         adminTelegram: '@ASKHAT_1985',
-        version: 'v10'
+        version: 'v11'
     },
     
     currentUser: null,
     isInitializing: false,
     isLoggingOut: false,
+    isManualLogin: false,
+    authListenerActive: false,
     
     status: {
         initialized: false,
@@ -34,7 +36,7 @@ const AuthModule = {
         this.isInitializing = true;
         
         try {
-            console.log('🔐 [AUTH] Начало автоинициализации v10...');
+            console.log('🔐 [AUTH] Начало автоинициализации v11...');
             
             // Шаг 1: Ждем Firebase
             await this.waitForFirebase();
@@ -42,12 +44,12 @@ const AuthModule = {
             // Шаг 2: Настраиваем persistence
             await this.setupPersistence();
             
-            // Шаг 3: Инициализируем обработчики
-            this.initAuthHandlers();
-            
-            // Шаг 4: ВСЕГДА показываем форму входа при загрузке
+            // Шаг 3: ВСЕГДА показываем форму входа при загрузке
             console.log('🔓 [AUTH] Показываем форму входа при загрузке');
             this.showAuthModal();
+            
+            // Шаг 4: Инициализируем обработчики (после показа формы!)
+            this.initAuthHandlers();
             
             this.status.initialized = true;
             console.log('✅ [AUTH] Автоинициализация завершена');
@@ -109,29 +111,51 @@ const AuthModule = {
     },
     
     /**
-     * ИНИЦИАЛИЗАЦИЯ ОБРАБОТЧИКОВ
+     * ИНИЦИАЛИЗАЦИЯ ОБРАБОТЧИКОВ - ИСПРАВЛЕНО
+     * СЛУШАЕМ изменения состояния ПОСЛЕ инициализации
      */
     initAuthHandlers() {
+        if (this.authListenerActive) {
+            console.log('⚠️ [AUTH] Слушатель уже активен');
+            return;
+        }
+        
         console.log('🔄 [AUTH] Инициализация обработчиков...');
         
         try {
             const auth = firebase.auth();
             
-            // ТОЛЬКО ЧИТАЕМ состояние - НЕ ПИШЕМ ничего!
+            // Добавляем обработчик изменения состояния
             auth.onAuthStateChanged(async (firebaseUser) => {
                 console.log('👤 [AUTH] onAuthStateChanged:', firebaseUser ? firebaseUser.email : 'null');
                 
-                if (firebaseUser && !this.isLoggingOut) {
-                    console.log('✅ [AUTH] Пользователь авторизован, загружаем данные...');
-                    await this.handleUserLogin(firebaseUser);
-                } else if (!this.isLoggingOut) {
-                    console.log('⚠️ [AUTH] Пользователь не авторизован');
-                    this.handleUserLogout();
+                // ИСПРАВЛЕНИЕ: Не обрабатываем если идет логаут или ручной вход
+                if (this.isLoggingOut) {
+                    console.log('⏸️ [AUTH] Игнорируем - идет логаут');
+                    return;
                 }
                 
-                this.isLoggingOut = false;
+                if (this.isManualLogin) {
+                    console.log('⏸️ [AUTH] Игнорируем - идет ручной вход');
+                    return;
+                }
+                
+                // Если пользователь авторизован
+                if (firebaseUser && this.currentUser && this.currentUser.id === firebaseUser.uid) {
+                    console.log('✅ [AUTH] Пользователь уже загружен, пропускаем');
+                    return;
+                }
+                
+                if (firebaseUser && !this.currentUser) {
+                    console.log('✅ [AUTH] Обнаружена активная сессия, загружаем данные...');
+                    await this.handleUserLogin(firebaseUser);
+                } else if (!firebaseUser && !this.isLoggingOut) {
+                    console.log('⚠️ [AUTH] Сессия потеряна, показываем форму входа');
+                    this.handleUserLogout();
+                }
             });
             
+            this.authListenerActive = true;
             console.log('✅ [AUTH] Обработчики инициализированы');
         } catch (error) {
             console.error('❌ [AUTH] Ошибка инициализации обработчиков:', error);
@@ -139,23 +163,26 @@ const AuthModule = {
     },
     
     /**
-     * ВХОД ПОЛЬЗОВАТЕЛЯ
+     * ВХОД ПОЛЬЗОВАТЕЛЯ - ИСПРАВЛЕНО
      */
     async login(email, password, silent = false) {
         console.log(`🔐 [AUTH] Попытка входа: ${email}`);
+        
+        // Устанавливаем флаг ручного входа
+        this.isManualLogin = true;
         
         if (!silent) {
             this.showAuthLoading('Вход в систему...');
         }
         
         try {
-            // ТОЛЬКО авторизация - БЕЗ ЗАПИСИ В БД!
+            // Авторизуемся
             const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
             const firebaseUser = userCredential.user;
             
             console.log('✅ [AUTH] Авторизация успешна:', firebaseUser.email);
             
-            // Загружаем данные пользователя
+            // Загружаем данные
             await this.handleUserLogin(firebaseUser);
             
             if (!silent) {
@@ -173,29 +200,29 @@ const AuthModule = {
             }
             
             return false;
+        } finally {
+            // ВАЖНО: Отключаем флаг после входа
+            this.isManualLogin = false;
         }
     },
     
     /**
      * ОБРАБОТКА УСПЕШНОГО ВХОДА
-     * ТОЛЬКО ЧИТАЕМ ДАННЫЕ - НЕ ПИШЕМ!
      */
     async handleUserLogin(firebaseUser) {
         console.log('👤 [AUTH] Загрузка данных пользователя:', firebaseUser.email);
         
         try {
-            // ТОЛЬКО ЧИТАЕМ из БД!
+            // ТОЛЬКО ЧИТАЕМ из БД
             const userRef = firebase.database().ref(`users/${firebaseUser.uid}`);
             const snapshot = await userRef.once('value');
             
             if (!snapshot.exists()) {
-                // Пользователь не найден в БД
                 console.error('❌ [AUTH] Пользователь не найден в базе данных');
                 
-                // Выходим из Firebase
+                // Выходим
                 await firebase.auth().signOut();
                 
-                // Показываем ошибку
                 this.showAuthError(
                     `❌ Ваш аккаунт не активирован.\n\n` +
                     `Обратитесь к администратору:\n` +
@@ -213,7 +240,6 @@ const AuthModule = {
             console.log('📊 [AUTH] Данные загружены:');
             console.log('   План:', userData.plan);
             console.log('   Email:', userData.email);
-            console.log('   Version:', userData.version);
             
             // Проверяем подписку
             if (this.isSubscriptionExpired(userData)) {
@@ -232,7 +258,7 @@ const AuthModule = {
             this.currentUser = userData;
             this.status.authChecked = true;
             
-            console.log('✅ [AUTH] Пользователь успешно загружен');
+            console.log('✅ [AUTH] Пользователь успешно загружен, показываем интерфейс');
             
             // Показываем интерфейс
             this.showMainInterface();
@@ -245,7 +271,7 @@ const AuthModule = {
             
             this.showAuthError('Ошибка загрузки данных: ' + error.message);
             
-            // Выходим из Firebase
+            // Выходим
             try {
                 await firebase.auth().signOut();
             } catch (e) {
@@ -258,7 +284,7 @@ const AuthModule = {
     },
     
     /**
-     * ВЫХОД ПОЛЬЗОВАТЕЛЯ
+     * ВЫХОД ПОЛЬЗОВАТЕЛЯ - ИСПРАВЛЕНО
      */
     async logout() {
         console.log('🚪 [AUTH] Процесс выхода...');
@@ -266,9 +292,11 @@ const AuthModule = {
         this.isLoggingOut = true;
         
         try {
+            // Выходим из Firebase
             await firebase.auth().signOut();
             console.log('✅ [AUTH] Выход из Firebase выполнен');
             
+            // Очищаем данные
             this.currentUser = null;
             this.status.authChecked = false;
             
@@ -286,6 +314,7 @@ const AuthModule = {
         } catch (error) {
             console.error('❌ [AUTH] Ошибка выхода:', error);
         } finally {
+            // ВАЖНО: Отключаем флаг после выхода
             this.isLoggingOut = false;
         }
     },
@@ -314,6 +343,7 @@ const AuthModule = {
                 authModal.style.display = 'none';
                 authModal.style.opacity = '0';
                 authModal.style.visibility = 'hidden';
+                authModal.style.pointerEvents = 'none';
             }
             
             // Показываем основной контент
@@ -322,6 +352,7 @@ const AuthModule = {
                 mainContent.style.display = 'block';
                 mainContent.style.opacity = '1';
                 mainContent.style.visibility = 'visible';
+                mainContent.style.pointerEvents = 'auto';
             }
             
             console.log('✅ [UI] Интерфейс показан');
@@ -343,6 +374,7 @@ const AuthModule = {
                 mainContent.style.display = 'none';
                 mainContent.style.opacity = '0';
                 mainContent.style.visibility = 'hidden';
+                mainContent.style.pointerEvents = 'none';
             }
             
             // Показываем окно входа
@@ -496,4 +528,4 @@ window.handleLogout = function() {
 };
 
 window.AuthModule = AuthModule;
-console.log('✅ [AUTH] Модуль аутентификации загружен (v10)');
+console.log('✅ [AUTH] Модуль аутентификации загружен (v11)');
